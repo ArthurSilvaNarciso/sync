@@ -77,7 +77,8 @@ export class User {
   @Column({ nullable: true, select: false, type: 'varchar' })
   resetPasswordToken: string | null;
 
-  @Column({ nullable: true, select: false, type: 'datetime' })
+  // Sem type explícito — TypeORM mapeia: SQLite → datetime, Postgres → timestamp
+  @Column({ nullable: true, select: false })
   resetPasswordExpires: Date | null;
 
   @CreateDateColumn()
