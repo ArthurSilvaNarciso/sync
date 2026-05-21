@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { Like } from './entities/like.entity';
 import { Match } from './entities/match.entity';
+import { Activity } from '../activities/entities/activity.entity';
 import { SwipeDto } from './dto/swipe.dto';
 import { DiscoveryQueryDto } from './dto/discovery-query.dto';
 import { haversineKm } from '../common/utils/haversine';
@@ -17,7 +18,25 @@ export class MatchingService {
     private readonly likeRepository: Repository<Like>,
     @InjectRepository(Match)
     private readonly matchRepository: Repository<Match>,
+    @InjectRepository(Activity)
+    private readonly activityRepository: Repository<Activity>,
   ) {}
+
+  // Pace médio do usuário nos últimos 30 dias (em min/km)
+  private async getUserAvgPace(userId: string): Promise<number | null> {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const activities = await this.activityRepository
+      .createQueryBuilder('a')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :completed', { completed: true })
+      .andWhere('a.avgPace > 0')
+      .andWhere('a.startTime > :since', { since: thirtyDaysAgo })
+      .select('AVG(a.avgPace)', 'avgPace')
+      .getRawOne<{ avgPace: number | string | null }>();
+    if (!activities || activities.avgPace === null) return null;
+    const pace = typeof activities.avgPace === 'string' ? parseFloat(activities.avgPace) : activities.avgPace;
+    return pace > 0 ? pace : null;
+  }
 
   // Algoritmo de discovery - busca usuarios proximos e compativeis
   async discover(userId: string, query: DiscoveryQueryDto) {
@@ -59,26 +78,48 @@ export class MatchingService {
 
     const allUsers = await qb.getMany();
 
-    // Filtrar por distancia e excluir ja vistos (Haversine em JS)
-    const results = allUsers
-      .filter((u) => !swipedIds.has(u.id))
-      .map((u) => ({
-        ...u,
-        distance: haversineKm(
+    // Filtra availability (interseção de arrays)
+    let filtered = allUsers.filter((u) => !swipedIds.has(u.id));
+    if (query.availability) {
+      filtered = filtered.filter((u) => u.availability?.includes(query.availability!));
+    }
+
+    // Computa distância + pace pra cada candidato
+    const usersWithMeta = await Promise.all(
+      filtered.map(async (u) => {
+        const distance = haversineKm(
           currentUser.latitude,
           currentUser.longitude,
           u.latitude,
           u.longitude,
-        ),
-      }))
+        );
+        const avgPace = await this.getUserAvgPace(u.id);
+        return { ...u, distance, avgPace };
+      }),
+    );
+
+    // Filtra por raio + pace
+    const results = usersWithMeta
       .filter((u) => u.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance);
+      .filter((u) => {
+        if (query.paceMin && u.avgPace && u.avgPace < query.paceMin) return false;
+        if (query.paceMax && u.avgPace && u.avgPace > query.paceMax) return false;
+        return true;
+      })
+      .sort((a, b) => {
+        // Sort por compatibilidade: distância + diff de pace
+        const myPace = 0; // pace do user atual (calculável se necessário)
+        const paceDiffA = a.avgPace ? Math.abs((a.avgPace || 0) - myPace) : 99;
+        const paceDiffB = b.avgPace ? Math.abs((b.avgPace || 0) - myPace) : 99;
+        return a.distance + paceDiffA / 10 - (b.distance + paceDiffB / 10);
+      });
 
     // Paginacao
     const start = (page - 1) * limit;
     return results.slice(start, start + limit).map((u) => ({
       ...u,
       distance: Math.round(u.distance * 10) / 10,
+      avgPace: u.avgPace ? Math.round(u.avgPace * 100) / 100 : null,
     }));
   }
 

@@ -36,4 +36,21 @@ export class DiscoveryQueryDto {
   @Min(1)
   @Max(50)
   limit?: number = 20;
+
+  @ApiPropertyOptional({ description: 'Pace mínimo compatível (min/km)' })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  paceMin?: number;
+
+  @ApiPropertyOptional({ description: 'Pace máximo compatível (min/km)' })
+  @IsNumber()
+  @IsOptional()
+  @Type(() => Number)
+  paceMax?: number;
+
+  @ApiPropertyOptional({ description: 'Filtra por horário preferido (madrugada|manha|tarde|noite|weekend)' })
+  @IsString()
+  @IsOptional()
+  availability?: string;
 }
