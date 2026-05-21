@@ -1,0 +1,334 @@
+import React, { useState, useEffect } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
+  TouchableOpacity,
+  Platform,
+} from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { ProfileStackParamList } from '../../navigation/types';
+import { Achievement, UserXP } from '../../types';
+import { achievementsService } from '../../services/achievements.service';
+import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
+
+type Props = {
+  navigation: NativeStackNavigationProp<ProfileStackParamList, 'Achievements'>;
+};
+
+export default function AchievementsScreen({ navigation }: Props) {
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [xpData, setXpData] = useState<UserXP | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      const [achievementsData, xp] = await Promise.all([
+        achievementsService.getAchievements(),
+        achievementsService.getXP(),
+      ]);
+      setAchievements(achievementsData);
+      setXpData(xp);
+    } catch {
+      // sem dados em caso de erro
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const unlockedCount = achievements.filter((a) => a.unlockedAt).length;
+  const totalCount = achievements.length;
+
+  const renderAchievement = ({ item }: { item: Achievement }) => {
+    const isUnlocked = !!item.unlockedAt;
+    return (
+      <View style={[styles.achievementCard, !isUnlocked && styles.achievementCardLocked]}>
+        <View style={[styles.iconWrap, !isUnlocked && styles.iconWrapLocked]}>
+          <Text style={[styles.achievementIcon, !isUnlocked && styles.achievementIconLocked]}>
+            {item.icon}
+          </Text>
+        </View>
+        <View style={styles.achievementInfo}>
+          <Text style={[styles.achievementName, !isUnlocked && styles.lockedText]}>
+            {isUnlocked ? item.name : '???'}
+          </Text>
+          <Text style={[styles.achievementDesc, !isUnlocked && styles.lockedText]}>
+            {isUnlocked ? item.description : 'Continue treinando para desbloquear'}
+          </Text>
+          {isUnlocked && item.unlockedAt && (
+            <Text style={styles.unlockedDate}>
+              {new Date(item.unlockedAt).toLocaleDateString('pt-BR', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric',
+              })}
+            </Text>
+          )}
+        </View>
+        <View style={styles.xpBadge}>
+          {isUnlocked ? (
+            <>
+              <Text style={styles.xpValue}>+{item.xp}</Text>
+              <Text style={styles.xpLabel}>XP</Text>
+            </>
+          ) : (
+            <Ionicons name="lock-closed" size={16} color={colors.dark.secondaryText} />
+          )}
+        </View>
+      </View>
+    );
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color={colors.dark.accent} />
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Conquistas</Text>
+        <View style={{ width: 36 }} />
+      </View>
+
+      {/* XP Banner */}
+      {xpData && (
+        <LinearGradient
+          colors={[colors.dark.surface, '#252540']}
+          style={styles.xpBanner}
+        >
+          <View style={styles.xpLeft}>
+            <Text style={styles.xpLevelLabel}>NÍVEL</Text>
+            <Text style={styles.xpLevel}>{xpData.level}</Text>
+          </View>
+          <View style={styles.xpCenter}>
+            <Text style={styles.xpTotal}>{xpData.totalXP} XP</Text>
+            <View style={styles.xpBar}>
+              <View
+                style={[
+                  styles.xpBarFill,
+                  { width: `${((xpData.totalXP % 500) / 500) * 100}%` },
+                ]}
+              />
+            </View>
+            <Text style={styles.xpNext}>
+              {500 - (xpData.totalXP % 500)} XP para o próximo nível
+            </Text>
+          </View>
+          <View style={styles.xpRight}>
+            <Text style={styles.xpCountLabel}>CONQUISTAS</Text>
+            <Text style={styles.xpCount}>
+              {unlockedCount}/{totalCount}
+            </Text>
+          </View>
+        </LinearGradient>
+      )}
+
+      <FlatList
+        data={achievements}
+        keyExtractor={(item) => item.type}
+        renderItem={renderAchievement}
+        contentContainerStyle={styles.list}
+        showsVerticalScrollIndicator={false}
+        ListHeaderComponent={
+          <Text style={styles.sectionLabel}>
+            {unlockedCount} de {totalCount} conquistas desbloqueadas
+          </Text>
+        }
+      />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: colors.dark.background,
+  },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colors.dark.background,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: colors.dark.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: colors.dark.text,
+  },
+  xpBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginHorizontal: spacing.lg,
+    borderRadius: borderRadius.md,
+    padding: spacing.lg,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.dark.border,
+  },
+  xpLeft: {
+    alignItems: 'center',
+    minWidth: 56,
+  },
+  xpLevelLabel: {
+    fontSize: 10,
+    color: colors.dark.secondaryText,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  xpLevel: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: colors.dark.accent,
+  },
+  xpCenter: {
+    flex: 1,
+    paddingHorizontal: spacing.lg,
+  },
+  xpTotal: {
+    fontSize: fontSize.lg,
+    fontWeight: '700',
+    color: colors.dark.text,
+    marginBottom: spacing.xs,
+  },
+  xpBar: {
+    height: 6,
+    backgroundColor: colors.dark.border,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 4,
+  },
+  xpBarFill: {
+    height: '100%',
+    backgroundColor: colors.dark.accent,
+    borderRadius: 3,
+  },
+  xpNext: {
+    fontSize: 11,
+    color: colors.dark.secondaryText,
+  },
+  xpRight: {
+    alignItems: 'center',
+    minWidth: 64,
+  },
+  xpCountLabel: {
+    fontSize: 10,
+    color: colors.dark.secondaryText,
+    fontWeight: '600',
+    letterSpacing: 1,
+  },
+  xpCount: {
+    fontSize: fontSize.xl,
+    fontWeight: '700',
+    color: colors.dark.text,
+  },
+  list: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xxl,
+  },
+  sectionLabel: {
+    fontSize: fontSize.xs,
+    color: colors.dark.secondaryText,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    marginBottom: spacing.md,
+  },
+  achievementCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colors.dark.surface,
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.dark.border,
+    gap: spacing.md,
+  },
+  achievementCardLocked: {
+    opacity: 0.5,
+  },
+  iconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.dark.accent + '20',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  iconWrapLocked: {
+    backgroundColor: colors.dark.border,
+  },
+  achievementIcon: {
+    fontSize: 24,
+  },
+  achievementIconLocked: {
+    opacity: 0.3,
+  },
+  achievementInfo: {
+    flex: 1,
+  },
+  achievementName: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.dark.text,
+  },
+  achievementDesc: {
+    fontSize: fontSize.xs,
+    color: colors.dark.secondaryText,
+    marginTop: 2,
+  },
+  lockedText: {
+    color: colors.dark.secondaryText,
+  },
+  unlockedDate: {
+    fontSize: 10,
+    color: colors.dark.accent,
+    marginTop: 4,
+    fontWeight: '500',
+  },
+  xpBadge: {
+    alignItems: 'center',
+    minWidth: 40,
+  },
+  xpValue: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.dark.accent,
+  },
+  xpLabel: {
+    fontSize: 10,
+    color: colors.dark.secondaryText,
+  },
+});

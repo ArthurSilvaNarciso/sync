@@ -1,0 +1,45 @@
+{
+  "expo": {
+    "name": "Sync",
+    "slug": "sync",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./src/assets/images/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#0D1B3D",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.sync.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "Sync precisa da sua localização para encontrar parceiros de treino próximos.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Sync usa sua localização para registrar atividades esportivas."
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0D1B3D"
+      },
+      "package": "com.sync.app",
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Sync usa sua localização para registrar atividades e encontrar pessoas."
+        }
+      ],
+      "expo-font"
+    ]
+  }
+}

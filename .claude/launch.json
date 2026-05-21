@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Sync Backend (NestJS)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["start-backend.js", "start", "--watch"],
+      "port": 3000
+    },
+    {
+      "name": "Sync Mobile (Expo)",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["start-mobile.js"],
+      "port": 8081
+    }
+  ]
+}
