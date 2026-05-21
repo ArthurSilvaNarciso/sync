@@ -22,6 +22,7 @@ import { getCurrentLocation } from '../../services/location.service';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQuote } from '../../services/external-apis';
 import api from '../../services/api';
 import BestTimeWidget from '../../components/BestTimeWidget';
+import TodayBriefWidget from '../../components/TodayBriefWidget';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -250,15 +251,17 @@ export default function TrackingMainScreen({ navigation }: Props) {
             <Text style={styles.quoteText}>"{quote.text}"</Text>
           </View>
 
+          {/* Today Brief: sunrise/sunset, AQI, workout idea, hidratação, quote */}
+          <TodayBriefWidget
+            latitude={region.latitude}
+            longitude={region.longitude}
+            preferredSport={selectedSport}
+          />
+
           {/* KILLER: Sugestão de horário ideal hoje */}
           <BestTimeWidget
             latitude={region.latitude}
             longitude={region.longitude}
-            apiBase={
-              Platform.OS === 'web' && typeof window !== 'undefined'
-                ? `${window.location.protocol}//${window.location.hostname}:3000`
-                : 'http://localhost:3000'
-            }
           />
         </View>
       )}
