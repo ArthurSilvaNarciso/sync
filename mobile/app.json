@@ -5,10 +5,21 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./src/assets/images/icon.png",
-    "userInterfaceStyle": "light",
+    "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#0D1B3D",
+      "backgroundColor": "#0A0A0F",
       "resizeMode": "contain"
+    },
+    "web": {
+      "favicon": "./src/assets/images/icon.png",
+      "name": "Sync — Seu próximo treino começa aqui",
+      "shortName": "Sync",
+      "themeColor": "#FF6B35",
+      "backgroundColor": "#0A0A0F",
+      "description": "App social esportivo geolocalizado. Encontre parceiros, organize eventos, acompanhe seu progresso.",
+      "lang": "pt-BR",
+      "display": "standalone",
+      "orientation": "portrait"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -23,7 +34,7 @@
     },
     "android": {
       "adaptiveIcon": {
-        "backgroundColor": "#0D1B3D"
+        "backgroundColor": "#0A0A0F"
       },
       "package": "com.sync.app",
       "permissions": [
@@ -39,7 +50,14 @@
           "locationAlwaysAndWhenInUsePermission": "Sync usa sua localização para registrar atividades e encontrar pessoas."
         }
       ],
-      "expo-font"
+      "expo-font",
+      [
+        "expo-secure-store",
+        {
+          "configureAndroidBackup": true,
+          "faceIDPermission": "Permita o uso do Face ID para autenticação rápida"
+        }
+      ]
     ]
   }
 }

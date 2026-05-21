@@ -1,10 +1,12 @@
-// Paleta de cores oficial do Sync — Dark Theme
+// Paleta de cores oficial do Sync — Dark + Orange (running brand)
 export const colors = {
-  primary: '#5B2EFF',
-  darkPurple: '#2B0F5E',
-  highlight: '#8B5CFF',
-  blueAccent: '#2E7BFF',
-  deepBlue: '#0D1B3D',
+  primary: '#FF6B35',          // laranja principal (brand)
+  primaryDark: '#FF4500',      // laranja escuro pra gradient
+  primaryLight: '#FF8A5C',     // laranja claro
+  darkPurple: '#2B0F5E',       // legado — mantido pra compat
+  highlight: '#FFB07A',        // destaque secundário
+  blueAccent: '#2E7BFF',       // azul (ciclismo, info)
+  deepBlue: '#0D1B3D',         // fundo profundo
 
   // Dark-first defaults
   background: '#0A0A0F',
@@ -16,8 +18,10 @@ export const colors = {
   border: '#2A2A40',
   cardBg: '#1E1E32',
 
-  // Gradiente principal
-  gradient: ['#2E7BFF', '#5B2EFF', '#8B5CFF'] as const,
+  // Gradiente principal (laranja brand)
+  gradient: ['#FF6B35', '#FF4500', '#FF1744'] as const,
+  // Gradiente azul (alternativo, ciclismo)
+  gradientBlue: ['#2E7BFF', '#5B2EFF', '#8B5CFF'] as const,
 
   // Auxiliares
   white: '#FFFFFF',

@@ -1,5 +1,7 @@
-// Serviço de localização — SEM fallback silencioso pra SP.
-// Sempre tenta GPS real do usuário. Se falhar, propaga erro.
+// GPS de produção — alta precisão real do dispositivo.
+// Web: navigator.geolocation com enableHighAccuracy=true
+// Native: expo-location com Accuracy.BestForNavigation
+// Geocoding reverso: OpenStreetMap Nominatim (free, sem API key, atribuição requerida)
 import * as ExpoLocation from 'expo-location';
 import { Platform } from 'react-native';
 
@@ -7,7 +9,7 @@ export interface LocationCoords {
   latitude: number;
   longitude: number;
   accuracy?: number;
-  isReal: true; // marcador de que veio do GPS real
+  isReal: true;
 }
 
 export class LocationDeniedError extends Error {
@@ -25,12 +27,10 @@ export class LocationUnavailableError extends Error {
 }
 
 let cachedLocation: LocationCoords | null = null;
+let cachedCity: { latitude: number; longitude: number; city: string } | null = null;
 
 /**
- * Pega a localização REAL do usuário.
- * No WEB: usa navigator.geolocation diretamente (mais confiável que expo-location).
- * Na NATIVE: usa expo-location com fallback de accuracy.
- * NUNCA retorna fallback fake — lança erro se não conseguir.
+ * Pega GPS real do dispositivo — alta precisão.
  */
 export async function getCurrentLocation(): Promise<LocationCoords> {
   if (Platform.OS === 'web') {
@@ -44,34 +44,56 @@ async function getWebLocation(): Promise<LocationCoords> {
     throw new LocationUnavailableError('Geolocalização não suportada neste navegador');
   }
 
-  return new Promise<LocationCoords>((resolve, reject) => {
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const coords: LocationCoords = {
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          accuracy: pos.coords.accuracy,
-          isReal: true,
-        };
-        cachedLocation = coords;
-        resolve(coords);
-      },
-      (err) => {
-        if (err.code === err.PERMISSION_DENIED) {
-          reject(new LocationDeniedError(
-            'Permissão de localização negada. Libere nas configurações do navegador (cadeado na barra de endereço).',
-          ));
-        } else {
-          reject(new LocationUnavailableError(
-            err.code === err.TIMEOUT
-              ? 'Timeout — tente novamente em uma área aberta'
-              : 'Não foi possível obter sua posição',
-          ));
-        }
-      },
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 },
-    );
-  });
+  // Tenta high accuracy primeiro (mais lento mas preciso)
+  try {
+    return await new Promise<LocationCoords>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords: LocationCoords = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            isReal: true,
+          };
+          cachedLocation = coords;
+          resolve(coords);
+        },
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 },
+      );
+    });
+  } catch (err: any) {
+    // Se high accuracy falhou (timeout ou erro), tenta baixa precisão
+    if (err.code === err.PERMISSION_DENIED) {
+      throw new LocationDeniedError(
+        'Permissão de localização negada. Clique no cadeado da barra de endereço e libere "Localização".',
+      );
+    }
+    return new Promise<LocationCoords>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords: LocationCoords = {
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            accuracy: pos.coords.accuracy,
+            isReal: true,
+          };
+          cachedLocation = coords;
+          resolve(coords);
+        },
+        (e) => {
+          if (e.code === e.PERMISSION_DENIED) {
+            reject(new LocationDeniedError());
+          } else if (e.code === e.TIMEOUT) {
+            reject(new LocationUnavailableError('Timeout — saia para uma área aberta e tente novamente'));
+          } else {
+            reject(new LocationUnavailableError('Não foi possível obter sua posição'));
+          }
+        },
+        { enableHighAccuracy: false, timeout: 10000, maximumAge: 30000 },
+      );
+    });
+  }
 }
 
 async function getNativeLocation(): Promise<LocationCoords> {
@@ -82,10 +104,10 @@ async function getNativeLocation(): Promise<LocationCoords> {
     );
   }
 
-  // High accuracy primeiro
+  // Best for navigation = mais preciso possível
   try {
     const loc = await ExpoLocation.getCurrentPositionAsync({
-      accuracy: ExpoLocation.Accuracy.High,
+      accuracy: ExpoLocation.Accuracy.BestForNavigation,
     });
     const coords: LocationCoords = {
       latitude: loc.coords.latitude,
@@ -95,9 +117,7 @@ async function getNativeLocation(): Promise<LocationCoords> {
     };
     cachedLocation = coords;
     return coords;
-  } catch {
-    // tenta balanceada
-  }
+  } catch { /* tenta balanceada */ }
 
   try {
     const loc = await ExpoLocation.getCurrentPositionAsync({
@@ -111,9 +131,7 @@ async function getNativeLocation(): Promise<LocationCoords> {
     };
     cachedLocation = coords;
     return coords;
-  } catch {
-    // tenta last known
-  }
+  } catch { /* tenta last known */ }
 
   const lastKnown = await ExpoLocation.getLastKnownPositionAsync().catch(() => null);
   if (lastKnown) {
@@ -127,13 +145,11 @@ async function getNativeLocation(): Promise<LocationCoords> {
     return coords;
   }
 
-  throw new LocationUnavailableError(
-    'GPS não retornou posição. Saia para área aberta e tente novamente.',
-  );
+  throw new LocationUnavailableError('GPS não retornou posição.');
 }
 
 /**
- * Watch contínuo. No web usa navigator.geolocation.watchPosition.
+ * Watch contínuo de posição. Web: navigator.geolocation.watchPosition (high accuracy).
  */
 export async function watchLocation(
   callback: (coords: LocationCoords) => void,
@@ -153,7 +169,7 @@ export async function watchLocation(
         callback(coords);
       },
       () => {},
-      { enableHighAccuracy: true, maximumAge: 5000 },
+      { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 },
     );
     return { remove: () => navigator.geolocation.clearWatch(id) };
   }
@@ -164,8 +180,8 @@ export async function watchLocation(
     const sub = await ExpoLocation.watchPositionAsync(
       {
         accuracy: ExpoLocation.Accuracy.BestForNavigation,
-        distanceInterval: options?.distanceInterval ?? 5,
-        timeInterval: options?.timeInterval ?? 3000,
+        distanceInterval: options?.distanceInterval ?? 3,
+        timeInterval: options?.timeInterval ?? 2000,
       },
       (loc) => {
         const coords: LocationCoords = {
@@ -184,10 +200,75 @@ export async function watchLocation(
   }
 }
 
+/**
+ * Reverse geocode via OpenStreetMap Nominatim (free, sem API key).
+ * Retorna nome da cidade/bairro a partir de lat/lng.
+ * Atribuição: © OpenStreetMap contributors (já adicionada no leaflet).
+ */
+export async function reverseGeocode(
+  latitude: number,
+  longitude: number,
+): Promise<{ city: string; neighborhood?: string; country?: string } | null> {
+  // Cache local: se já consultou ponto próximo, retorna
+  if (cachedCity) {
+    const dLat = Math.abs(cachedCity.latitude - latitude);
+    const dLng = Math.abs(cachedCity.longitude - longitude);
+    if (dLat < 0.01 && dLng < 0.01) {
+      return { city: cachedCity.city };
+    }
+  }
+
+  // Native: expo-location reverseGeocodeAsync funciona melhor
+  if (Platform.OS !== 'web') {
+    try {
+      const [geo] = await ExpoLocation.reverseGeocodeAsync({ latitude, longitude });
+      const city = geo?.city || geo?.subregion || geo?.region || '';
+      if (city) {
+        cachedCity = { latitude, longitude, city };
+        return {
+          city,
+          neighborhood: geo?.district || undefined,
+          country: geo?.country || undefined,
+        };
+      }
+    } catch { /* fallback web */ }
+  }
+
+  // Web: Nominatim. Headers exigem User-Agent ou Referer com nome do app.
+  try {
+    const controller = new AbortController();
+    const t = setTimeout(() => controller.abort(), 7000);
+    const r = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latitude}&lon=${longitude}&zoom=14&accept-language=pt-BR`,
+      {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'Referer': 'https://sync-h29j2uaaq-rutunarciso-5121s-projects.vercel.app',
+        },
+      },
+    );
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const j = await r.json();
+    const a = j.address || {};
+    const city = a.city || a.town || a.village || a.municipality || a.suburb || a.county || '';
+    const neighborhood = a.suburb || a.neighbourhood || a.quarter || undefined;
+    if (city) {
+      cachedCity = { latitude, longitude, city };
+      return { city, neighborhood, country: a.country };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function getCachedLocation(): LocationCoords | null {
   return cachedLocation;
 }
 
 export function clearLocationCache(): void {
   cachedLocation = null;
+  cachedCity = null;
 }

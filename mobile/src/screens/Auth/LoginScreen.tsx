@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -8,22 +8,26 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
-  ActivityIndicator,
+  ImageBackground,
+  Animated,
+  Easing,
+  Pressable,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/authStore';
 import { authService } from '../../services/auth.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
-import ScreenContainer from '../../components/layout/ScreenContainer';
+import { heroImages } from '../../theme/images';
 import Input from '../../components/ui/Input';
-import Button from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 };
+
+const ACCENT = '#FF6B35';
 
 export default function LoginScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
@@ -33,21 +37,28 @@ export default function LoginScreen({ navigation }: Props) {
   const login = useAuthStore((s) => s.login);
   const setAuth = useAuthStore((s) => s.setAuth);
 
+  const fade = useRef(new Animated.Value(0)).current;
+  const slideY = useRef(new Animated.Value(20)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fade, { toValue: 1, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+      Animated.timing(slideY, { toValue: 0, duration: 600, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
+    ]).start();
+  }, []);
+
   const isFormValid = /\S+@\S+\.\S+/.test(email) && password.length >= 6;
 
   const handleLogin = async () => {
-    // Validate
     const newErrors: Record<string, string> = {};
-    if (!email.trim()) newErrors.email = 'Email obrigatorio';
-    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email invalido';
-    if (!password) newErrors.password = 'Senha obrigatoria';
-    else if (password.length < 6) newErrors.password = 'Minimo 6 caracteres';
-
+    if (!email.trim()) newErrors.email = 'Email obrigatório';
+    else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email inválido';
+    if (!password) newErrors.password = 'Senha obrigatória';
+    else if (password.length < 6) newErrors.password = 'Mínimo 6 caracteres';
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
       return;
     }
-
     setErrors({});
     setLoading(true);
     try {
@@ -55,7 +66,7 @@ export default function LoginScreen({ navigation }: Props) {
     } catch (error: any) {
       Alert.alert(
         'Erro ao entrar',
-        error.response?.data?.message || 'Email ou senha incorretos. Verifique e tente novamente.',
+        error.response?.data?.message || 'Email ou senha incorretos.',
       );
     } finally {
       setLoading(false);
@@ -64,202 +75,230 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleForgotPassword = async () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert(
-        'Recuperar senha',
-        'Digite seu email no campo acima e toque novamente em "Esqueci minha senha".',
-      );
+      Alert.alert('Recuperar senha', 'Digite seu email primeiro.');
       return;
     }
-
     setLoading(true);
     try {
       await authService.forgotPassword(email.trim().toLowerCase());
-      Alert.alert(
-        'Email enviado',
-        `Se o email ${email} estiver cadastrado, você receberá as instruções de recuperação em breve.`,
-        [{ text: 'OK' }],
-      );
+      Alert.alert('Email enviado', 'Se o email estiver cadastrado, você receberá as instruções em breve.');
     } catch {
-      // Mesma mensagem independente do erro (segurança anti-enumeração)
-      Alert.alert(
-        'Solicitação enviada',
-        'Se o email estiver cadastrado, você receberá as instruções em breve.',
-        [{ text: 'OK' }],
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleDemoLogin = async () => {
-    setLoading(true);
-    try {
-      const demoData = await authService.loginDemo();
-      await setAuth(demoData.user, demoData.accessToken);
-    } catch {
-      Alert.alert('Erro', 'Nao foi possivel entrar no modo demo');
+      Alert.alert('Solicitação enviada', 'Se o email estiver cadastrado, você receberá as instruções em breve.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <ScreenContainer>
+    <View style={styles.root}>
+      {/* Hero background com gradient overlay */}
+      <ImageBackground
+        source={{ uri: heroImages.runnerCity }}
+        style={styles.hero}
+        resizeMode="cover"
+      >
+        <LinearGradient
+          colors={['rgba(10,10,15,0.3)', 'rgba(10,10,15,0.7)', '#0A0A0F']}
+          locations={[0, 0.5, 1]}
+          style={StyleSheet.absoluteFill}
+        />
+      </ImageBackground>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scroll}
+        >
+          <View style={styles.centerStage}>
+            <Animated.View
+              style={[styles.content, { opacity: fade, transform: [{ translateY: slideY }] }]}
+            >
+              <TouchableOpacity
+                onPress={() => navigation.goBack()}
+                style={styles.backButton}
+              >
+                <Ionicons name="arrow-back" size={22} color="#fff" />
+              </TouchableOpacity>
 
-          <Text style={styles.title}>Bem-vindo de volta</Text>
-          <Text style={styles.subtitle}>
-            Entre com seu email e senha para continuar
-          </Text>
+              <View style={styles.titleBlock}>
+                <Text style={styles.title}>Bem-vindo{'\n'}<Text style={{ color: ACCENT }}>de volta.</Text></Text>
+                <Text style={styles.subtitle}>
+                  Entre pra continuar sua jornada.
+                </Text>
+              </View>
 
-          <View style={styles.form}>
-            <Input
-              label="Email"
-              placeholder="seu@email.com"
-              value={email}
-              onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: '' })); }}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              error={errors.email}
-            />
-            <Input
-              label="Senha"
-              placeholder="Sua senha"
-              value={password}
-              onChangeText={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: '' })); }}
-              isPassword
-              error={errors.password}
-            />
+              <View style={styles.form}>
+                <Input
+                  label="Email"
+                  placeholder="seu@email.com"
+                  value={email}
+                  onChangeText={(v) => { setEmail(v); setErrors((e) => ({ ...e, email: '' })); }}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  error={errors.email}
+                />
+                <Input
+                  label="Senha"
+                  placeholder="Sua senha"
+                  value={password}
+                  onChangeText={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: '' })); }}
+                  isPassword
+                  error={errors.password}
+                />
+              </View>
+
+              <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword}>
+                <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
+              </TouchableOpacity>
+
+              {/* CTA principal gradient laranja */}
+              <Pressable
+                onPress={handleLogin}
+                disabled={!isFormValid || loading}
+                style={({ pressed }) => [
+                  styles.primaryBtn,
+                  (!isFormValid || loading) && { opacity: 0.5 },
+                  pressed && { opacity: 0.85 },
+                ]}
+              >
+                <LinearGradient
+                  colors={[ACCENT, '#FF4500']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.primaryBtnInner}
+                >
+                  {loading ? (
+                    <Text style={styles.primaryBtnText}>Entrando…</Text>
+                  ) : (
+                    <>
+                      <Text style={styles.primaryBtnText}>Entrar</Text>
+                      <Ionicons name="arrow-forward" size={18} color="#fff" />
+                    </>
+                  )}
+                </LinearGradient>
+              </Pressable>
+
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Register')}
+                style={styles.registerLink}
+              >
+                <Text style={styles.registerText}>
+                  Não tem conta?{' '}
+                  <Text style={styles.registerTextBold}>Criar agora</Text>
+                </Text>
+              </TouchableOpacity>
+            </Animated.View>
           </View>
-
-          <TouchableOpacity style={styles.forgotPassword} onPress={handleForgotPassword}>
-            <Text style={styles.forgotPasswordText}>Esqueci minha senha</Text>
-          </TouchableOpacity>
-
-          <Button
-            title="Entrar"
-            onPress={handleLogin}
-            disabled={!isFormValid}
-            loading={loading}
-          />
-
-          {/* Divider */}
-          <View style={styles.dividerRow}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>ou</Text>
-            <View style={styles.dividerLine} />
-          </View>
-
-          {/* Demo login */}
-          <TouchableOpacity style={styles.demoBtn} onPress={handleDemoLogin} activeOpacity={0.7}>
-            <Ionicons name="flash-outline" size={18} color={colors.primary} />
-            <Text style={styles.demoBtnText}>Entrar no modo demo</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            onPress={() => navigation.navigate('Register')}
-            style={styles.registerLink}
-          >
-            <Text style={styles.registerText}>
-              Nao tem conta?{' '}
-              <Text style={styles.registerTextBold}>Criar agora</Text>
-            </Text>
-          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenContainer>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#0A0A0F' },
+  hero: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: 360,
+  },
+  scroll: {
+    flexGrow: 1,
+  },
+  centerStage: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: spacing.lg,
+    paddingTop: Platform.OS === 'ios' ? 60 : 36,
+    paddingBottom: spacing.xl,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 440,
+  },
   backButton: {
-    marginTop: spacing.md,
-    marginBottom: spacing.lg,
     width: 40,
     height: 40,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.surface,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: spacing.lg,
+  },
+  titleBlock: {
+    marginTop: 120,
+    marginBottom: spacing.xl,
   },
   title: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.text,
+    fontSize: 36,
+    fontWeight: '800',
+    color: '#fff',
+    lineHeight: 42,
+    letterSpacing: -0.5,
   },
   subtitle: {
     fontSize: fontSize.md,
-    color: colors.secondaryText,
-    marginTop: spacing.xs,
-    marginBottom: spacing.xl,
-    lineHeight: 22,
+    color: 'rgba(255,255,255,0.7)',
+    marginTop: spacing.sm,
   },
   form: {
-    marginBottom: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: spacing.md,
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginBottom: spacing.xl,
+    marginTop: spacing.sm,
+    marginBottom: spacing.lg,
   },
   forgotPasswordText: {
     fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '500',
+    color: ACCENT,
+    fontWeight: '600',
   },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: spacing.lg,
-    gap: spacing.md,
+  primaryBtn: {
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
+    elevation: 12,
   },
-  dividerLine: {
-    flex: 1,
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-  },
-  dividerText: {
-    fontSize: fontSize.sm,
-    color: colors.secondaryText,
-  },
-  demoBtn: {
+  primaryBtnInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 14,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.primary + '10',
-    borderWidth: 1,
-    borderColor: colors.primary + '30',
+    gap: 10,
+    paddingVertical: 16,
   },
-  demoBtnText: {
-    fontSize: fontSize.md,
-    fontWeight: '600',
-    color: colors.primary,
+  primaryBtnText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
   },
   registerLink: {
     alignItems: 'center',
-    marginTop: spacing.lg,
-    paddingBottom: spacing.xl,
+    marginTop: spacing.xl,
+    paddingBottom: spacing.lg,
   },
   registerText: {
     fontSize: fontSize.sm,
-    color: colors.secondaryText,
+    color: 'rgba(255,255,255,0.6)',
   },
   registerTextBold: {
-    color: colors.primary,
-    fontWeight: '600',
+    color: ACCENT,
+    fontWeight: '700',
   },
 });
