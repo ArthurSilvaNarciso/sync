@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../store/authStore';
 import { getCurrentLocation } from '../services/location.service';
+import { registerForPushNotifications } from '../services/push-notifications.service';
 import api from '../services/api';
 
 import AuthNavigator from './AuthNavigator';
@@ -18,8 +19,7 @@ export default function RootNavigator() {
     loadStoredAuth();
   }, []);
 
-  // Sincroniza GPS real com backend assim que o user loga.
-  // Garante que Discovery, Events e Ranking usem a localização atual.
+  // Sincroniza GPS real + registra push token quando user loga
   useEffect(() => {
     if (!isAuthenticated || !user) return;
     (async () => {
@@ -29,10 +29,15 @@ export default function RootNavigator() {
           latitude: coords.latitude,
           longitude: coords.longitude,
         });
-        // Atualiza store local pra refletir lat/lng novos
         setUser({ ...user, latitude: coords.latitude, longitude: coords.longitude } as any);
       } catch {
-        // silencioso — telas individuais mostram UX de erro
+        // silencioso
+      }
+      // Push notifications — pede permissão e registra token
+      try {
+        await registerForPushNotifications();
+      } catch {
+        // silencioso
       }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

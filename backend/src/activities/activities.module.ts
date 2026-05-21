@@ -7,9 +7,13 @@ import { Activity } from './entities/activity.entity';
 import { ActivityPoint } from './entities/activity-point.entity';
 import { ActivityComment } from './entities/activity-comment.entity';
 import { ActivityKudos } from './entities/activity-kudos.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Activity, ActivityPoint, ActivityComment, ActivityKudos])],
+  imports: [
+    TypeOrmModule.forFeature([Activity, ActivityPoint, ActivityComment, ActivityKudos]),
+    NotificationsModule,
+  ],
   controllers: [ActivitiesController],
   providers: [ActivitiesService, ActivitiesGateway],
   exports: [ActivitiesService],

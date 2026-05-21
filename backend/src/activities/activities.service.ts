@@ -8,6 +8,9 @@ import { ActivityKudos } from './entities/activity-kudos.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { AddPointDto } from './dto/add-point.dto';
 import { haversineMeters } from '../common/utils/haversine';
+import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../notifications/push.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 
 @Injectable()
 export class ActivitiesService {
@@ -20,19 +23,42 @@ export class ActivitiesService {
     private readonly commentRepository: Repository<ActivityComment>,
     @InjectRepository(ActivityKudos)
     private readonly kudosRepository: Repository<ActivityKudos>,
+    private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
   ) {}
 
   // === COMMENTS ===
   async addComment(activityId: string, userId: string, content: string): Promise<ActivityComment> {
-    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    const activity = await this.activityRepository.findOne({ where: { id: activityId }, relations: ['user'] });
     if (!activity) throw new NotFoundException('Atividade não encontrada');
     const trimmed = content?.trim();
     if (!trimmed || trimmed.length > 500) {
       throw new BadRequestException('Comentário inválido (1-500 chars)');
     }
-    return this.commentRepository.save(
+    const saved = await this.commentRepository.save(
       this.commentRepository.create({ activity_id: activityId, user_id: userId, content: trimmed }),
     );
+
+    // Notifica dono da atividade (se não foi ele próprio que comentou)
+    if (activity.user_id !== userId) {
+      const preview = trimmed.length > 60 ? trimmed.slice(0, 60) + '…' : trimmed;
+      Promise.all([
+        this.notificationsService.create(
+          activity.user_id,
+          NotificationType.NEW_MESSAGE,
+          'Novo comentário',
+          preview,
+          JSON.stringify({ activityId, commentId: saved.id }),
+        ),
+        this.pushService.sendToUser(
+          activity.user_id,
+          'Novo comentário 💬',
+          preview,
+          { type: 'activity_comment', activityId },
+        ),
+      ]).catch(() => {});
+    }
+    return saved;
   }
 
   async listComments(activityId: string) {
@@ -67,6 +93,18 @@ export class ActivitiesService {
         this.kudosRepository.create({ activity_id: activityId, user_id: userId }),
       );
       const total = await this.kudosRepository.count({ where: { activity_id: activityId } });
+
+      // Push pro dono (silencioso, não bloqueia)
+      if (activity.user_id !== userId) {
+        this.pushService
+          .sendToUser(
+            activity.user_id,
+            'Você recebeu kudos! 👏',
+            'Alguém curtiu sua atividade. Confira no app.',
+            { type: 'kudos', activityId },
+          )
+          .catch(() => {});
+      }
       return { kudos: true, total };
     }
   }
