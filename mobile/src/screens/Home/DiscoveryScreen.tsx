@@ -24,6 +24,10 @@ import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQ
 import { getCurrentLocation } from '../../services/location.service';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
+import StoriesBar from '../../components/StoriesBar';
+import StoryViewerScreen from '../Stories/StoryViewerScreen';
+import CreateStoryScreen from '../Stories/CreateStoryScreen';
+import type { Story } from '../../services/stories.service';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
@@ -63,6 +67,9 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [filterSport, setFilterSport] = useState('all');
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
+  const [creatingStory, setCreatingStory] = useState(false);
+  const [viewingStory, setViewingStory] = useState<{ stories: Story[]; initialIndex: number } | null>(null);
+  const [storiesRefreshKey, setStoriesRefreshKey] = useState(0);
   const position = useRef(new Animated.ValueXY()).current;
   const emptyPulse = useRef(new Animated.Value(1)).current;
   const matchBadgeScale = useRef(new Animated.Value(0)).current;
@@ -416,6 +423,37 @@ export default function DiscoveryScreen({ navigation }: Props) {
       </View>
 
       {/* Cards */}
+      {/* Stories Bar */}
+      <StoriesBar
+        key={storiesRefreshKey}
+        onAddStory={() => setCreatingStory(true)}
+        onOpenStory={(_id, stories) => setViewingStory({ stories, initialIndex: 0 })}
+      />
+
+      {/* Story Viewer Modal */}
+      {viewingStory && (
+        <Modal visible animationType="fade" transparent onRequestClose={() => setViewingStory(null)}>
+          <StoryViewerScreen
+            initialStories={viewingStory.stories}
+            initialIndex={viewingStory.initialIndex}
+            onClose={() => setViewingStory(null)}
+          />
+        </Modal>
+      )}
+
+      {/* Create Story Modal */}
+      {creatingStory && (
+        <Modal visible animationType="slide" onRequestClose={() => setCreatingStory(false)}>
+          <CreateStoryScreen
+            onClose={() => setCreatingStory(false)}
+            onSuccess={() => {
+              setCreatingStory(false);
+              setStoriesRefreshKey((k) => k + 1);
+            }}
+          />
+        </Modal>
+      )}
+
       <View style={styles.cardsContainer}>
         {nextUser && (
           <View style={[styles.cardWrapper, { zIndex: 0, transform: [{ scale: 0.95 }] }]}>

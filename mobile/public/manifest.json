@@ -1,0 +1,43 @@
+{
+  "name": "Sync — Seu próximo treino começa aqui",
+  "short_name": "Sync",
+  "description": "App social esportivo geolocalizado. Encontre parceiros, organize eventos, acompanhe seu progresso.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0A0A0F",
+  "theme_color": "#FF6B35",
+  "lang": "pt-BR",
+  "categories": ["health", "fitness", "social", "lifestyle"],
+  "icons": [
+    {
+      "src": "/favicon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "Começar treino",
+      "short_name": "Treinar",
+      "description": "Iniciar nova atividade",
+      "url": "/?tab=tracking",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Descobrir",
+      "short_name": "Descobrir",
+      "description": "Encontrar parceiros",
+      "url": "/?tab=discover",
+      "icons": [{ "src": "/favicon.png", "sizes": "192x192" }]
+    }
+  ]
+}

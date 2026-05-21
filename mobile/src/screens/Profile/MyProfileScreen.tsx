@@ -46,11 +46,20 @@ interface Stats {
   totalDuration: number;
   currentStreak: number;
   bestStreak: number;
+  averagePace: number;
+  averageSpeed: number;
+  totalMatches: number;
+  totalEvents: number;
 }
 
 export default function MyProfileScreen({ navigation }: Props) {
   const { user } = useAuthStore();
-  const [stats, setStats] = useState<Stats>({ totalActivities: 0, totalDistanceKm: 0, totalDuration: 0, currentStreak: 0, bestStreak: 0 });
+  const [stats, setStats] = useState<Stats>({
+    totalActivities: 0, totalDistanceKm: 0, totalDuration: 0,
+    currentStreak: 0, bestStreak: 0,
+    averagePace: 0, averageSpeed: 0,
+    totalMatches: 0, totalEvents: 0,
+  });
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,9 +76,13 @@ export default function MyProfileScreen({ navigation }: Props) {
       setStats({
         totalActivities: data.totalActivities || 0,
         totalDistanceKm: data.totalDistance || 0,
-        totalDuration: (data.totalDuration || 0) * 3600, // veio em horas, converte pra segundos
+        totalDuration: (data.totalDuration || 0) * 3600,
         currentStreak: data.currentStreak || 0,
         bestStreak: data.bestStreak || 0,
+        averagePace: data.averagePace || 0,
+        averageSpeed: data.averageSpeed || 0,
+        totalMatches: data.totalMatches || 0,
+        totalEvents: data.totalEvents || 0,
       });
     } catch {
       // fallback: pega só atividades
@@ -261,6 +274,27 @@ export default function MyProfileScreen({ navigation }: Props) {
           <Ionicons name="time" size={18} color={colors.highlight} />
           <Text style={styles.statValue}>{formatDuration(stats.totalDuration)}</Text>
           <Text style={styles.statLabel}>Tempo</Text>
+        </View>
+      </View>
+
+      {/* Stats row 2: Pace + Speed + Matches */}
+      <View style={styles.statsRow}>
+        <View style={styles.statCard}>
+          <Ionicons name="speedometer" size={18} color="#4ADE80" />
+          <Text style={styles.statValue}>
+            {stats.averagePace > 0 ? `${Math.floor(stats.averagePace)}:${String(Math.round((stats.averagePace % 1) * 60)).padStart(2, '0')}` : '--'}
+          </Text>
+          <Text style={styles.statLabel}>min/km</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Ionicons name="people" size={18} color="#8B5CFF" />
+          <Text style={styles.statValue}>{stats.totalMatches}</Text>
+          <Text style={styles.statLabel}>Matches</Text>
+        </View>
+        <View style={styles.statCard}>
+          <Ionicons name="calendar" size={18} color="#2E7BFF" />
+          <Text style={styles.statValue}>{stats.totalEvents}</Text>
+          <Text style={styles.statLabel}>Eventos</Text>
         </View>
       </View>
 
@@ -472,23 +506,20 @@ const styles = StyleSheet.create({
   statsRow: {
     flexDirection: 'row',
     marginHorizontal: spacing.lg,
-    marginTop: -24,
+    marginTop: spacing.sm,
     gap: spacing.sm,
   },
   statCard: {
     flex: 1,
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.08)',
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    gap: 2,
+    gap: 4,
+    // Glass effect (web only no Expo; mobile usa fallback semi-transparent)
+    ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(20px)' } as any) : {}),
   },
   statValue: {
     fontSize: fontSize.xl,

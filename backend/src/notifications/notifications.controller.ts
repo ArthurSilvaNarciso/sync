@@ -2,12 +2,16 @@ import {
   Controller,
   Get,
   Put,
+  Post,
+  Delete,
+  Body,
   Param,
   Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { NotificationsService } from './notifications.service';
+import { PushService } from './push.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -17,8 +21,39 @@ import { User } from '../users/entities/user.entity';
 @UseGuards(JwtAuthGuard)
 @ApiBearerAuth()
 export class NotificationsController {
-  constructor(private readonly notificationsService: NotificationsService) {}
+  constructor(
+    private readonly notificationsService: NotificationsService,
+    private readonly pushService: PushService,
+  ) {}
 
+  // === PUSH TOKENS ===
+  @Post('push-token')
+  @ApiOperation({ summary: 'Registrar token de push notification do device' })
+  registerPushToken(
+    @CurrentUser() user: User,
+    @Body() body: { token: string; platform?: string; deviceName?: string },
+  ) {
+    return this.pushService.registerToken(user.id, body.token, body.platform, body.deviceName);
+  }
+
+  @Delete('push-token')
+  @ApiOperation({ summary: 'Remover token (logout)' })
+  removePushToken(@CurrentUser() user: User, @Body() body: { token: string }) {
+    return this.pushService.removeToken(user.id, body.token);
+  }
+
+  @Post('test-push')
+  @ApiOperation({ summary: 'Enviar push de teste para si mesmo' })
+  testPush(@CurrentUser() user: User) {
+    return this.pushService.sendToUser(
+      user.id,
+      'Sync funciona! ⚡',
+      'Você recebeu este push porque pediu um teste.',
+      { type: 'test' },
+    );
+  }
+
+  // === IN-APP NOTIFICATIONS ===
   @Get()
   @ApiOperation({ summary: 'Listar notificacoes com paginacao' })
   getNotifications(

@@ -23,20 +23,35 @@ type Props = {
 
 const medalColors = ['#FFD700', '#C0C0C0', '#CD7F32'];
 
+type Scope = 'monthly' | 'weekly' | 'friends';
+
+const SCOPES: { id: Scope; label: string; icon: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'monthly', label: 'Mensal', icon: 'calendar' },
+  { id: 'weekly', label: 'Semanal', icon: 'flame' },
+  { id: 'friends', label: 'Amigos', icon: 'people' },
+];
+
 export default function RankingScreen({ navigation }: Props) {
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [scope, setScope] = useState<Scope>('monthly');
 
   useEffect(() => {
     loadRanking();
-  }, []);
+  }, [scope]);
 
   const loadRanking = async () => {
+    setLoading(true);
     try {
-      const { data } = await api.get('/ranking/monthly');
+      const endpoint =
+        scope === 'monthly' ? '/ranking/monthly'
+        : scope === 'weekly' ? '/ranking/weekly'
+        : '/ranking/friends';
+      const { data } = await api.get(endpoint);
       setRanking(data);
     } catch (error) {
       console.log('Error:', error);
+      setRanking([]);
     } finally {
       setLoading(false);
     }
@@ -120,6 +135,8 @@ export default function RankingScreen({ navigation }: Props) {
     </View>
   );
 
+  const scopeLabel = scope === 'monthly' ? 'Mensal' : scope === 'weekly' ? 'Semanal' : 'Entre Amigos';
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -129,12 +146,33 @@ export default function RankingScreen({ navigation }: Props) {
         >
           <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Ranking Mensal</Text>
+        <Text style={styles.title}>Ranking {scopeLabel}</Text>
         <View style={{ width: 40 }} />
       </View>
 
+      {/* Scope tabs */}
+      <View style={styles.tabs}>
+        {SCOPES.map((s) => (
+          <TouchableOpacity
+            key={s.id}
+            style={[styles.tab, scope === s.id && styles.tabActive]}
+            onPress={() => setScope(s.id)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={s.icon}
+              size={14}
+              color={scope === s.id ? '#fff' : colors.dark.secondaryText}
+            />
+            <Text style={[styles.tabText, scope === s.id && styles.tabTextActive]}>
+              {s.label}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
       {loading ? (
-        <ActivityIndicator size="large" color={colors.dark.accent} style={{ marginTop: 50 }} />
+        <ActivityIndicator size="large" color="#FF6B35" style={{ marginTop: 50 }} />
       ) : (
         <FlatList
           data={ranking.slice(3)}
@@ -146,7 +184,11 @@ export default function RankingScreen({ navigation }: Props) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="trophy-outline" size={48} color={colors.border} />
-              <Text style={styles.empty}>Nenhum dado de ranking ainda</Text>
+              <Text style={styles.empty}>
+                {scope === 'friends'
+                  ? 'Você ainda não tem amigos no app. Vá pro Descobrir!'
+                  : 'Nenhum dado de ranking ainda'}
+              </Text>
             </View>
           }
         />
@@ -180,6 +222,37 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xl,
     fontWeight: '700',
     color: colors.dark.text,
+  },
+  tabs: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.md,
+  },
+  tab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+  },
+  tabActive: {
+    backgroundColor: '#FF6B35',
+    borderColor: '#FF6B35',
+  },
+  tabText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.dark.secondaryText,
+  },
+  tabTextActive: {
+    color: '#fff',
+    fontWeight: '800',
   },
   list: {
     paddingBottom: spacing.xxl,
