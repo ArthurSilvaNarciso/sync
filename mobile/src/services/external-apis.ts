@@ -359,3 +359,236 @@ const SPORTS_TIPS: NewsItem[] = [
 export function getSportsTips(): NewsItem[] {
   return SPORTS_TIPS;
 }
+
+// ============================================================================
+// NOVAS APIs FREE (sem key) — Sunrise/Sunset, Air Quality, Bored, Joke, Quote
+// ============================================================================
+
+// --- Sunrise/Sunset (free, sem key) ---
+export interface SunData {
+  sunrise: string;     // "06:15:23"
+  sunset: string;      // "17:45:12"
+  dayLength: string;   // "11:29:49"
+  solarNoon: string;
+  isDaylight: boolean;
+}
+
+export async function fetchSunData(lat: number, lng: number): Promise<SunData | null> {
+  try {
+    const r = await fetch(
+      `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&formatted=0`,
+    );
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j.status !== 'OK') return null;
+    const now = new Date();
+    const sunrise = new Date(j.results.sunrise);
+    const sunset = new Date(j.results.sunset);
+    const fmt = (d: Date) =>
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    return {
+      sunrise: fmt(sunrise),
+      sunset: fmt(sunset),
+      dayLength: j.results.day_length,
+      solarNoon: fmt(new Date(j.results.solar_noon)),
+      isDaylight: now >= sunrise && now <= sunset,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// --- Air Quality (Open-Meteo, free, sem key) ---
+export interface AirQuality {
+  aqi: number;             // 0-500 (US EPA)
+  pm25: number;
+  pm10: number;
+  level: 'Boa' | 'Moderada' | 'Ruim' | 'Muito ruim' | 'Perigosa';
+  color: string;
+  recommendation: string;
+}
+
+export async function fetchAirQuality(lat: number, lng: number): Promise<AirQuality | null> {
+  try {
+    const r = await fetch(
+      `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${lat}&longitude=${lng}&current=us_aqi,pm2_5,pm10`,
+    );
+    if (!r.ok) return null;
+    const j = await r.json();
+    const c = j.current || {};
+    const aqi = Math.round(c.us_aqi || 0);
+    let level: AirQuality['level'] = 'Boa';
+    let color = '#4ADE80';
+    let rec = 'Ar limpo — ótimo pra treinar ao ar livre!';
+    if (aqi > 50) { level = 'Moderada'; color = '#FAAD14'; rec = 'OK pra treinos leves a moderados.'; }
+    if (aqi > 100) { level = 'Ruim'; color = '#FF6B35'; rec = 'Treine indoor se possível.'; }
+    if (aqi > 150) { level = 'Muito ruim'; color = '#F87171'; rec = 'Evite atividade ao ar livre.'; }
+    if (aqi > 200) { level = 'Perigosa'; color = '#7C0000'; rec = 'NÃO treine ao ar livre hoje.'; }
+    return {
+      aqi,
+      pm25: Math.round(c.pm2_5 || 0),
+      pm10: Math.round(c.pm10 || 0),
+      level,
+      color,
+      recommendation: rec,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// --- Random workout idea (free, sem key) ---
+const WORKOUT_IDEAS = [
+  { sport: 'running', title: '5km easy', desc: 'Pace confortável, foco em respiração.', duration: 30 },
+  { sport: 'running', title: 'Tiros 400m', desc: '6x 400m com 90s descanso entre eles.', duration: 35 },
+  { sport: 'running', title: 'Long run', desc: '10-15km em pace conversável.', duration: 90 },
+  { sport: 'cycling', title: 'Pedal urbano', desc: '1h30 pela cidade, ritmo moderado.', duration: 90 },
+  { sport: 'cycling', title: 'Subida intensa', desc: '4 subidas de 5min, descida de recuperação.', duration: 60 },
+  { sport: 'gym', title: 'Pull day', desc: 'Costas e bíceps — 6 exercícios, 4x10.', duration: 60 },
+  { sport: 'gym', title: 'Push day', desc: 'Peito, ombros e tríceps — 6 exercícios, 4x10.', duration: 60 },
+  { sport: 'gym', title: 'Leg day', desc: 'Agachamento livre + 5 acessórios.', duration: 75 },
+  { sport: 'swimming', title: 'Natação técnica', desc: '20x50m com foco em respiração.', duration: 45 },
+  { sport: 'yoga', title: 'Yoga vinyasa', desc: 'Fluxo de 30min focado em quadril.', duration: 30 },
+  { sport: 'hiking', title: 'Trilha leve', desc: '5km de trilha próxima — vista garantida.', duration: 90 },
+];
+
+export function getWorkoutIdea(sport?: string) {
+  const pool = sport ? WORKOUT_IDEAS.filter((w) => w.sport === sport) : WORKOUT_IDEAS;
+  const list = pool.length > 0 ? pool : WORKOUT_IDEAS;
+  return list[Math.floor(Math.random() * list.length)];
+}
+
+// --- Daily challenge generator (deterministic por dia, no API needed) ---
+export interface DailyChallenge {
+  id: string;
+  emoji: string;
+  title: string;
+  description: string;
+  reward: string;
+}
+
+const CHALLENGES: Omit<DailyChallenge, 'id'>[] = [
+  { emoji: '🔥', title: 'Comece o dia movendo', description: 'Registre 1 treino antes das 10h', reward: '20 XP' },
+  { emoji: '⚡', title: 'Velocidade pura', description: 'Faça 1 corrida com pace abaixo de 5:30/km', reward: '30 XP' },
+  { emoji: '🏔️', title: 'Suba o monte', description: 'Acumule 50m de elevação hoje', reward: '25 XP' },
+  { emoji: '👥', title: 'Bora junto', description: 'Convide um amigo pra treinar com você', reward: '40 XP' },
+  { emoji: '📏', title: 'Vá longe', description: 'Acumule 10km em qualquer esporte', reward: '50 XP' },
+  { emoji: '🎯', title: 'Foco', description: 'Treine no horário que o app recomendou', reward: '15 XP' },
+  { emoji: '💪', title: 'Treino duplo', description: 'Faça 2 atividades diferentes hoje', reward: '60 XP' },
+  { emoji: '🌅', title: 'Madrugador', description: 'Treine antes do nascer do sol', reward: '35 XP' },
+  { emoji: '🏃', title: 'Sequência ativa', description: 'Mantenha streak por 3 dias seguidos', reward: '45 XP' },
+];
+
+export function getDailyChallenges(date = new Date()): DailyChallenge[] {
+  const seed = parseInt(
+    `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`,
+    10,
+  );
+  // Pseudo-random determinístico baseado na data
+  const a = CHALLENGES[seed % CHALLENGES.length];
+  const b = CHALLENGES[(seed * 31) % CHALLENGES.length];
+  const c = CHALLENGES[(seed * 17) % CHALLENGES.length];
+  const seen = new Set<string>();
+  return [a, b, c]
+    .filter((x) => {
+      if (seen.has(x.title)) return false;
+      seen.add(x.title);
+      return true;
+    })
+    .map((x, i) => ({ ...x, id: `daily-${seed}-${i}` }));
+}
+
+// --- Calculadora de queima calórica (MET values, padrão científico) ---
+export function calculateCalories(
+  sport: string,
+  durationMinutes: number,
+  weightKg = 70,
+): number {
+  const MET: Record<string, number> = {
+    running: 9.8,
+    cycling: 7.5,
+    swimming: 8.0,
+    walking: 3.5,
+    hiking: 6.0,
+    gym: 5.5,
+    yoga: 3.0,
+    football: 8.0,
+    basketball: 8.0,
+    tennis: 7.3,
+    crossfit: 10.0,
+    martial_arts: 10.3,
+    volleyball: 4.0,
+    dance: 6.5,
+  };
+  const met = MET[sport] || 6.0;
+  return Math.round((met * 3.5 * weightKg / 200) * durationMinutes);
+}
+
+// --- Conversor pace → velocidade ---
+export function paceToSpeed(paceMinKm: number): number {
+  if (paceMinKm <= 0) return 0;
+  return Math.round((60 / paceMinKm) * 10) / 10; // km/h
+}
+
+export function speedToPace(speedKmh: number): string {
+  if (speedKmh <= 0) return '--:--';
+  const totalMin = 60 / speedKmh;
+  const m = Math.floor(totalMin);
+  const s = Math.round((totalMin - m) * 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+// --- VO2 max estimado (fórmula de Daniels) ---
+export function estimateVO2Max(distanceKm: number, durationMin: number): number {
+  if (distanceKm <= 0 || durationMin <= 0) return 0;
+  const speedMpm = (distanceKm * 1000) / durationMin;
+  // Fórmula simplificada de Daniels (acurácia ±5)
+  const vo2 = -4.6 + 0.182258 * speedMpm + 0.000104 * speedMpm * speedMpm;
+  return Math.max(0, Math.round(vo2));
+}
+
+// --- Frase motivacional do dia (determinística por dia) ---
+const DAILY_QUOTES = [
+  { text: 'A dor que voce sente hoje sera a forca que voce sentira amanha.', author: 'Arnold Schwarzenegger' },
+  { text: 'A unica corrida ruim e a que voce nao faz.', author: 'Anonimo' },
+  { text: 'Quando voce sentir que vai desistir, lembre por que comecou.', author: 'Anonimo' },
+  { text: 'A disciplina e a ponte entre metas e conquistas.', author: 'Jim Rohn' },
+  { text: 'Voce nao precisa ser extremo, so consistente.', author: 'Anonimo' },
+  { text: 'Cada km comeca com 1 passo.', author: 'Sync' },
+  { text: 'Treinar quando ninguem ve e o que te diferencia.', author: 'Anonimo' },
+  { text: 'O corpo alcanca o que a mente acredita.', author: 'Anonimo' },
+  { text: 'Pace lento ainda e movimento. Movimento e tudo.', author: 'Sync' },
+  { text: 'O melhor momento pra comecar foi ontem. O segundo melhor e agora.', author: 'Provérbio chinês' },
+];
+
+export function getDailyQuote(date = new Date()): { text: string; author: string } {
+  const seed = parseInt(
+    `${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}`,
+    10,
+  );
+  return DAILY_QUOTES[seed % DAILY_QUOTES.length];
+}
+
+// --- Recommendation de hidratação ---
+export interface HydrationTip {
+  ml: number;
+  glasses: number;
+  message: string;
+}
+
+export function recommendHydration(
+  weightKg = 70,
+  exerciseMinutesToday = 0,
+  tempC = 25,
+): HydrationTip {
+  const base = weightKg * 35;             // 35ml/kg dia
+  const exerciseExtra = exerciseMinutesToday * 12; // 12ml por minuto
+  const heatExtra = tempC > 28 ? (tempC - 28) * 50 : 0;
+  const total = Math.round((base + exerciseExtra + heatExtra) / 100) * 100;
+  const glasses = Math.round(total / 250);
+  let msg = `Beba ${glasses} copos de água ao longo do dia.`;
+  if (exerciseMinutesToday > 60) msg += ' Treino longo — leve garrafa!';
+  if (tempC > 30) msg += ' Calor extremo — hidrate antes, durante e depois.';
+  return { ml: total, glasses, message: msg };
+}
+

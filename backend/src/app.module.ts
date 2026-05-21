@@ -17,6 +17,7 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { WeatherModule } from './weather/weather.module';
 import { AchievementsModule } from './achievements/achievements.module';
 import { StatsModule } from './stats/stats.module';
+import { StoriesModule } from './stories/stories.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -50,6 +51,7 @@ import { HealthController } from './health.controller';
     WeatherModule,
     AchievementsModule,
     StatsModule,
+    StoriesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

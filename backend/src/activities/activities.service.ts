@@ -3,6 +3,8 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Activity } from './entities/activity.entity';
 import { ActivityPoint } from './entities/activity-point.entity';
+import { ActivityComment } from './entities/activity-comment.entity';
+import { ActivityKudos } from './entities/activity-kudos.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { AddPointDto } from './dto/add-point.dto';
 import { haversineMeters } from '../common/utils/haversine';
@@ -14,7 +16,64 @@ export class ActivitiesService {
     private readonly activityRepository: Repository<Activity>,
     @InjectRepository(ActivityPoint)
     private readonly pointRepository: Repository<ActivityPoint>,
+    @InjectRepository(ActivityComment)
+    private readonly commentRepository: Repository<ActivityComment>,
+    @InjectRepository(ActivityKudos)
+    private readonly kudosRepository: Repository<ActivityKudos>,
   ) {}
+
+  // === COMMENTS ===
+  async addComment(activityId: string, userId: string, content: string): Promise<ActivityComment> {
+    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Atividade não encontrada');
+    const trimmed = content?.trim();
+    if (!trimmed || trimmed.length > 500) {
+      throw new BadRequestException('Comentário inválido (1-500 chars)');
+    }
+    return this.commentRepository.save(
+      this.commentRepository.create({ activity_id: activityId, user_id: userId, content: trimmed }),
+    );
+  }
+
+  async listComments(activityId: string) {
+    return this.commentRepository.find({
+      where: { activity_id: activityId },
+      relations: ['user'],
+      order: { createdAt: 'DESC' },
+      take: 100,
+    });
+  }
+
+  async deleteComment(commentId: string, userId: string): Promise<void> {
+    const comment = await this.commentRepository.findOne({ where: { id: commentId } });
+    if (!comment) throw new NotFoundException('Comentário não encontrado');
+    if (comment.user_id !== userId) throw new BadRequestException('Sem permissão');
+    await this.commentRepository.delete(commentId);
+  }
+
+  // === KUDOS (likes) ===
+  async toggleKudos(activityId: string, userId: string): Promise<{ kudos: boolean; total: number }> {
+    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Atividade não encontrada');
+    const existing = await this.kudosRepository.findOne({
+      where: { activity_id: activityId, user_id: userId },
+    });
+    if (existing) {
+      await this.kudosRepository.delete(existing.id);
+      const total = await this.kudosRepository.count({ where: { activity_id: activityId } });
+      return { kudos: false, total };
+    } else {
+      await this.kudosRepository.save(
+        this.kudosRepository.create({ activity_id: activityId, user_id: userId }),
+      );
+      const total = await this.kudosRepository.count({ where: { activity_id: activityId } });
+      return { kudos: true, total };
+    }
+  }
+
+  async getKudosCount(activityId: string): Promise<number> {
+    return this.kudosRepository.count({ where: { activity_id: activityId } });
+  }
 
   // Iniciar nova atividade
   async start(userId: string, dto: CreateActivityDto): Promise<Activity> {

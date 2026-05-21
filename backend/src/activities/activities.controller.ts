@@ -86,4 +86,48 @@ export class ActivitiesController {
   getDetail(@Param('id') id: string) {
     return this.activitiesService.getActivityDetail(id);
   }
+
+  // === COMMENTS ===
+  @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Comentar em atividade' })
+  comment(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { content: string },
+  ) {
+    return this.activitiesService.addComment(id, user.id, body.content);
+  }
+
+  @Get(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar comentários' })
+  comments(@Param('id') id: string) {
+    return this.activitiesService.listComments(id);
+  }
+
+  @Delete('comments/:commentId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar próprio comentário' })
+  deleteComment(@CurrentUser() user: User, @Param('commentId') commentId: string) {
+    return this.activitiesService.deleteComment(commentId, user.id);
+  }
+
+  // === KUDOS ===
+  @Post(':id/kudos')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Toggle kudos (like) na atividade' })
+  kudos(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.activitiesService.toggleKudos(id, user.id);
+  }
+
+  @Get(':id/kudos')
+  @ApiOperation({ summary: 'Total de kudos' })
+  kudosCount(@Param('id') id: string) {
+    return this.activitiesService.getKudosCount(id).then((total) => ({ total }));
+  }
 }
