@@ -17,8 +17,10 @@ import { NotificationsModule } from './notifications/notifications.module';
 import { WeatherModule } from './weather/weather.module';
 import { AchievementsModule } from './achievements/achievements.module';
 import { StatsModule } from './stats/stats.module';
+import { HealthController } from './health.controller';
 
 @Module({
+  controllers: [HealthController],
   imports: [
     // Variáveis de ambiente
     ConfigModule.forRoot({ isGlobal: true }),
