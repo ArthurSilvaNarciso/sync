@@ -133,6 +133,24 @@ export class ActivitiesController {
     return this.activitiesService.getKudosCount(id).then((total) => ({ total }));
   }
 
+  // === HEATMAP ===
+  @Get('heatmap/nearby')
+  @ApiOperation({ summary: 'Heatmap de pontos GPS próximos (rotas populares)' })
+  async heatmap(
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('radiusKm') radiusKm?: string,
+  ) {
+    const latitude = parseFloat(lat);
+    const longitude = parseFloat(lng);
+    const radius = parseFloat(radiusKm || '5');
+    if (!isFinite(latitude) || !isFinite(longitude)) {
+      return { points: [] };
+    }
+    const points = await this.activitiesService.getHeatmapPoints(latitude, longitude, radius);
+    return { points };
+  }
+
   // === EXPORT GPX ===
   @Get(':id/export.gpx')
   @ApiOperation({ summary: 'Exportar atividade como GPX (compatível Strava, Garmin Connect)' })

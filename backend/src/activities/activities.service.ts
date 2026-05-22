@@ -219,6 +219,37 @@ export class ActivitiesService {
     });
   }
 
+  // Retorna pontos GPS de atividades próximas para gerar heatmap.
+  // Sampling: 1 a cada 5 pontos por atividade pra reduzir payload.
+  async getHeatmapPoints(centerLat: number, centerLng: number, radiusKm: number) {
+    const dLat = radiusKm / 111;
+    const dLng = radiusKm / (111 * Math.cos((centerLat * Math.PI) / 180));
+    const activities = await this.activityRepository
+      .createQueryBuilder('a')
+      .leftJoin('a.points', 'p')
+      .where('a.isCompleted = :done', { done: true })
+      .andWhere('p.latitude BETWEEN :latMin AND :latMax', {
+        latMin: centerLat - dLat,
+        latMax: centerLat + dLat,
+      })
+      .andWhere('p.longitude BETWEEN :lngMin AND :lngMax', {
+        lngMin: centerLng - dLng,
+        lngMax: centerLng + dLng,
+      })
+      .select(['a.id', 'p.latitude', 'p.longitude'])
+      .limit(5000)
+      .getRawMany();
+
+    // Subsample: 1 a cada 5
+    const points: Array<[number, number]> = [];
+    for (let i = 0; i < activities.length; i += 5) {
+      const lat = activities[i].p_latitude;
+      const lng = activities[i].p_longitude;
+      if (lat != null && lng != null) points.push([lat, lng]);
+    }
+    return points;
+  }
+
   // Detalhes de uma atividade com todos os pontos (para desenhar rota)
   async getActivityDetail(activityId: string) {
     const activity = await this.activityRepository.findOne({
