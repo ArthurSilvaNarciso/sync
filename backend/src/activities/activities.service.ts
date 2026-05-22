@@ -42,7 +42,7 @@ export class ActivitiesService {
 
     // Notifica dono da atividade (se não foi ele próprio que comentou)
     if (activity.user_id !== userId) {
-      const preview = trimmed.length > 60 ? trimmed.slice(0, 60) + '…' : trimmed;
+      const preview = clean.length > 60 ? clean.slice(0, 60) + '…' : clean;
       Promise.all([
         this.notificationsService.create(
           activity.user_id,
@@ -270,7 +270,7 @@ export class ActivitiesService {
   }
 
   // Gera token público para compartilhar tracking ao vivo
-  async createShareToken(userId: string, activityId: string): Promise<{ liveToken: string; url: string }> {
+  async createShareToken(userId: string, activityId: string): Promise<{ liveToken: string; url: string; expiresAt: Date }> {
     const activity = await this.activityRepository.findOne({
       where: { id: activityId, user_id: userId },
     });

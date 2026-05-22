@@ -88,10 +88,10 @@ export class MatchingService {
     const usersWithMeta = await Promise.all(
       filtered.map(async (u) => {
         const distance = haversineKm(
-          currentUser.latitude,
-          currentUser.longitude,
-          u.latitude,
-          u.longitude,
+          (currentUser.latitude ?? 0) as number,
+          (currentUser.longitude ?? 0) as number,
+          (u.latitude ?? 0) as number,
+          (u.longitude ?? 0) as number,
         );
         const avgPace = await this.getUserAvgPace(u.id);
         return { ...u, distance, avgPace };

@@ -64,7 +64,7 @@ async function bootstrap() {
     }),
   );
 
-  app.use((req, res, next) => {
+  app.use((req: any, res: any, next: any) => {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), payment=(), usb=()');
     res.setHeader('X-DNS-Prefetch-Control', 'off');
     res.setHeader('X-Permitted-Cross-Domain-Policies', 'none');
