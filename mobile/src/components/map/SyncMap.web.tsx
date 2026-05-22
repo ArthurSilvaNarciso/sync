@@ -73,32 +73,50 @@ export const PROVIDER_DEFAULT = 'leaflet';
 const MapContext = React.createContext<L.Map | null>(null);
 
 type MapViewProps = {
-  region: Region;
+  region?: Region;
+  initialRegion?: Region;
   showsUserLocation?: boolean;
   showsMyLocationButton?: boolean;
+  followsUserLocation?: boolean;
+  userInterfaceStyle?: string;
+  customMapStyle?: any;
   onPress?: () => void;
   style?: any;
   children?: React.ReactNode;
+  // catch-all pra ignorar props nativas sem crashar
+  [key: string]: any;
 };
 
 const MapView = forwardRef<any, MapViewProps>(function MapView(
-  { region, onPress, style, children },
+  { region, initialRegion, onPress, style, children },
   ref,
 ) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const [, force] = React.useReducer((x) => x + 1, 0);
 
+  // Aceita region OU initialRegion; fallback pra coords seguras
+  const effectiveRegion: Region =
+    region ||
+    initialRegion ||
+    { latitude: -23.5505, longitude: -46.6333, latitudeDelta: 0.05, longitudeDelta: 0.05 };
+
   useEffect(() => {
     ensureLeafletCss();
     if (!containerRef.current || mapRef.current) return;
 
-    const map = L.map(containerRef.current, {
-      center: [region.latitude, region.longitude],
-      zoom: deltaToZoom(region.latitudeDelta),
-      zoomControl: false,
-      attributionControl: true,
-    });
+    let map: L.Map;
+    try {
+      map = L.map(containerRef.current, {
+        center: [effectiveRegion.latitude, effectiveRegion.longitude],
+        zoom: deltaToZoom(effectiveRegion.latitudeDelta),
+        zoomControl: false,
+        attributionControl: true,
+      });
+    } catch (e) {
+      console.warn('[SyncMap] init failed:', e);
+      return;
+    }
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap',

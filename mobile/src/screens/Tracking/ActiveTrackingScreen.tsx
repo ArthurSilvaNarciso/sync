@@ -28,17 +28,26 @@ type Props = {
 
 export default function ActiveTrackingScreen({ navigation, route }: Props) {
   const { activityId } = route.params;
-  const [points, setPoints] = useState<{ latitude: number; longitude: number }[]>([]);
+  const [points, setPoints] = useState<{ latitude: number; longitude: number; altitude?: number; timestamp?: number }[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [distance, setDistance] = useState(0);
+  const [elevationGain, setElevationGain] = useState(0);
+  const [currentAltitude, setCurrentAltitude] = useState<number | null>(null);
+  const [region, setRegion] = useState<{ latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number }>({
+    latitude: -23.5505,
+    longitude: -46.6333,
+    latitudeDelta: 0.005,
+    longitudeDelta: 0.005,
+  });
   const [isPaused, setIsPaused] = useState(false);
   const [isLocked, setIsLocked] = useState(false);
   const [laps, setLaps] = useState<Array<{ number: number; time: number; distance: number }>>([]);
   const [lapStartTime, setLapStartTime] = useState(0);
   const [lapStartDistance, setLapStartDistance] = useState(0);
-  const locationSub = useRef<ExpoLocation.LocationSubscription | null>(null);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const mapRef = useRef<MapView>(null);
+  const locationSub = useRef<any>(null);
+  const timerRef = useRef<any>(null);
+  const mapRef = useRef<any>(null);
+  const userWeightKg = 70; // TODO: pegar do perfil do user
 
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
@@ -63,57 +72,96 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
   };
 
   const startTracking = async () => {
-    const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert(
-        'Permissão necessária',
-        'O Sync precisa de acesso à sua localização para registrar a atividade. Ative nas configurações do dispositivo.',
-        [
-          { text: 'Cancelar', style: 'cancel', onPress: () => navigation.goBack() },
-          { text: 'Abrir Configurações', onPress: () => ExpoLocation.enableNetworkProviderAsync().catch(() => {}) },
-        ],
-      );
-      return;
-    }
+    try {
+      // Web: usa navigator.geolocation (Expo Location é instável no web)
+      if (Platform.OS === 'web') {
+        if (typeof navigator === 'undefined' || !navigator.geolocation) {
+          Alert.alert('GPS indisponível', 'Seu navegador não suporta geolocalização.');
+          return;
+        }
+        const id = navigator.geolocation.watchPosition(
+          (pos) => handleNewPoint({
+            latitude: pos.coords.latitude,
+            longitude: pos.coords.longitude,
+            altitude: pos.coords.altitude ?? undefined,
+          }),
+          (err) => {
+            if (err.code === err.PERMISSION_DENIED) {
+              Alert.alert('Permissão negada', 'Libere a localização no cadeado da barra de endereço.');
+            }
+          },
+          { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 },
+        );
+        locationSub.current = { remove: () => navigator.geolocation.clearWatch(id) };
+        return;
+      }
 
-    locationSub.current = await ExpoLocation.watchPositionAsync(
-      {
-        accuracy: ExpoLocation.Accuracy.BestForNavigation,
-        distanceInterval: 5,
-        timeInterval: 3000,
-      },
-      (location) => {
-        const newPoint = {
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-        };
+      const { status } = await ExpoLocation.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permissão necessária',
+          'O Sync precisa de acesso à sua localização para registrar a atividade.',
+          [{ text: 'Voltar', onPress: () => navigation.goBack() }],
+        );
+        return;
+      }
 
-        setPoints((prev) => {
-          if (prev.length > 0) {
-            const last = prev[prev.length - 1];
-            const d = haversine(last.latitude, last.longitude, newPoint.latitude, newPoint.longitude);
-            setDistance((prevDist) => prevDist + d);
-          }
-          return [...prev, newPoint];
-        });
-
-        // Streama via WebSocket — backend persiste em batch a cada 3s
-        trackingSocket.sendPoint({
-          activityId,
+      locationSub.current = await ExpoLocation.watchPositionAsync(
+        {
+          accuracy: ExpoLocation.Accuracy.BestForNavigation,
+          distanceInterval: 5,
+          timeInterval: 3000,
+        },
+        (location) => handleNewPoint({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           altitude: location.coords.altitude ?? undefined,
-          timestamp: new Date().toISOString(),
-        });
+        }),
+      );
+    } catch (e) {
+      console.warn('[tracking] startTracking error:', e);
+    }
+  };
 
-        mapRef.current?.animateToRegion({
-          latitude: location.coords.latitude,
-          longitude: location.coords.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        });
-      },
-    );
+  const handleNewPoint = (newPoint: { latitude: number; longitude: number; altitude?: number }) => {
+    const stampedPoint = { ...newPoint, timestamp: Date.now() };
+    setPoints((prev) => {
+      if (prev.length > 0) {
+        const last = prev[prev.length - 1];
+        const d = haversine(last.latitude, last.longitude, newPoint.latitude, newPoint.longitude);
+        // Filtro de ruído: ignora saltos absurdos (>50m em 3s)
+        if (d < 50) {
+          setDistance((prevDist) => prevDist + d);
+          // Ganho de elevação acumulado
+          if (last.altitude != null && newPoint.altitude != null) {
+            const diff = newPoint.altitude - last.altitude;
+            if (diff > 0.5 && diff < 30) {
+              setElevationGain((prev) => prev + diff);
+            }
+          }
+        }
+      }
+      return [...prev, stampedPoint];
+    });
+    if (newPoint.altitude != null) setCurrentAltitude(newPoint.altitude);
+
+    setRegion({
+      latitude: newPoint.latitude,
+      longitude: newPoint.longitude,
+      latitudeDelta: 0.005,
+      longitudeDelta: 0.005,
+    });
+
+    // Streama via WebSocket (não bloqueia se falhar)
+    try {
+      trackingSocket.sendPoint({
+        activityId,
+        latitude: newPoint.latitude,
+        longitude: newPoint.longitude,
+        altitude: newPoint.altitude,
+        timestamp: new Date().toISOString(),
+      });
+    } catch {}
   };
 
   const haversine = (lat1: number, lon1: number, lat2: number, lon2: number) => {
@@ -203,9 +251,20 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
   };
 
   const distanceKm = (distance / 1000).toFixed(2);
-  const pace = distance > 0 ? ((elapsed / 60) / (distance / 1000)).toFixed(2) : '--:--';
-  const speed = elapsed > 0 ? ((distance / 1000) / (elapsed / 3600)).toFixed(1) : '0.0';
-  const calories = Math.round((distance / 1000) * 60); // rough estimate
+  // Pace em min:seg/km (formato real)
+  const paceRaw = distance > 0 ? (elapsed / 60) / (distance / 1000) : 0;
+  const pace = paceRaw > 0
+    ? `${Math.floor(paceRaw)}:${Math.round((paceRaw - Math.floor(paceRaw)) * 60).toString().padStart(2, '0')}`
+    : '--:--';
+  const speedKmh = elapsed > 0 ? (distance / 1000) / (elapsed / 3600) : 0;
+  const speed = speedKmh.toFixed(1);
+  // Calorias precisas via MET (running ≈ 9.8, cycling ≈ 7.5, walking ≈ 3.5)
+  // kcal = MET * weight(kg) * hours
+  const speedMs = elapsed > 0 ? distance / elapsed : 0;
+  const met = speedMs >= 4.0 ? 11.5 : speedMs >= 3.0 ? 9.8 : speedMs >= 2.5 ? 8.0 : speedMs >= 1.5 ? 6.0 : 3.5;
+  const calories = Math.round((met * userWeightKg * elapsed) / 3600);
+  const altitudeM = currentAltitude != null ? Math.round(currentAltitude) : '--';
+  const elevationGainStr = elevationGain > 0 ? `+${Math.round(elevationGain)}` : '0';
 
   return (
     <View style={styles.container}>
@@ -217,12 +276,8 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         followsUserLocation
         userInterfaceStyle="dark"
         customMapStyle={darkMapStyle}
-        initialRegion={{
-          latitude: points[0]?.latitude || -23.5505,
-          longitude: points[0]?.longitude || -46.6333,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
-        }}
+        region={region}
+        initialRegion={region}
       >
         {points.length > 1 && (
           <Polyline
@@ -285,7 +340,7 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         {/* Timer - most prominent */}
         <Text style={styles.timer}>{formatTime(elapsed)}</Text>
 
-        {/* Metrics grid */}
+        {/* Metrics grid — linha 1: km, pace, speed, kcal */}
         <View style={styles.metricsGrid}>
           <View style={styles.metricBox}>
             <Text style={styles.metricValue}>{distanceKm}</Text>
@@ -305,6 +360,23 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
           <View style={styles.metricBox}>
             <Text style={styles.metricValue}>{calories}</Text>
             <Text style={styles.metricLabel}>kcal</Text>
+          </View>
+        </View>
+        {/* Linha 2: altitude e ganho de elevação */}
+        <View style={[styles.metricsGrid, { marginTop: 0, marginBottom: spacing.md }]}>
+          <View style={styles.metricBox}>
+            <Text style={[styles.metricValue, { fontSize: 18 }]}>{altitudeM}</Text>
+            <Text style={styles.metricLabel}>altitude m</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricBox}>
+            <Text style={[styles.metricValue, { fontSize: 18 }]}>{elevationGainStr}</Text>
+            <Text style={styles.metricLabel}>subida m</Text>
+          </View>
+          <View style={styles.metricDivider} />
+          <View style={styles.metricBox}>
+            <Text style={[styles.metricValue, { fontSize: 18 }]}>{points.length}</Text>
+            <Text style={styles.metricLabel}>pontos GPS</Text>
           </View>
         </View>
 

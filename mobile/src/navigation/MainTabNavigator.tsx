@@ -23,16 +23,16 @@ import ProfileStack from './stacks/ProfileStack';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const ACCENT = '#FF6B35';
 
-// Configuração visual de cada tab
+// Configuração visual de cada tab — ícones mais expressivos
 const TABS: Record<
   string,
   { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }
 > = {
-  HomeTab: { label: 'Descobrir', icon: 'people-outline', iconActive: 'people' },
-  MapTab: { label: 'Mapa', icon: 'map-outline', iconActive: 'map' },
+  HomeTab: { label: 'Feed', icon: 'home-outline', iconActive: 'home' },
+  MapTab: { label: 'Mapa', icon: 'navigate-circle-outline', iconActive: 'navigate-circle' },
   TrackingTab: { label: 'Treinar', icon: 'flash-outline', iconActive: 'flash' },
-  ChatTab: { label: 'Chat', icon: 'chatbubbles-outline', iconActive: 'chatbubbles' },
-  ProfileTab: { label: 'Perfil', icon: 'person-outline', iconActive: 'person' },
+  ChatTab: { label: 'Grupos', icon: 'people-circle-outline', iconActive: 'people-circle' },
+  ProfileTab: { label: 'Perfil', icon: 'person-circle-outline', iconActive: 'person-circle' },
 };
 
 // ================== Tab Item ==================

@@ -18,6 +18,8 @@ import { WeatherModule } from './weather/weather.module';
 import { AchievementsModule } from './achievements/achievements.module';
 import { StatsModule } from './stats/stats.module';
 import { StoriesModule } from './stories/stories.module';
+import { GroupsModule } from './groups/groups.module';
+import { ActivityFeedModule } from './activity-feed/activity-feed.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -52,6 +54,8 @@ import { HealthController } from './health.controller';
     AchievementsModule,
     StatsModule,
     StoriesModule,
+    GroupsModule,
+    ActivityFeedModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
