@@ -237,32 +237,14 @@ export default function TrackingMainScreen({ navigation }: Props) {
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>--:--</Text>
-              <Text style={styles.statLabel}>Ritmo (/km)</Text>
+              <Text style={styles.statLabel}>Ritmo /km</Text>
             </View>
             <View style={styles.statDivider} />
             <View style={styles.statItem}>
               <Text style={styles.statValue}>0,00</Text>
-              <Text style={styles.statLabel}>Distancia (km)</Text>
+              <Text style={styles.statLabel}>km</Text>
             </View>
           </View>
-
-          {/* Quote */}
-          <View style={styles.quoteRow}>
-            <Text style={styles.quoteText}>"{quote.text}"</Text>
-          </View>
-
-          {/* Today Brief: sunrise/sunset, AQI, workout idea, hidratação, quote */}
-          <TodayBriefWidget
-            latitude={region.latitude}
-            longitude={region.longitude}
-            preferredSport={selectedSport}
-          />
-
-          {/* KILLER: Sugestão de horário ideal hoje */}
-          <BestTimeWidget
-            latitude={region.latitude}
-            longitude={region.longitude}
-          />
         </View>
       )}
 

@@ -85,7 +85,7 @@ export default function TodayBriefWidget({ latitude, longitude, weightKg = 70, p
             style={styles.workoutCard}
           >
             <View style={styles.workoutLeft}>
-              <Ionicons name="flash" size={20} color={ACCENT} />
+              <Ionicons name="bicycle" size={20} color={ACCENT} />
               <View style={{ flex: 1 }}>
                 <Text style={styles.workoutTitle}>{workout.title}</Text>
                 <Text style={styles.workoutDesc}>{workout.desc}</Text>

@@ -95,7 +95,7 @@ export default function BestTimeWidget({
       >
         <View style={styles.headerLeft}>
           <View style={styles.iconBadge}>
-            <Ionicons name="flash" size={16} color={ACCENT} />
+            <Ionicons name="time" size={16} color={ACCENT} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.title}>Melhor hora pra treinar</Text>

@@ -24,12 +24,15 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   login: async (email, password) => {
     const data = await authService.login(email, password);
-    set({ user: data.user, token: data.accessToken, isAuthenticated: true });
+    // saveAuth já foi chamado dentro do authService — token está no SecureStore
+    set({ user: data.user, token: data.accessToken, isAuthenticated: true, isLoading: false });
   },
 
   register: async (name, email, password, confirmPassword) => {
     const data = await authService.register(name, email, password, confirmPassword);
-    set({ user: data.user, token: data.accessToken, isAuthenticated: true });
+    // Garante que o user tenha o flag onboardingCompleted (mesmo que false)
+    const user = { ...data.user, onboardingCompleted: data.user?.onboardingCompleted ?? false };
+    set({ user, token: data.accessToken, isAuthenticated: true, isLoading: false });
   },
 
   logout: async () => {

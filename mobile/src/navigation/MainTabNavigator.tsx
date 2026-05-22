@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MainTabParamList } from './types';
 import { colors } from '../theme';
 
+import Logo from '../components/Logo';
 import HomeStack from './stacks/HomeStack';
 import MapStack from './stacks/MapStack';
 import TrackingStack from './stacks/TrackingStack';
@@ -24,15 +25,16 @@ const Tab = createBottomTabNavigator<MainTabParamList>();
 const ACCENT = '#FF6B35';
 
 // Configuração visual de cada tab — ícones mais expressivos
+// TrackingTab usa nosso Logo (infinito roxo)
 const TABS: Record<
   string,
-  { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }
+  { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap; useLogo?: boolean }
 > = {
   HomeTab: { label: 'Feed', icon: 'home-outline', iconActive: 'home' },
-  MapTab: { label: 'Mapa', icon: 'navigate-circle-outline', iconActive: 'navigate-circle' },
-  TrackingTab: { label: 'Treinar', icon: 'flash-outline', iconActive: 'flash' },
-  ChatTab: { label: 'Grupos', icon: 'people-circle-outline', iconActive: 'people-circle' },
-  ProfileTab: { label: 'Perfil', icon: 'person-circle-outline', iconActive: 'person-circle' },
+  MapTab: { label: 'Mapa', icon: 'map-outline', iconActive: 'map' },
+  TrackingTab: { label: 'Treinar', icon: 'add', iconActive: 'add', useLogo: true },
+  ChatTab: { label: 'Grupos', icon: 'people-outline', iconActive: 'people' },
+  ProfileTab: { label: 'Perfil', icon: 'person-outline', iconActive: 'person' },
 };
 
 // ================== Tab Item ==================
@@ -68,22 +70,18 @@ function TabItem({
     ]).start();
   }, [focused]);
 
-  // Tracking tab é especial — botão central elevado
+  // Tracking tab é especial — botão central elevado com Logo Sync
   if (routeName === 'TrackingTab') {
     return (
       <Pressable onPress={onPress} onLongPress={onLongPress} style={styles.tabCenter}>
         <Animated.View style={[styles.centerOuter, { transform: [{ scale }] }]}>
           <LinearGradient
-            colors={focused ? [ACCENT, '#FF4500'] : ['#2A2A40', '#1E1E32']}
+            colors={focused ? ['#FF6B35', '#FF4500'] : ['#4A0E2C', '#2A0518']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.centerGradient}
           >
-            <Ionicons
-              name={focused ? config.iconActive : config.icon}
-              size={26}
-              color={focused ? '#fff' : '#8E8EA0'}
-            />
+            <Logo size={28} color="#fff" />
           </LinearGradient>
         </Animated.View>
         <Animated.Text

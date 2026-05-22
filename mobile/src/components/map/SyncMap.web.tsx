@@ -118,9 +118,11 @@ const MapView = forwardRef<any, MapViewProps>(function MapView(
       return;
     }
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap',
+    // Estilo Strava-like: minimalista, sem cores fortes (CartoDB Positron / Voyager)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap &copy; CARTO',
       maxZoom: 19,
+      subdomains: 'abcd',
     }).addTo(map);
 
     if (onPress) map.on('click', onPress);

@@ -5,6 +5,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { colors, fontSize, spacing } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import Logo from '../../components/Logo';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Splash'>;
@@ -55,18 +56,7 @@ export default function SplashScreen({ navigation }: Props) {
       <View style={styles.glow} />
 
       <Animated.View style={[styles.content, { opacity, transform: [{ scale }] }]}>
-        {/* Logo icon */}
-        <View style={styles.logoIcon}>
-          <LinearGradient
-            colors={['#2E7BFF', '#5B2EFF', '#8B5CFF']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.logoGradient}
-          >
-            <Ionicons name="flash" size={40} color={colors.white} />
-          </LinearGradient>
-        </View>
-
+        <Logo size={90} variant="filled" />
         <Text style={styles.logo}>Sync</Text>
       </Animated.View>
 

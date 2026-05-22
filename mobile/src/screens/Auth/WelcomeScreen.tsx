@@ -20,6 +20,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/Logo';
+import StravaLandingWeb from './StravaLandingWeb';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
@@ -207,7 +208,16 @@ export default function WelcomeScreen({ navigation }: Props) {
     return <View style={styles.root}>{Hero}</View>;
   }
 
-  // === DESKTOP LANDING — Hero + features + stats + CTA ===
+  // === DESKTOP LANDING — Strava-style ===
+  return (
+    <StravaLandingWeb
+      onStart={() => navigation.navigate('Register')}
+      onLogin={() => navigation.navigate('Login')}
+    />
+  );
+
+  // (legacy landing kept below — unreachable now)
+  // eslint-disable-next-line no-unreachable
   return (
     <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
       {Hero}
