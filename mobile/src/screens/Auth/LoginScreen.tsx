@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ImageBackground,
   Animated,
   Easing,
@@ -22,6 +21,7 @@ import { heroImages } from '../../theme/images';
 import Input from '../../components/ui/Input';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Login'>;
@@ -57,6 +57,8 @@ export default function LoginScreen({ navigation }: Props) {
     else if (password.length < 6) newErrors.password = 'Mínimo 6 caracteres';
     if (Object.keys(newErrors).length > 0) {
       setErrors(newErrors);
+      const first = Object.values(newErrors)[0];
+      if (first) showToast(first, 'error');
       return;
     }
     setErrors({});
@@ -64,10 +66,9 @@ export default function LoginScreen({ navigation }: Props) {
     try {
       await login(email.trim().toLowerCase(), password);
     } catch (error: any) {
-      Alert.alert(
-        'Erro ao entrar',
-        error.response?.data?.message || 'Email ou senha incorretos.',
-      );
+      const msg = error.response?.data?.message;
+      const detail = Array.isArray(msg) ? msg.join(' • ') : msg;
+      showToast(detail || 'Email ou senha incorretos.', 'error');
     } finally {
       setLoading(false);
     }
@@ -75,15 +76,15 @@ export default function LoginScreen({ navigation }: Props) {
 
   const handleForgotPassword = async () => {
     if (!email.trim() || !/\S+@\S+\.\S+/.test(email)) {
-      Alert.alert('Recuperar senha', 'Digite seu email primeiro.');
+      showToast('Digite seu email primeiro.', 'info');
       return;
     }
     setLoading(true);
     try {
       await authService.forgotPassword(email.trim().toLowerCase());
-      Alert.alert('Email enviado', 'Se o email estiver cadastrado, você receberá as instruções em breve.');
+      showToast('Se o email estiver cadastrado, você receberá instruções.', 'success');
     } catch {
-      Alert.alert('Solicitação enviada', 'Se o email estiver cadastrado, você receberá as instruções em breve.');
+      showToast('Se o email estiver cadastrado, você receberá instruções.', 'info');
     } finally {
       setLoading(false);
     }

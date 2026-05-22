@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   KeyboardAvoidingView,
   Platform,
-  Alert,
   ImageBackground,
   Animated,
   Easing,
@@ -21,6 +20,7 @@ import { heroImages } from '../../theme/images';
 import Input from '../../components/ui/Input';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
@@ -54,7 +54,9 @@ export default function RegisterScreen({ navigation }: Props) {
     else if (name.trim().length < 2) newErrors.name = 'Nome muito curto';
     if (!email.trim()) newErrors.email = 'Email obrigatório';
     else if (!/\S+@\S+\.\S+/.test(email)) newErrors.email = 'Email inválido';
-    if (password.length < 6) newErrors.password = 'Mínimo 6 caracteres';
+    if (password.length < 8) newErrors.password = 'Mínimo 8 caracteres';
+    else if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
+      newErrors.password = 'Senha precisa de letras e números';
     if (password !== confirmPassword) newErrors.confirmPassword = 'Senhas não conferem';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -63,24 +65,31 @@ export default function RegisterScreen({ navigation }: Props) {
   const isFormValid =
     name.trim().length >= 2 &&
     /\S+@\S+\.\S+/.test(email) &&
-    password.length >= 6 &&
+    password.length >= 8 &&
+    /[a-zA-Z]/.test(password) &&
+    /[0-9]/.test(password) &&
     password === confirmPassword &&
     acceptedTerms;
 
   const handleRegister = async () => {
-    if (!validate()) return;
+    if (!validate()) {
+      const firstError = Object.values(errors)[0];
+      if (firstError) showToast(firstError, 'error');
+      else showToast('Verifique os dados do formulário', 'error');
+      return;
+    }
     if (!acceptedTerms) {
-      Alert.alert('Termos', 'Aceite os termos pra continuar.');
+      showToast('Aceite os termos pra continuar.', 'error');
       return;
     }
     setLoading(true);
     try {
       await register(name.trim(), email.trim().toLowerCase(), password, confirmPassword);
+      showToast('Conta criada! 🎉', 'success');
     } catch (error: any) {
-      Alert.alert(
-        'Erro ao criar conta',
-        error.response?.data?.message || 'Não foi possível criar sua conta.',
-      );
+      const msg = error.response?.data?.message;
+      const detail = Array.isArray(msg) ? msg.join(' • ') : msg;
+      showToast(detail || 'Não foi possível criar sua conta.', 'error');
     } finally {
       setLoading(false);
     }
@@ -88,9 +97,10 @@ export default function RegisterScreen({ navigation }: Props) {
 
   const getPasswordStrength = () => {
     if (password.length === 0) return { level: 0, label: '', color: colors.border };
-    if (password.length < 6) return { level: 1, label: 'Fraca', color: colors.error };
-    if (password.length < 8) return { level: 2, label: 'Média', color: colors.warning };
-    if (/[A-Z]/.test(password) && /[0-9]/.test(password)) return { level: 4, label: 'Forte', color: colors.success };
+    if (password.length < 8) return { level: 1, label: 'Fraca (mín 8)', color: colors.error };
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
+      return { level: 2, label: 'Precisa letras + números', color: colors.warning };
+    if (/[A-Z]/.test(password) && password.length >= 10) return { level: 4, label: 'Forte', color: colors.success };
     return { level: 3, label: 'Boa', color: colors.blueAccent };
   };
   const strength = getPasswordStrength();
