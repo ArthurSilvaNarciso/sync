@@ -123,7 +123,7 @@ export class RefreshTokenService {
       .createQueryBuilder()
       .update()
       .set({ revoked: true })
-      .where('user_id = :userId AND familyId != :fam', { userId, fam: keepFamilyId })
+      .where('userId = :userId AND familyId != :fam', { userId, fam: keepFamilyId })
       .execute();
     return { ok: true };
   }

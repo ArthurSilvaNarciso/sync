@@ -1,13 +1,13 @@
 // Cron de lembretes opt-in: hidratação 3x/dia + lembrete diário de treino.
-// Usa @nestjs/schedule (cron) — lazy require pra não quebrar build se pacote
-// ainda não estiver instalado.
+// Usa @nestjs/schedule. Se o pacote não estiver instalado, métodos são noop.
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { PushService } from './push.service';
 
-let Cron: any;
+// Lazy import — decorator opcional pra não quebrar build se pkg ausente
+let Cron: any = () => () => undefined;
 try { Cron = require('@nestjs/schedule').Cron; } catch {}
 
 @Injectable()
@@ -20,13 +20,13 @@ export class RemindersService implements OnModuleInit {
   ) {}
 
   onModuleInit() {
-    if (!Cron) {
+    if (typeof (Cron as any).name !== 'string' || (Cron as any).name === '') {
       this.logger.warn('@nestjs/schedule indisponível — reminders desativados');
     }
   }
 
   // Hidratação: 10h, 14h, 17h
-  @Cron?.('0 10,14,17 * * *')
+  @Cron('0 10,14,17 * * *')
   async hydrationReminder() {
     if (process.env.REMINDERS_DISABLED === 'true') return;
     try {
@@ -43,7 +43,7 @@ export class RemindersService implements OnModuleInit {
   }
 
   // Lembrete diário: 7h da manhã
-  @Cron?.('0 7 * * *')
+  @Cron('0 7 * * *')
   async dailyTrainingReminder() {
     if (process.env.REMINDERS_DISABLED === 'true') return;
     try {
