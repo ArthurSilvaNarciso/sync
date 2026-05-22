@@ -27,13 +27,13 @@ export class AuditLog {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ nullable: true, length: 64 })
+  @Column({ type: 'varchar', nullable: true, length: 64 })
   userId: string | null;
 
-  @Column({ length: 40 })
+  @Column({ type: 'varchar', length: 40 })
   event: SecurityEvent;
 
-  @Column({ nullable: true, length: 45 })
+  @Column({ type: 'varchar', nullable: true, length: 45 })
   ipMasked: string | null; // último octeto removido (IPv4) ou /64 (IPv6)
 
   @Column({ nullable: true, type: 'text' })

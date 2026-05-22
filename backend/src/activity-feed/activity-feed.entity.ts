@@ -20,7 +20,7 @@ export class ActivityFeedPost {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'activity_id', nullable: true })
+  @Column({ name: 'activity_id', type: 'varchar', nullable: true })
   activity_id: string | null;
 
   @Column({ type: 'text', nullable: true })
@@ -41,7 +41,7 @@ export class ActivityFeedPost {
   @Column({ default: 0 })
   calories: number;
 
-  @Column({ length: 40, nullable: true })
+  @Column({ type: 'varchar', length: 40, nullable: true })
   sport: string | null;
 
   @Column({ default: 0 })

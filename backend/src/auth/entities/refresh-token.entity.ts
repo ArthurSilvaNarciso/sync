@@ -42,10 +42,10 @@ export class RefreshToken {
   @Column({ default: false })
   revoked: boolean;
 
-  @Column({ nullable: true, length: 200 })
+  @Column({ type: 'varchar', nullable: true, length: 200 })
   userAgent: string | null;
 
-  @Column({ nullable: true, length: 45 })
+  @Column({ type: 'varchar', nullable: true, length: 45 })
   ipMasked: string | null;
 
   @CreateDateColumn()

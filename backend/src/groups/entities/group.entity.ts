@@ -22,16 +22,16 @@ export class Group {
   @Column({ type: 'text', nullable: true })
   description: string | null;
 
-  @Column({ length: 40, nullable: true })
+  @Column({ type: 'varchar', length: 40, nullable: true })
   sport: string | null;
 
-  @Column({ length: 80, nullable: true })
+  @Column({ type: 'varchar', length: 80, nullable: true })
   city: string | null;
 
   @Column({ default: false })
   isPrivate: boolean;
 
-  @Column({ length: 16, nullable: true })
+  @Column({ type: 'varchar', length: 16, nullable: true })
   inviteCode: string | null;
 
   @Column({ type: 'text', nullable: true })
