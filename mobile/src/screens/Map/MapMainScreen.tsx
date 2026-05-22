@@ -12,7 +12,7 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, Circle } from '../../components/map/SyncMap';
+import MapView, { Marker, Circle, HeatLayer } from '../../components/map/SyncMap';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MapStackParamList } from '../../navigation/types';
 import { Event as EventType } from '../../types';
@@ -67,7 +67,20 @@ export default function MapMainScreen({ navigation }: Props) {
   const [showWeatherPanel, setShowWeatherPanel] = useState(false);
   const [searchRadius, setSearchRadius] = useState(20);
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [heatmapPoints, setHeatmapPoints] = useState<Array<[number, number]>>([]);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const mapRef = useRef<MapView>(null);
+
+  // Carrega heatmap quando ativado e há localização
+  useEffect(() => {
+    if (!showHeatmap || !userCoords) return;
+    api
+      .get('/activities/heatmap/nearby', {
+        params: { lat: userCoords.latitude, lng: userCoords.longitude, radiusKm: 10 },
+      })
+      .then((res) => setHeatmapPoints(res.data?.points || []))
+      .catch(() => setHeatmapPoints([]));
+  }, [showHeatmap, userCoords]);
   const cardAnim = useRef(new Animated.Value(0)).current;
   const weatherAnim = useRef(new Animated.Value(0)).current;
 
@@ -287,6 +300,11 @@ export default function MapMainScreen({ navigation }: Props) {
           setShowWeatherPanel(false);
         }}
       >
+        {/* Heatmap overlay — rotas populares */}
+        {showHeatmap && heatmapPoints.length > 0 && (
+          <HeatLayer points={heatmapPoints} intensity={0.18} radiusM={50} />
+        )}
+
         {/* Search radius circle */}
         {userCoords && (
           <Circle
@@ -331,6 +349,18 @@ export default function MapMainScreen({ navigation }: Props) {
             <Text style={styles.locationText} numberOfLines={1}>{locationName}</Text>
           </View>
         ) : null}
+
+        {/* Heatmap toggle */}
+        <TouchableOpacity
+          style={[styles.locationChip, showHeatmap && { backgroundColor: '#FF6B35', borderColor: '#FF6B35' }]}
+          onPress={() => setShowHeatmap((v) => !v)}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="flame" size={14} color={showHeatmap ? '#fff' : '#FF6B35'} />
+          <Text style={[styles.locationText, showHeatmap && { color: '#fff' }]}>
+            Heatmap{showHeatmap && heatmapPoints.length ? ` (${heatmapPoints.length})` : ''}
+          </Text>
+        </TouchableOpacity>
 
         {/* Weather chip */}
         {weather && (

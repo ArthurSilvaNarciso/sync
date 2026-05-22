@@ -5,11 +5,13 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './guards/jwt.strategy';
+import { RefreshTokenService } from './refresh-token.service';
+import { RefreshToken } from './entities/refresh-token.entity';
 import { User } from '../users/entities/user.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([User]),
+    TypeOrmModule.forFeature([User, RefreshToken]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       // Em produção exige JWT_SECRET configurado. Falha early se não tiver.
@@ -20,7 +22,7 @@ import { User } from '../users/entities/user.entity';
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy],
-  exports: [AuthService, JwtModule],
+  providers: [AuthService, JwtStrategy, RefreshTokenService],
+  exports: [AuthService, JwtModule, RefreshTokenService],
 })
 export class AuthModule {}

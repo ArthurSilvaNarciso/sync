@@ -1,11 +1,15 @@
-import { Controller, Post, Body, Req } from '@nestjs/common';
+import { Controller, Post, Get, Delete, Body, Req, Param, UseGuards } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
-import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { IsEmail, IsString, MinLength, MaxLength } from 'class-validator';
 import { Request } from 'express';
 import { AuthService } from './auth.service';
+import { RefreshTokenService } from './refresh-token.service';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { User } from '../users/entities/user.entity';
 
 class ForgotPasswordDto {
   @IsEmail()
@@ -24,10 +28,20 @@ class ResetPasswordDto {
   newPassword: string;
 }
 
+class RefreshDto {
+  @IsString()
+  @MinLength(20)
+  @MaxLength(200)
+  refreshToken: string;
+}
+
 @ApiTags('Auth')
 @Controller('api/auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly refresh: RefreshTokenService,
+  ) {}
 
   @Post('register')
   @Throttle({ default: { ttl: 60_000, limit: 3 } }) // 3 registros / minuto / IP
@@ -55,5 +69,44 @@ export class AuthController {
   @ApiOperation({ summary: 'Redefinir senha com token' })
   resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
     return this.authService.resetPassword(dto.token, dto.newPassword, req);
+  }
+
+  @Post('refresh')
+  @Throttle({ default: { ttl: 60_000, limit: 30 } })
+  @ApiOperation({ summary: 'Trocar refresh por novo par (access + refresh)' })
+  async refreshTokens(@Body() dto: RefreshDto, @Req() req: Request) {
+    const pair = await this.refresh.refresh(
+      dto.refreshToken,
+      (id) => this.authService.validateUser(id),
+      req,
+    );
+    return {
+      accessToken: pair.accessToken,
+      refreshToken: pair.refreshToken,
+      refreshExpiresAt: pair.refreshExpiresAt,
+    };
+  }
+
+  @Post('logout')
+  @ApiOperation({ summary: 'Invalida refresh token (logout)' })
+  async logout(@Body() dto: RefreshDto) {
+    await this.refresh.revokeFamily(dto.refreshToken);
+    return { ok: true };
+  }
+
+  @Get('sessions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar sessões ativas (devices logados)' })
+  sessions(@CurrentUser() user: User) {
+    return this.refresh.listSessions(user.id);
+  }
+
+  @Delete('sessions/:familyId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Revogar uma sessão específica' })
+  revokeSession(@CurrentUser() user: User, @Param('familyId') familyId: string) {
+    return this.refresh.revokeSession(user.id, familyId);
   }
 }

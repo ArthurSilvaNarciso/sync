@@ -254,6 +254,38 @@ export const Circle = ({
   return null;
 };
 
+// ---------------- HeatLayer ----------------
+// Heatmap simples — desenha circles em cada ponto com baixa opacidade.
+// (Leaflet.heat exigiria CDN extra; este approach é leve e funciona offline.)
+export const HeatLayer = ({
+  points,
+  intensity = 0.15,
+  radiusM = 60,
+  color = '#FF6B35',
+}: {
+  points: Array<[number, number]>;
+  intensity?: number;
+  radiusM?: number;
+  color?: string;
+}) => {
+  const map = React.useContext(MapContext);
+  useEffect(() => {
+    if (!map || !points?.length) return;
+    const layer = L.layerGroup().addTo(map);
+    for (const [lat, lng] of points) {
+      L.circle([lat, lng], {
+        radius: radiusM,
+        color,
+        weight: 0,
+        fillColor: color,
+        fillOpacity: intensity,
+      }).addTo(layer);
+    }
+    return () => { layer.remove(); };
+  }, [map, JSON.stringify(points), intensity, radiusM, color]);
+  return null;
+};
+
 // ---------------- Polyline ----------------
 export const Polyline = ({
   coordinates,
