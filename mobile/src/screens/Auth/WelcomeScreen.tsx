@@ -19,6 +19,7 @@ import { AuthStackParamList } from '../../navigation/types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/ui/Button';
+import Logo from '../../components/Logo';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
@@ -138,14 +139,7 @@ export default function WelcomeScreen({ navigation }: Props) {
       <View style={styles.centerStage}>
         <Animated.View style={[styles.content, { opacity: fade, transform: [{ translateY: slideY }] }]}>
           <View style={styles.logoRow}>
-            <LinearGradient
-              colors={[ACCENT, '#FF8A5C', '#FFB07A']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.logoBadge}
-            >
-              <Ionicons name="flash" size={26} color="#fff" />
-            </LinearGradient>
+            <Logo size={56} variant="filled" />
             <Text style={styles.logo}>SYNC</Text>
           </View>
 

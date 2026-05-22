@@ -1,8 +1,12 @@
-// Paleta de cores oficial do Sync — Dark + Orange (running brand)
+// Paleta de cores oficial do Sync — Brand: roxo profundo + accent laranja
 export const colors = {
-  primary: '#FF6B35',          // laranja principal (brand)
-  primaryDark: '#FF4500',      // laranja escuro pra gradient
-  primaryLight: '#FF8A5C',     // laranja claro
+  brand: '#4A0E2C',            // ROXO ESCURO BRAND (logo infinito)
+  brandLight: '#8B2A5A',       // roxo claro hover/borda
+  brandGradient: ['#4A0E2C', '#2A0518'] as const,
+
+  primary: '#FF6B35',          // laranja accent (CTAs, tracking)
+  primaryDark: '#FF4500',
+  primaryLight: '#FF8A5C',
   darkPurple: '#2B0F5E',       // legado — mantido pra compat
   highlight: '#FFB07A',        // destaque secundário
   blueAccent: '#2E7BFF',       // azul (ciclismo, info)

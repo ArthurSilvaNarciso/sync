@@ -379,103 +379,93 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         )}
       </View>
 
-      {/* Bottom metrics panel */}
+      {/* Bottom metrics panel — Strava-style hero stats */}
       <View style={styles.bottomPanel}>
-        {/* Timer - most prominent */}
-        <Text style={styles.timer}>{formatTime(elapsed)}</Text>
-
-        {/* Metrics grid — linha 1: km, pace, speed, kcal */}
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricBox}>
-            <Text style={styles.metricValue}>{distanceKm}</Text>
-            <Text style={styles.metricLabel}>km</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBox}>
-            <Text style={styles.metricValue}>{pace}</Text>
-            <Text style={styles.metricLabel}>min/km</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBox}>
-            <Text style={styles.metricValue}>{speed}</Text>
-            <Text style={styles.metricLabel}>km/h</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBox}>
-            <Text style={styles.metricValue}>{calories}</Text>
-            <Text style={styles.metricLabel}>kcal</Text>
-          </View>
+        {/* HERO: Distância grande (foco principal) */}
+        <View style={styles.heroBlock}>
+          <Text style={styles.heroValue}>{distanceKm}</Text>
+          <Text style={styles.heroLabel}>QUILÔMETROS</Text>
         </View>
-        {/* Linha 2: altitude e ganho de elevação */}
-        <View style={[styles.metricsGrid, { marginTop: 0, marginBottom: spacing.md }]}>
-          <View style={styles.metricBox}>
-            <Text style={[styles.metricValue, { fontSize: 18 }]}>{altitudeM}</Text>
-            <Text style={styles.metricLabel}>altitude m</Text>
+
+        {/* Secondary row: Tempo + Pace */}
+        <View style={styles.secondaryRow}>
+          <View style={styles.secondaryBox}>
+            <Text style={styles.secondaryValue}>{formatTime(elapsed)}</Text>
+            <Text style={styles.secondaryLabel}>Tempo</Text>
           </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBox}>
-            <Text style={[styles.metricValue, { fontSize: 18 }]}>{elevationGainStr}</Text>
-            <Text style={styles.metricLabel}>subida m</Text>
-          </View>
-          <View style={styles.metricDivider} />
-          <View style={styles.metricBox}>
-            <Text style={[styles.metricValue, { fontSize: 18 }]}>{points.length}</Text>
-            <Text style={styles.metricLabel}>pontos GPS</Text>
+          <View style={styles.secondaryDivider} />
+          <View style={styles.secondaryBox}>
+            <Text style={styles.secondaryValue}>{pace}</Text>
+            <Text style={styles.secondaryLabel}>Pace /km</Text>
           </View>
         </View>
 
-        {/* Laps display */}
+        {/* Tertiary row: calorias, BPM-like, altitude */}
+        <View style={styles.tertiaryRow}>
+          <View style={styles.tertiaryBox}>
+            <Ionicons name="flame" size={14} color="#FF6B35" />
+            <Text style={styles.tertiaryValue}>{calories}</Text>
+            <Text style={styles.tertiaryLabel}>kcal</Text>
+          </View>
+          <View style={styles.tertiaryBox}>
+            <Ionicons name="speedometer-outline" size={14} color="#3B82F6" />
+            <Text style={styles.tertiaryValue}>{speed}</Text>
+            <Text style={styles.tertiaryLabel}>km/h</Text>
+          </View>
+          <View style={styles.tertiaryBox}>
+            <Ionicons name="trending-up" size={14} color="#10B981" />
+            <Text style={styles.tertiaryValue}>{elevationGainStr}</Text>
+            <Text style={styles.tertiaryLabel}>subida m</Text>
+          </View>
+          <View style={styles.tertiaryBox}>
+            <Ionicons name="navigate" size={14} color="#A78BFA" />
+            <Text style={styles.tertiaryValue}>{altitudeM}</Text>
+            <Text style={styles.tertiaryLabel}>altitude</Text>
+          </View>
+        </View>
+
+        {/* Voltas inline (apenas última) */}
         {laps.length > 0 && (
-          <View style={styles.lapsContainer}>
-            <Text style={styles.lapsTitle}>Últimas voltas</Text>
-            {laps.slice(-3).reverse().map((lap) => (
-              <View key={lap.number} style={styles.lapRow}>
-                <Text style={styles.lapNumber}>Volta {lap.number}</Text>
-                <Text style={styles.lapTime}>{formatTime(lap.time)}</Text>
-                <Text style={styles.lapDist}>{(lap.distance / 1000).toFixed(2)} km</Text>
-              </View>
-            ))}
+          <View style={styles.lastLap}>
+            <Ionicons name="flag" size={14} color={colors.dark.accent} />
+            <Text style={styles.lastLapText}>
+              Última volta {laps.length}: {formatTime(laps[laps.length - 1].time)} • {(laps[laps.length - 1].distance / 1000).toFixed(2)} km
+            </Text>
           </View>
         )}
 
-        {/* Control buttons */}
-        <View style={styles.controls}>
-          {isPaused ? (
-            <TouchableOpacity style={styles.finishBtn} onPress={handleFinish}>
-              <Ionicons name="stop" size={24} color={colors.white} />
-              <Text style={styles.controlLabel}>Finalizar</Text>
-            </TouchableOpacity>
-          ) : (
-            <TouchableOpacity style={styles.lapBtn} onPress={handleLap}>
-              <Ionicons name="flag-outline" size={24} color={colors.dark.text} />
-              <Text style={styles.controlLabel}>Volta {laps.length + 1}</Text>
-            </TouchableOpacity>
-          )}
+        {/* Control buttons fixos no rodapé */}
+        <View style={styles.controlsBar}>
+          <TouchableOpacity style={styles.sideBtn} onPress={isPaused ? handleFinish : handleLap}>
+            <Ionicons
+              name={isPaused ? 'stop' : 'flag-outline'}
+              size={22}
+              color={isPaused ? '#F87171' : colors.dark.text}
+            />
+            <Text style={styles.sideBtnLabel}>{isPaused ? 'Finalizar' : `Volta ${laps.length + 1}`}</Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
             style={[styles.mainControlBtn, isPaused ? styles.resumeBtn : styles.pauseBtn]}
             onPress={togglePause}
           >
-            <Ionicons
-              name={isPaused ? 'play' : 'pause'}
-              size={32}
-              color={colors.white}
-            />
+            <Ionicons name={isPaused ? 'play' : 'pause'} size={34} color="#fff" />
           </TouchableOpacity>
 
-          {isPaused ? (
-            <TouchableOpacity style={styles.lapBtn} onPress={() => { setIsPaused(false); startTracking(); startTimer(); }}>
-              <Ionicons name="refresh-outline" size={24} color={colors.dark.text} />
-              <Text style={styles.controlLabel}>Continuar</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.lapBtn}>
-              <Text style={[styles.controlLabel, { fontSize: 16, fontWeight: '700', color: colors.dark.text }]}>
-                {laps.length}
-              </Text>
-              <Text style={styles.controlLabel}>Voltas</Text>
-            </View>
-          )}
+          <TouchableOpacity
+            style={styles.sideBtn}
+            onPress={() => { if (isPaused) { setIsPaused(false); startTracking(); startTimer(); } }}
+            disabled={!isPaused}
+          >
+            <Ionicons
+              name={isPaused ? 'refresh-outline' : 'list-outline'}
+              size={22}
+              color={isPaused ? colors.dark.text : colors.dark.secondaryText}
+            />
+            <Text style={[styles.sideBtnLabel, !isPaused && { color: colors.dark.secondaryText }]}>
+              {isPaused ? 'Continuar' : `${laps.length} voltas`}
+            </Text>
+          </TouchableOpacity>
         </View>
       </View>
     </View>
@@ -574,13 +564,125 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   bottomPanel: {
-    backgroundColor: colors.dark.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
+    backgroundColor: '#0A0A0F',
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
     paddingTop: spacing.lg,
-    paddingBottom: Platform.OS === 'ios' ? 40 : spacing.xl,
+    paddingBottom: Platform.OS === 'ios' ? 36 : 20,
     paddingHorizontal: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.08)',
   },
+  heroBlock: {
+    alignItems: 'center',
+    marginBottom: spacing.md,
+  },
+  heroValue: {
+    fontSize: 72,
+    fontWeight: '900',
+    color: '#fff',
+    fontVariant: ['tabular-nums'],
+    letterSpacing: -2,
+    lineHeight: 76,
+  },
+  heroLabel: {
+    fontSize: 11,
+    color: '#8E8EA0',
+    letterSpacing: 2,
+    fontWeight: '700',
+    marginTop: 2,
+  },
+  secondaryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: 16,
+    paddingVertical: spacing.md,
+    marginBottom: spacing.sm,
+  },
+  secondaryBox: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  secondaryValue: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: '#fff',
+    fontVariant: ['tabular-nums'],
+  },
+  secondaryLabel: {
+    fontSize: 11,
+    color: '#8E8EA0',
+    marginTop: 2,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  secondaryDivider: {
+    width: 1,
+    height: 32,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  tertiaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.md,
+    gap: 6,
+  },
+  tertiaryBox: {
+    flex: 1,
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 10,
+    paddingVertical: 8,
+    gap: 2,
+  },
+  tertiaryValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+    fontVariant: ['tabular-nums'],
+  },
+  tertiaryLabel: {
+    fontSize: 9,
+    color: '#8E8EA0',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  lastLap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,107,53,0.08)',
+    borderRadius: 10,
+    marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.2)',
+  },
+  lastLapText: {
+    color: colors.dark.text,
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
+  },
+  controlsBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: spacing.lg,
+  },
+  sideBtn: {
+    alignItems: 'center',
+    gap: 4,
+    minWidth: 72,
+  },
+  sideBtnLabel: {
+    fontSize: 11,
+    color: colors.dark.text,
+    fontWeight: '600',
+  },
+  // LEGACY (mantido pra compat)
   timer: {
     fontSize: 56,
     fontWeight: '200',
