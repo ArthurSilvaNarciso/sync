@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npx expo export --platform web --output-dir dist && cp -r public/* dist/ 2>/dev/null || true",
+  "buildCommand": "npx expo export --platform web --output-dir dist && node -e \"const fs=require('fs'),path=require('path');try{const src='public',dst='dist';if(fs.existsSync(src)){for(const f of fs.readdirSync(src)){fs.copyFileSync(path.join(src,f),path.join(dst,f));console.log('copied',f);}}}catch(e){console.warn(e.message);}\"",
   "outputDirectory": "dist",
   "installCommand": "npm install --legacy-peer-deps",
   "framework": null,
