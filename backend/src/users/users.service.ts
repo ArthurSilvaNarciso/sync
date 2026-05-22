@@ -26,6 +26,31 @@ export class UsersService {
     return user;
   }
 
+  /**
+   * LGPD/GDPR: anonimiza usuário (não deleta para preservar integridade
+   * referencial de atividades em grupos/eventos públicos).
+   */
+  async anonymizeUser(userId: string): Promise<{ ok: true; message: string }> {
+    const fake = `deleted-${userId.slice(0, 8)}-${Date.now()}`;
+    await this.userRepository.update(userId, {
+      name: 'Usuário Removido',
+      email: `${fake}@deleted.sync`,
+      bio: null,
+      avatarUrl: null,
+      birthDate: null,
+      sports: null,
+      objectives: null,
+      availability: null,
+      latitude: null,
+      longitude: null,
+      city: null,
+      isActive: false,
+      twoFactorSecret: null,
+      twoFactorEnabled: false,
+    } as any);
+    return { ok: true, message: 'Conta anonimizada conforme LGPD. Atividades públicas preservadas com nome anônimo.' };
+  }
+
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
     await this.userRepository.update(userId, dto);
     return this.findById(userId);

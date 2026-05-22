@@ -12,7 +12,10 @@ import { User } from '../users/entities/user.entity';
     TypeOrmModule.forFeature([User]),
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
-      secret: process.env.JWT_SECRET || 'sync-secret-key',
+      // Em produção exige JWT_SECRET configurado. Falha early se não tiver.
+      secret: process.env.JWT_SECRET || (process.env.NODE_ENV === 'production'
+        ? (() => { throw new Error('JWT_SECRET é obrigatório em produção') })()
+        : 'sync-dev-secret-CHANGE-IN-PROD'),
       signOptions: { expiresIn: process.env.JWT_EXPIRATION || '7d' },
     }),
   ],

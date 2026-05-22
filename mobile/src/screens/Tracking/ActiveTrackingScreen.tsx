@@ -18,6 +18,8 @@ import * as ExpoLocation from 'expo-location';
 import api from '../../services/api';
 import { trackingSocket } from '../../services/tracking-socket.service';
 import { Share } from 'react-native';
+import { announce, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
+import { AutoPauseDetector } from '../../utils/auto-pause';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -51,12 +53,17 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
 
   const [liveUrl, setLiveUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  const [audioOn, setAudioOn] = useState(getCoachEnabled());
+  const [autoPauseOn, setAutoPauseOn] = useState(true);
+  const autoPauseRef = useRef<AutoPauseDetector>(new AutoPauseDetector());
+  const lastAnnouncedKmRef = useRef(0);
 
   useEffect(() => {
     startTracking();
     startTimer();
-    // Inicia broadcast da atividade no socket (cria sala /tracking/activity:<id>)
     trackingSocket.startBroadcasting(activityId);
+    // Anúncio inicial
+    if (audioOn) announce.start();
     return () => {
       locationSub.current?.remove();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -64,6 +71,18 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
       trackingSocket.disconnect();
     };
   }, []);
+
+  // Anuncia cada km cruzado
+  useEffect(() => {
+    const km = Math.floor(distance / 1000);
+    if (audioOn && km > lastAnnouncedKmRef.current && km > 0) {
+      lastAnnouncedKmRef.current = km;
+      const paceRaw = distance > 0 ? (elapsed / 60) / (distance / 1000) : 0;
+      const m = Math.floor(paceRaw);
+      const s = Math.round((paceRaw - m) * 60);
+      announce.km(km, `${m}:${s.toString().padStart(2, '0')}`);
+    }
+  }, [distance, audioOn]);
 
   const startTimer = () => {
     timerRef.current = setInterval(() => {
@@ -125,6 +144,18 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
 
   const handleNewPoint = (newPoint: { latitude: number; longitude: number; altitude?: number }) => {
     const stampedPoint = { ...newPoint, timestamp: Date.now() };
+
+    // Auto-pause detector
+    if (autoPauseOn) {
+      const action = autoPauseRef.current.push({ ...newPoint, timestamp: Date.now() });
+      if (action === 'pause' && !isPaused) {
+        setIsPaused(true);
+        if (audioOn) announce.pause();
+      } else if (action === 'resume' && isPaused) {
+        setIsPaused(false);
+        if (audioOn) announce.resume();
+      }
+    }
     setPoints((prev) => {
       if (prev.length > 0) {
         const last = prev[prev.length - 1];
@@ -192,6 +223,7 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         onPress: async () => {
           locationSub.current?.remove();
           if (timerRef.current) clearInterval(timerRef.current);
+          if (audioOn) announce.finish(distance / 1000, elapsed / 60);
           try {
             await api.put(`/activities/${activityId}/finish`);
             navigation.replace('ActivitySummary', { activityId });
@@ -303,6 +335,18 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
               <Text style={styles.pausedText}>PAUSADO</Text>
             </View>
           )}
+          <TouchableOpacity
+            style={[styles.lockBtn, audioOn && styles.lockBtnActive]}
+            onPress={() => { const next = !audioOn; setAudioOn(next); setCoachEnabled(next); }}
+          >
+            <Ionicons name={audioOn ? 'volume-high' : 'volume-mute'} size={18} color={audioOn ? '#fff' : colors.dark.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.lockBtn, autoPauseOn && styles.lockBtnActive]}
+            onPress={() => setAutoPauseOn((v) => !v)}
+          >
+            <Ionicons name={autoPauseOn ? 'pause-circle' : 'pause-circle-outline'} size={18} color={autoPauseOn ? '#fff' : colors.dark.text} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={[styles.lockBtn, liveUrl && styles.lockBtnActive]}
             onPress={handleShareLive}

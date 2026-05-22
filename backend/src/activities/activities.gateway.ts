@@ -10,6 +10,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { JwtService } from '@nestjs/jwt';
 import { Activity } from './entities/activity.entity';
 import { ActivityPoint } from './entities/activity-point.entity';
 import { haversineMeters } from '../common/utils/haversine';
@@ -21,12 +22,17 @@ import { haversineMeters } from '../common/utils/haversine';
 //  - livePoint (broadcast) → seguidores recebem em tempo real
 //  - finishActivity → fecha a sala
 @WebSocketGateway({
-  cors: { origin: '*' },
+  cors: { origin: true, credentials: false },
   namespace: '/tracking',
 })
 export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+
+  // userId por socket após autenticação
+  private socketUser: Map<string, string> = new Map();
+  // Atividades que o socket pode escrever (owner verificado)
+  private socketActivities: Map<string, Set<string>> = new Map();
 
   // Buffer de pontos por atividade para persistência em batch (reduz writes no SQLite)
   private pointBuffer: Map<string, { lat: number; lng: number; alt?: number; ts: Date }[]> = new Map();
@@ -40,17 +46,38 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
     private readonly activityRepository: Repository<Activity>,
     @InjectRepository(ActivityPoint)
     private readonly pointRepository: Repository<ActivityPoint>,
+    private readonly jwtService: JwtService,
   ) {
     // Persiste buffer a cada 3s
     this.flushInterval = setInterval(() => this.flushBuffers().catch(() => undefined), 3000);
   }
 
-  handleConnection(_client: Socket) {
-    // sem ação por conexão — sala é criada via joinActivity
+  async handleConnection(client: Socket) {
+    // Autenticação por JWT no handshake.
+    // Cliente envia `auth: { token }` ou query `?token=`.
+    const token =
+      (client.handshake.auth?.token as string | undefined) ||
+      (client.handshake.query?.token as string | undefined);
+
+    if (!token) {
+      // Anônimos podem APENAS observar (joinActivity em modo read-only)
+      // — qualquer envio de 'point' será rejeitado.
+      return;
+    }
+    try {
+      const payload: any = this.jwtService.verify(token);
+      if (payload?.sub) {
+        this.socketUser.set(client.id, payload.sub);
+      }
+    } catch {
+      // Token inválido — desconecta
+      client.disconnect(true);
+    }
   }
 
-  handleDisconnect(_client: Socket) {
-    // sem ação — Socket.io gerencia as salas
+  handleDisconnect(client: Socket) {
+    this.socketUser.delete(client.id);
+    this.socketActivities.delete(client.id);
   }
 
   @SubscribeMessage('joinActivity')
@@ -79,6 +106,7 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
 
   @SubscribeMessage('point')
   async onPoint(
+    @ConnectedSocket() client: Socket,
     @MessageBody()
     data: {
       activityId: string;
@@ -90,6 +118,31 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
   ) {
     try {
       if (!data?.activityId) return { ok: false };
+
+      // ===== AUTH CHECK =====
+      // Só o dono da atividade pode enviar pontos.
+      const userId = this.socketUser.get(client.id);
+      if (!userId) return { ok: false, error: 'unauthenticated' };
+
+      // Cache de verificação por socket+atividade
+      let owned = this.socketActivities.get(client.id);
+      if (!owned) {
+        owned = new Set();
+        this.socketActivities.set(client.id, owned);
+      }
+      if (!owned.has(data.activityId)) {
+        const activity = await this.activityRepository.findOne({
+          where: { id: data.activityId },
+          select: ['id', 'user_id', 'isCompleted'],
+        });
+        if (!activity || activity.user_id !== userId) {
+          return { ok: false, error: 'forbidden' };
+        }
+        if (activity.isCompleted) {
+          return { ok: false, error: 'activity_completed' };
+        }
+        owned.add(data.activityId);
+      }
       // Sanity check coordenadas
       if (
         data.latitude < -90 || data.latitude > 90 ||

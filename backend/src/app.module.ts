@@ -20,6 +20,7 @@ import { StatsModule } from './stats/stats.module';
 import { StoriesModule } from './stories/stories.module';
 import { GroupsModule } from './groups/groups.module';
 import { ActivityFeedModule } from './activity-feed/activity-feed.module';
+import { SecurityModule } from './common/security/security.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -41,6 +42,8 @@ import { HealthController } from './health.controller';
     }),
     // Conexão com PostgreSQL
     TypeOrmModule.forRoot(databaseConfig()),
+    // Security primeiro (audit log usado por outros módulos)
+    SecurityModule,
     // Módulos da aplicação
     AuthModule,
     UsersModule,

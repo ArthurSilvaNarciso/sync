@@ -55,6 +55,10 @@ export class Activity {
   @Column({ type: 'varchar', nullable: true })
   liveToken: string | null;
 
+  // Expiração do token público — auto-revoga após 24h ou ao finalizar.
+  @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true })
+  liveTokenExpiresAt: Date | null;
+
   @OneToMany(() => ActivityPoint, (point) => point.activity)
   points: ActivityPoint[];
 

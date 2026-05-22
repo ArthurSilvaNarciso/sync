@@ -26,15 +26,22 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' },
 });
 
-// Interceptor: adiciona token JWT em todas as requisições
+// Interceptor: adiciona token JWT em todas as requisições.
+// SECURITY: lê APENAS do SecureStore (Keychain/EncryptedSharedPreferences).
+// Em web, secureStorage usa um wrapper sobre localStorage com prefixo.
 api.interceptors.request.use(async (config) => {
-  let token = await secureStorage.getItem('@sync:token');
-  if (!token) {
-    // Fallback compat: token legado em AsyncStorage
-    token = await AsyncStorage.getItem('@sync:token').catch(() => null);
-  }
+  const token = await secureStorage.getItem('@sync:token');
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  }
+  // Migração: se ainda houver token em AsyncStorage (legacy), move pro SecureStore e remove
+  if (!token) {
+    const legacy = await AsyncStorage.getItem('@sync:token').catch(() => null);
+    if (legacy) {
+      await secureStorage.setItem('@sync:token', legacy).catch(() => {});
+      await AsyncStorage.removeItem('@sync:token').catch(() => {});
+      config.headers.Authorization = `Bearer ${legacy}`;
+    }
   }
   return config;
 });

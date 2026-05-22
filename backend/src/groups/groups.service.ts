@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Group } from './entities/group.entity';
 import { GroupMember } from './entities/group-member.entity';
 import { randomBytes } from 'crypto';
+import { sanitizeText } from '../common/security/sanitize.util';
 
 @Injectable()
 export class GroupsService {
@@ -17,10 +18,10 @@ export class GroupsService {
       throw new BadRequestException('Nome do grupo precisa ter pelo menos 3 caracteres');
     }
     const group = this.groupRepo.create({
-      name: dto.name.trim(),
-      description: dto.description?.trim() || null,
-      sport: dto.sport || null,
-      city: dto.city || null,
+      name: sanitizeText(dto.name, 80),
+      description: sanitizeText(dto.description, 500) || null,
+      sport: sanitizeText(dto.sport, 40) || null,
+      city: sanitizeText(dto.city, 80) || null,
       isPrivate: !!dto.isPrivate,
       admin_id: adminId,
       inviteCode: dto.isPrivate ? randomBytes(6).toString('hex') : null,

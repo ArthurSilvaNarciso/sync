@@ -2,6 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityFeedPost } from './activity-feed.entity';
+import { sanitizeText, sanitizeUrl } from '../common/security/sanitize.util';
 
 @Injectable()
 export class ActivityFeedService {
@@ -29,13 +30,13 @@ export class ActivityFeedService {
     const post = this.repo.create({
       user_id: userId,
       activity_id: dto.activityId || null,
-      caption: dto.caption?.trim().slice(0, 500) || null,
-      photoUrl: dto.photoUrl || null,
-      distanceKm: dto.distanceKm || 0,
-      durationSeconds: dto.durationSeconds || 0,
-      avgPace: dto.avgPace || 0,
-      calories: dto.calories || 0,
-      sport: dto.sport || null,
+      caption: sanitizeText(dto.caption, 500) || null,
+      photoUrl: sanitizeUrl(dto.photoUrl),
+      distanceKm: Math.max(0, Math.min(10000, dto.distanceKm || 0)),
+      durationSeconds: Math.max(0, Math.min(86400 * 7, dto.durationSeconds || 0)),
+      avgPace: Math.max(0, Math.min(60, dto.avgPace || 0)),
+      calories: Math.max(0, Math.min(100000, dto.calories || 0)),
+      sport: sanitizeText(dto.sport, 40) || null,
     });
     return this.repo.save(post);
   }

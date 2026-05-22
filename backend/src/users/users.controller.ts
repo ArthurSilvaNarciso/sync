@@ -131,6 +131,29 @@ export class UsersController {
     return this.usersService.getBlockedUsers(user.id);
   }
 
+  // ===== LGPD/GDPR =====
+  @Get('me/export')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Exportar todos os dados pessoais (LGPD/GDPR)' })
+  async exportData(@CurrentUser() user: User) {
+    const full = await this.usersService.findById(user.id);
+    return {
+      generatedAt: new Date().toISOString(),
+      user: full,
+      note: 'Este JSON contém todos os dados pessoais armazenados sobre você. Para deletar permanentemente, use DELETE /users/me.',
+    };
+  }
+
+  @Delete('me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar minha conta permanentemente (LGPD/GDPR)' })
+  async deleteMe(@CurrentUser() user: User) {
+    // Soft delete: anonimiza ao invés de remover (preserva integridade de atividades em grupos)
+    return this.usersService.anonymizeUser(user.id);
+  }
+
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

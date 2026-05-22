@@ -2,6 +2,7 @@
 // Separado do chat para isolar reconnects e não competir por bandwidth.
 import { io, Socket } from 'socket.io-client';
 import { API_HOST } from './api';
+import { secureStorage } from './secure-storage';
 
 const TRACKING_URL = `${API_HOST}/tracking`;
 
@@ -17,6 +18,15 @@ export type LivePoint = {
 
 class TrackingSocketService {
   private socket: Socket | null = null;
+  private token: string | null = null;
+
+  private async loadToken(): Promise<string | null> {
+    if (this.token) return this.token;
+    try {
+      this.token = await secureStorage.getItem('@sync:token');
+    } catch {}
+    return this.token;
+  }
 
   connect(): Socket {
     if (this.socket?.connected) return this.socket;
@@ -31,6 +41,11 @@ class TrackingSocketService {
       reconnectionDelay: 1000,
       reconnectionDelayMax: 8000,
       timeout: 10000,
+      auth: (cb) => {
+        // Lê token do SecureStore (assíncrono) e envia no handshake.
+        // Backend valida JWT pra autorizar envio de pontos.
+        this.loadToken().then((t) => cb(t ? { token: t } : {}));
+      },
     });
     return this.socket;
   }

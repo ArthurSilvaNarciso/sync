@@ -11,6 +11,7 @@ import { haversineMeters } from '../common/utils/haversine';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../notifications/push.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
+import { sanitizeText } from '../common/security/sanitize.util';
 
 @Injectable()
 export class ActivitiesService {
@@ -31,12 +32,12 @@ export class ActivitiesService {
   async addComment(activityId: string, userId: string, content: string): Promise<ActivityComment> {
     const activity = await this.activityRepository.findOne({ where: { id: activityId }, relations: ['user'] });
     if (!activity) throw new NotFoundException('Atividade não encontrada');
-    const trimmed = content?.trim();
-    if (!trimmed || trimmed.length > 500) {
-      throw new BadRequestException('Comentário inválido (1-500 chars)');
+    const clean = sanitizeText(content, 500);
+    if (!clean) {
+      throw new BadRequestException('Comentário inválido');
     }
     const saved = await this.commentRepository.save(
-      this.commentRepository.create({ activity_id: activityId, user_id: userId, content: trimmed }),
+      this.commentRepository.create({ activity_id: activityId, user_id: userId, content: clean }),
     );
 
     // Notifica dono da atividade (se não foi ele próprio que comentou)
@@ -276,11 +277,14 @@ export class ActivitiesService {
     if (!activity) throw new NotFoundException('Atividade não encontrada');
     if (activity.isCompleted) throw new BadRequestException('Atividade já finalizada');
 
-    const token = activity.liveToken || this.randomToken(16);
-    if (!activity.liveToken) {
-      await this.activityRepository.update(activityId, { liveToken: token });
-    }
-    return { liveToken: token, url: `/live/${token}` };
+    const token = activity.liveToken || this.randomToken(24);
+    // Expira em 24h
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    await this.activityRepository.update(activityId, {
+      liveToken: token,
+      liveTokenExpiresAt: expiresAt,
+    });
+    return { liveToken: token, url: `/live/${token}`, expiresAt };
   }
 
   // Revoga compartilhamento
@@ -289,16 +293,28 @@ export class ActivitiesService {
       where: { id: activityId, user_id: userId },
     });
     if (!activity) throw new NotFoundException('Atividade não encontrada');
-    await this.activityRepository.update(activityId, { liveToken: null });
+    await this.activityRepository.update(activityId, { liveToken: null, liveTokenExpiresAt: null });
   }
 
-  // Busca atividade ao vivo por token (rota pública)
+  // Busca atividade ao vivo por token (rota pública) — valida expiração
   async getLiveByToken(token: string) {
     const activity = await this.activityRepository.findOne({
       where: { liveToken: token },
       relations: ['user', 'points'],
     });
     if (!activity) throw new NotFoundException('Live não encontrado');
+    // Expirado?
+    if (activity.liveTokenExpiresAt && activity.liveTokenExpiresAt < new Date()) {
+      // Auto-revoga
+      await this.activityRepository.update(activity.id, { liveToken: null, liveTokenExpiresAt: null });
+      throw new NotFoundException('Live expirou');
+    }
+    // Auto-revoga se atividade finalizou há mais de 30 min
+    if (activity.isCompleted && activity.endTime &&
+        Date.now() - new Date(activity.endTime).getTime() > 30 * 60 * 1000) {
+      await this.activityRepository.update(activity.id, { liveToken: null, liveTokenExpiresAt: null });
+      throw new NotFoundException('Live expirou');
+    }
     activity.points.sort(
       (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime(),
     );
@@ -320,6 +336,11 @@ export class ActivitiesService {
   }
 
   private randomToken(len: number): string {
+    // Crypto-secure: usa crypto.randomBytes (lazy require pra evitar import top-level)
+    try {
+      const crypto = require('crypto');
+      return crypto.randomBytes(len).toString('hex').slice(0, len * 2);
+    } catch {}
     const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
     let s = '';
     for (let i = 0; i < len; i++) s += chars[Math.floor(Math.random() * chars.length)];

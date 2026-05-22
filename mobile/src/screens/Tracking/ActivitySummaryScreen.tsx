@@ -20,6 +20,9 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
+import { feedApi } from '../../services/feed.service';
+import { generateWorkoutSummary } from '../../utils/workout-summary';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<TrackingStackParamList, 'ActivitySummary'>;
@@ -29,6 +32,8 @@ type Props = {
 export default function ActivitySummaryScreen({ navigation, route }: Props) {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
+  const [posting, setPosting] = useState(false);
+  const [posted, setPosted] = useState(false);
 
   useEffect(() => {
     loadActivity();
@@ -254,8 +259,56 @@ ${points}
           </View>
         </View>
 
+        {/* Resumo natural */}
+        <View style={styles.summaryBox}>
+          <Ionicons name="sparkles" size={16} color={colors.dark.accent} />
+          <Text style={styles.summaryText}>
+            {generateWorkoutSummary({
+              distanceKm: activity.distance / 1000,
+              durationMinutes: activity.duration / 60,
+              avgPaceMinPerKm: activity.avgPace || 0,
+              calories: Math.round((activity.distance / 1000) * 60),
+              sport: activity.sport,
+            })}
+          </Text>
+        </View>
+
         {/* Action buttons */}
         <View style={styles.actions}>
+          {!posted && (
+            <Button
+              title={posting ? 'Publicando…' : '📢 Postar no feed'}
+              loading={posting}
+              onPress={async () => {
+                if (!activity || posting) return;
+                setPosting(true);
+                try {
+                  await feedApi.publish({
+                    activityId: activity.id,
+                    caption: `Mais um treino no Sync! 🔥`,
+                    distanceKm: activity.distance / 1000,
+                    durationSeconds: activity.duration,
+                    avgPace: activity.avgPace,
+                    calories: Math.round((activity.distance / 1000) * 60),
+                    sport: activity.sport,
+                  });
+                  setPosted(true);
+                  showToast('Publicado no feed! 🎉', 'success');
+                } catch (e: any) {
+                  showToast(e?.response?.data?.message || 'Erro ao publicar', 'error');
+                } finally {
+                  setPosting(false);
+                }
+              }}
+              style={styles.actionBtn}
+            />
+          )}
+          {posted && (
+            <View style={[styles.exportBtn, { borderColor: '#22C55E' }]}>
+              <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
+              <Text style={[styles.exportBtnText, { color: '#22C55E' }]}>Publicado no feed</Text>
+            </View>
+          )}
           {activity.points && activity.points.length > 0 && (
             <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
               <Ionicons name="download-outline" size={18} color={colors.dark.accent} />
@@ -264,6 +317,7 @@ ${points}
           )}
           <Button
             title="Voltar ao inicio"
+            variant="outline"
             onPress={() => navigation.popToTop()}
             style={styles.actionBtn}
           />
@@ -411,6 +465,24 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.dark.secondaryText,
     textTransform: 'uppercase',
+  },
+  summaryBox: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginTop: spacing.md,
+    padding: spacing.md,
+    borderRadius: borderRadius.md,
+    backgroundColor: 'rgba(255,107,53,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.25)',
+  },
+  summaryText: {
+    flex: 1,
+    color: colors.dark.text,
+    fontSize: fontSize.sm,
+    lineHeight: 20,
   },
   actions: {
     paddingHorizontal: spacing.lg,

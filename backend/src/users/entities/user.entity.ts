@@ -80,6 +80,26 @@ export class User {
   @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true, select: false })
   resetPasswordExpires: Date | null;
 
+  // Account lockout / brute-force defense
+  @Column({ default: 0, select: false })
+  failedLoginAttempts: number;
+
+  @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true, select: false })
+  lockedUntil: Date | null;
+
+  @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true, select: false })
+  lastLoginAt: Date | null;
+
+  @Column({ nullable: true, select: false })
+  lastLoginIp: string | null;
+
+  // 2FA TOTP secret (opcional)
+  @Column({ nullable: true, select: false, type: 'varchar' })
+  twoFactorSecret: string | null;
+
+  @Column({ default: false })
+  twoFactorEnabled: boolean;
+
   @CreateDateColumn()
   createdAt: Date;
 
