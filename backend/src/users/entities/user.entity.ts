@@ -37,10 +37,10 @@ export class User {
   @Column({ type: 'text', nullable: true })
   bio: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   avatarUrl: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   birthDate: string | null;
 
   // Array de esportes praticados, armazenado como string separada por virgula
@@ -65,7 +65,7 @@ export class User {
   @Column({ type: 'real', nullable: true })
   longitude: number | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'varchar', nullable: true })
   city: string | null;
 
   @Column({ default: true })
