@@ -55,12 +55,19 @@ export class SeedController {
   @Post('seed-demo')
   @ApiOperation({ summary: 'Popula DB com 20 usuários fake + atividades. Idempotente.' })
   async seed(@Headers('x-seed-token') token: string) {
-    // Em prod exige SEED_TOKEN; em dev permite sempre
-    if (process.env.NODE_ENV === 'production') {
+    // Anti-abuso: bloqueia se já populou (20 demo users existem) — exige token pra re-rodar
+    const existingCount = await this.userRepo
+      .createQueryBuilder('u')
+      .where('u.email LIKE :p', { p: '%@demo.sync' })
+      .getCount();
+
+    if (existingCount >= FAKE_USERS.length) {
+      // Já populou: exige SEED_TOKEN pra fazer qualquer coisa
       if (!process.env.SEED_TOKEN || token !== process.env.SEED_TOKEN) {
-        throw new ForbiddenException('SEED_TOKEN inválido');
+        throw new ForbiddenException('Demo já populado. Use SEED_TOKEN pra re-rodar.');
       }
     }
+    // Caso contrário: liberado (primeira execução em prod)
 
     const hashedPassword = await bcrypt.hash('demo1234', 10);
     let created = 0;
