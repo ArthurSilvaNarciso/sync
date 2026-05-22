@@ -7,8 +7,10 @@ import {
   Body,
   Param,
   Query,
+  Res,
   UseGuards,
 } from '@nestjs/common';
+import { Response } from 'express';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ActivitiesService } from './activities.service';
 import { CreateActivityDto } from './dto/create-activity.dto';
@@ -129,5 +131,37 @@ export class ActivitiesController {
   @ApiOperation({ summary: 'Total de kudos' })
   kudosCount(@Param('id') id: string) {
     return this.activitiesService.getKudosCount(id).then((total) => ({ total }));
+  }
+
+  // === EXPORT GPX ===
+  @Get(':id/export.gpx')
+  @ApiOperation({ summary: 'Exportar atividade como GPX (compatível Strava, Garmin Connect)' })
+  async exportGpx(@Param('id') id: string, @Res() res: Response) {
+    const detail = await this.activitiesService.getActivityDetail(id);
+    if (!detail) return res.status(404).send('Activity not found');
+    const gpx = this.buildGpx(detail);
+    res.setHeader('Content-Type', 'application/gpx+xml');
+    res.setHeader('Content-Disposition', `attachment; filename="sync-${id}.gpx"`);
+    return res.send(gpx);
+  }
+
+  private buildGpx(activity: any): string {
+    const points = (activity.points || []).map((p: any) => {
+      const time = new Date(p.timestamp || p.createdAt || Date.now()).toISOString();
+      const ele = p.altitude != null ? `<ele>${p.altitude}</ele>` : '';
+      return `      <trkpt lat="${p.latitude}" lon="${p.longitude}">${ele}<time>${time}</time></trkpt>`;
+    }).join('\n');
+    const name = activity.sport ? `Sync ${activity.sport}` : 'Sync activity';
+    const startedAt = new Date(activity.startedAt || activity.createdAt || Date.now()).toISOString();
+    return `<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="Sync" xmlns="http://www.topografix.com/GPX/1/1">
+  <metadata><time>${startedAt}</time></metadata>
+  <trk>
+    <name>${name}</name>
+    <trkseg>
+${points}
+    </trkseg>
+  </trk>
+</gpx>`;
   }
 }
