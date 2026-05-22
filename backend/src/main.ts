@@ -1,9 +1,12 @@
 import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
-import * as basicAuth from 'express-basic-auth';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+
+// Lazy require — pkg pode não estar instalado em dev/local
+let basicAuth: any;
+try { basicAuth = require('express-basic-auth'); } catch {}
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
@@ -111,7 +114,7 @@ async function bootstrap() {
 
   // ===== SWAGGER — protegido em prod =====
   if (!isProd || process.env.SWAGGER_USER) {
-    if (isProd && process.env.SWAGGER_USER && process.env.SWAGGER_PASS) {
+    if (isProd && process.env.SWAGGER_USER && process.env.SWAGGER_PASS && basicAuth) {
       app.use(
         ['/api/docs', '/api/docs-json'],
         basicAuth({

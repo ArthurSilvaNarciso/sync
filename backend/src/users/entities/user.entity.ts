@@ -35,38 +35,38 @@ export class User {
   password: string;
 
   @Column({ type: 'text', nullable: true })
-  bio: string;
+  bio: string | null;
 
   @Column({ nullable: true })
-  avatarUrl: string;
+  avatarUrl: string | null;
 
   @Column({ nullable: true })
-  birthDate: string;
+  birthDate: string | null;
 
   // Array de esportes praticados, armazenado como string separada por virgula
   @Column({ type: 'simple-array', nullable: true })
-  sports: string[];
+  sports: string[] | null;
 
   @Column({ type: 'varchar', default: SportLevel.BEGINNER })
   level: SportLevel;
 
   // Objetivos armazenados como string separada por virgula
   @Column({ type: 'simple-array', nullable: true })
-  objectives: string[];
+  objectives: string[] | null;
 
   // Disponibilidade armazenada como string separada por virgula
   @Column({ type: 'simple-array', nullable: true })
-  availability: string[];
+  availability: string[] | null;
 
   // Geolocalizacao
   @Column({ type: 'real', nullable: true })
-  latitude: number;
+  latitude: number | null;
 
   @Column({ type: 'real', nullable: true })
-  longitude: number;
+  longitude: number | null;
 
   @Column({ nullable: true })
-  city: string;
+  city: string | null;
 
   @Column({ default: true })
   isActive: boolean;
