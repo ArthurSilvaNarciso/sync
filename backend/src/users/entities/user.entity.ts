@@ -90,7 +90,7 @@ export class User {
   @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true, select: false })
   lastLoginAt: Date | null;
 
-  @Column({ nullable: true, select: false })
+  @Column({ type: 'varchar', nullable: true, select: false })
   lastLoginIp: string | null;
 
   // 2FA TOTP secret (opcional)
