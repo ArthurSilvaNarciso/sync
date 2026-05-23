@@ -24,6 +24,9 @@ import { SecurityModule } from './common/security/security.module';
 import { SeedModule } from './common/seed/seed.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { FeedbackModule } from './feedback/feedback.module';
+import { FollowsModule } from './follows/follows.module';
+import { SegmentsModule } from './segments/segments.module';
+import { CoachModule } from './coach/coach.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -65,6 +68,9 @@ import { HealthController } from './health.controller';
     SeedModule,
     SubscriptionsModule,
     FeedbackModule,
+    FollowsModule,
+    SegmentsModule,
+    CoachModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

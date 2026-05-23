@@ -59,6 +59,18 @@ export class Activity {
   @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true })
   liveTokenExpiresAt: Date | null;
 
+  // Fotos do treino (CSV de URLs) — máx 5
+  @Column({ type: 'simple-array', nullable: true })
+  photoUrls: string[] | null;
+
+  // Caption do treino quando posta no feed
+  @Column({ type: 'text', nullable: true })
+  caption: string | null;
+
+  // Cheers recebidos durante live tracking
+  @Column({ default: 0 })
+  cheersCount: number;
+
   @OneToMany(() => ActivityPoint, (point) => point.activity)
   points: ActivityPoint[];
 

@@ -97,6 +97,23 @@ export class AuthController {
     return { ok: true, message: 'Senha alterada com sucesso' };
   }
 
+  @Post('google')
+  @Throttle({ default: { ttl: 60_000, limit: 10 } })
+  @ApiOperation({ summary: 'Login/registro via Google OAuth (idToken do Google Sign-In)' })
+  async google(@Body() body: { idToken: string }, @Req() req: Request) {
+    // Stub: precisa configurar GOOGLE_CLIENT_ID e implementar verificação real
+    // do idToken via google-auth-library. Aqui retorna instrução clara.
+    if (!process.env.GOOGLE_CLIENT_ID) {
+      return {
+        error: 'oauth_not_configured',
+        message: 'Google OAuth não configurado. Setar GOOGLE_CLIENT_ID + GOOGLE_CLIENT_SECRET no Railway.',
+        howTo: 'https://console.cloud.google.com/apis/credentials → criar OAuth 2.0 Client ID web + mobile',
+      };
+    }
+    // TODO: implementar com google-auth-library
+    return { error: 'not_implemented' };
+  }
+
   @Post('refresh')
   @Throttle({ default: { ttl: 60_000, limit: 30 } })
   @ApiOperation({ summary: 'Trocar refresh por novo par (access + refresh)' })

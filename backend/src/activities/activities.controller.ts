@@ -154,6 +154,36 @@ export class ActivitiesController {
     return this.activitiesService.getRating(id, user.id);
   }
 
+  // === LIVE CHEER ===
+  @Post('live/:token/cheer')
+  @ApiOperation({ summary: '"Vai!" — incrementa contador de cheers da live activity' })
+  async cheer(@Param('token') token: string) {
+    const activity = await this.activitiesService.getLiveByToken(token);
+    return this.activitiesService.addCheer(activity.activityId);
+  }
+
+  // === COMPARE 2 activities ===
+  @Get('compare/:a1/:a2')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Comparar 2 atividades lado-a-lado' })
+  compare(@CurrentUser() user: User, @Param('a1') a1: string, @Param('a2') a2: string) {
+    return this.activitiesService.compare(a1, a2, user.id);
+  }
+
+  // === ADD PHOTO to activity ===
+  @Post(':id/photo')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Adicionar URL de foto à atividade (max 5)' })
+  addPhoto(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { photoUrl: string },
+  ) {
+    return this.activitiesService.addPhoto(id, user.id, body.photoUrl);
+  }
+
   // === HEATMAP ===
   @Get('heatmap/nearby')
   @ApiOperation({ summary: 'Heatmap de pontos GPS próximos (rotas populares)' })

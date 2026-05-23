@@ -223,6 +223,51 @@ export class ActivitiesService {
     });
   }
 
+  // === LIVE CHEER === (alguém apertou "Vai!" durante seu live tracking)
+  async addCheer(activityId: string) {
+    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Atividade não encontrada');
+    if (!activity.liveToken) throw new BadRequestException('Atividade não está sendo transmitida ao vivo');
+    await this.activityRepository.increment({ id: activityId }, 'cheersCount', 1);
+    return { ok: true, cheersCount: activity.cheersCount + 1 };
+  }
+
+  // === COMPARAR 2 atividades lado-a-lado ===
+  async compare(activity1Id: string, activity2Id: string, userId: string) {
+    const [a1, a2] = await Promise.all([
+      this.activityRepository.findOne({ where: { id: activity1Id } }),
+      this.activityRepository.findOne({ where: { id: activity2Id } }),
+    ]);
+    if (!a1 || !a2) throw new NotFoundException('Uma das atividades não foi encontrada');
+    if (a1.user_id !== userId && a2.user_id !== userId) {
+      throw new BadRequestException('Você só pode comparar suas próprias atividades');
+    }
+    const km1 = (a1.distance || 0) / 1000;
+    const km2 = (a2.distance || 0) / 1000;
+    return {
+      a1: { id: a1.id, sport: a1.sport, startTime: a1.startTime, distanceKm: km1, durationSec: a1.duration, avgPace: a1.avgPace, avgSpeed: a1.avgSpeed },
+      a2: { id: a2.id, sport: a2.sport, startTime: a2.startTime, distanceKm: km2, durationSec: a2.duration, avgPace: a2.avgPace, avgSpeed: a2.avgSpeed },
+      delta: {
+        distanceKm: Math.round((km1 - km2) * 100) / 100,
+        durationSec: a1.duration - a2.duration,
+        avgPace: a1.avgPace != null && a2.avgPace != null ? Math.round((a1.avgPace - a2.avgPace) * 100) / 100 : null,
+        winner: a1.avgPace != null && a2.avgPace != null ? (a1.avgPace < a2.avgPace ? 'a1' : 'a2') : null,
+      },
+    };
+  }
+
+  // === PHOTOS na atividade ===
+  async addPhoto(activityId: string, userId: string, photoUrl: string) {
+    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Atividade não encontrada');
+    if (activity.user_id !== userId) throw new BadRequestException('Sem permissão');
+    const photos = activity.photoUrls || [];
+    if (photos.length >= 5) throw new BadRequestException('Máximo 5 fotos por atividade');
+    photos.push(photoUrl);
+    await this.activityRepository.update(activityId, { photoUrls: photos });
+    return { ok: true, photoUrls: photos };
+  }
+
   // === ACTIVITY RATING (pós-treino) ===
   async upsertRating(activityId: string, userId: string, data: any) {
     const activity = await this.activityRepository.findOne({ where: { id: activityId } });

@@ -79,6 +79,33 @@ export class SubscriptionsController {
     };
   }
 
+  @Post('stripe/webhook')
+  @ApiOperation({ summary: 'Webhook Stripe (stub — precisa STRIPE_SECRET_KEY)' })
+  async stripeWebhook(@Body() body: any) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return {
+        error: 'stripe_not_configured',
+        message: 'Stripe não configurado. Setar STRIPE_SECRET_KEY + STRIPE_WEBHOOK_SECRET no Railway.',
+        howTo: 'https://dashboard.stripe.com/test/apikeys',
+      };
+    }
+    // TODO: verify signature + handle checkout.session.completed
+    return { received: true };
+  }
+
+  @Post('stripe/checkout')
+  @ApiOperation({ summary: 'Criar Stripe Checkout Session (stub)' })
+  async stripeCheckout(@Body() body: { tier: 'premium' | 'atleta_pro' }) {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return {
+        error: 'stripe_not_configured',
+        message: 'Stripe não configurado. Use /upgrade (mock) por enquanto.',
+      };
+    }
+    // TODO: criar checkout session real
+    return { error: 'not_implemented' };
+  }
+
   @Post('cancel')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
