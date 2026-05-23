@@ -1,409 +1,238 @@
-import React, { useState, useEffect } from 'react';
+// Tela de configurações — surface sessões, LGPD, conta, notificações, plano
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  TouchableOpacity,
-  Alert,
-  Switch,
   ScrollView,
+  TouchableOpacity,
   Platform,
+  Switch,
+  Alert,
   Linking,
 } from 'react-native';
-import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ProfileStackParamList } from '../../navigation/types';
-import { useAuthStore } from '../../store/authStore';
-import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
+import { showToast } from '../../components/ui/Toast';
 
-type Props = {
-  navigation: NativeStackNavigationProp<ProfileStackParamList, 'Settings'>;
-};
+interface Session {
+  familyId: string;
+  userAgent: string | null;
+  ipMasked: string | null;
+  createdAt: string;
+}
 
-export default function SettingsScreen({ navigation }: Props) {
-  const { logout } = useAuthStore();
-  const [notifications, setNotifications] = useState({
-    matches: true,
-    messages: true,
-    events: true,
-    weeklyReport: true,
-  });
-  const [privacy, setPrivacy] = useState({
-    profileVisible: true,
-    shareLocation: true,
-    showDistance: true,
-    showOnlineStatus: true,
-  });
-  const [savingNotif, setSavingNotif] = useState(false);
-  const [savingPrivacy, setSavingPrivacy] = useState(false);
+export default function SettingsScreen({ navigation }: any) {
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [plan, setPlan] = useState<any>(null);
+  const [pushOn, setPushOn] = useState(true);
+  const [emailOn, setEmailOn] = useState(true);
 
-  const saveNotificationSettings = async (key: string, value: boolean) => {
-    const newSettings = { ...notifications, [key]: value };
-    setNotifications(newSettings);
-    setSavingNotif(true);
+  useEffect(() => {
+    api.get('/auth/sessions').then((r) => setSessions(r.data || [])).catch(() => {});
+    api.get('/subscriptions/me').then((r) => setPlan(r.data)).catch(() => {});
+  }, []);
+
+  const handleRevokeSession = async (familyId: string) => {
     try {
-      await api.put('/users/settings/notifications', newSettings);
-    } catch (error) {
-      console.log('Error saving notification settings:', error);
-    } finally {
-      setSavingNotif(false);
+      await api.delete(`/auth/sessions/${familyId}`);
+      setSessions((s) => s.filter((x) => x.familyId !== familyId));
+      showToast('Sessão revogada', 'success');
+    } catch {
+      showToast('Erro ao revogar sessão', 'error');
     }
   };
 
-  const savePrivacySettings = async (key: string, value: boolean) => {
-    const newSettings = { ...privacy, [key]: value };
-    setPrivacy(newSettings);
-    setSavingPrivacy(true);
+  const handleExportData = async () => {
     try {
-      await api.put('/users/settings/privacy', newSettings);
-    } catch (error) {
-      console.log('Error saving privacy settings:', error);
-    } finally {
-      setSavingPrivacy(false);
+      const { data } = await api.get('/users/me/export');
+      const json = JSON.stringify(data, null, 2);
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const blob = new Blob([json], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `sync-meus-dados-${Date.now()}.json`;
+        a.click();
+        URL.revokeObjectURL(url);
+        showToast('Dados exportados!', 'success');
+      } else {
+        showToast('Em mobile: copie do log', 'info');
+        console.log(json);
+      }
+    } catch {
+      showToast('Erro ao exportar', 'error');
     }
-  };
-
-  const handleChangePassword = () => {
-    Alert.prompt?.(
-      'Alterar senha',
-      'Digite sua nova senha',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Alterar',
-          onPress: async (newPassword) => {
-            if (!newPassword || newPassword.length < 6) {
-              Alert.alert('Erro', 'A senha deve ter pelo menos 6 caracteres');
-              return;
-            }
-            try {
-              await api.put('/auth/change-password', { newPassword });
-              Alert.alert('Sucesso', 'Senha alterada com sucesso');
-            } catch {
-              Alert.alert('Erro', 'Nao foi possivel alterar a senha');
-            }
-          },
-        },
-      ],
-      'secure-text',
-    ) || Alert.alert('Alterar senha', 'Funcionalidade disponivel em breve');
-  };
-
-  const handleTerms = () => {
-    Alert.alert(
-      'Termos e LGPD',
-      'O Sync respeita sua privacidade e segue a Lei Geral de Protecao de Dados (LGPD).\n\nSeus dados sao armazenados de forma segura e voce pode solicitar exclusao a qualquer momento.\n\nPara mais informacoes, entre em contato com nosso suporte.',
-      [
-        { text: 'OK' },
-        { text: 'Contatar suporte', onPress: () => Linking.openURL('mailto:suporte@sync-app.com') },
-      ],
-    );
-  };
-
-  const handleReport = () => {
-    Alert.alert(
-      'Denunciar problema',
-      'Selecione o tipo de problema:',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Bug no app', onPress: () => Alert.alert('Obrigado!', 'Recebemos sua denuncia de bug. Nossa equipe ira analisar.') },
-        { text: 'Conteudo impróprio', onPress: () => Alert.alert('Obrigado!', 'Iremos investigar o conteudo reportado.') },
-        { text: 'Assedio', onPress: () => Alert.alert('Recebido', 'Levamos isso muito a serio. Iremos investigar imediatamente.') },
-        { text: 'Outro', onPress: () => Linking.openURL('mailto:suporte@sync-app.com?subject=Denuncia') },
-      ],
-    );
-  };
-
-  const handleClearCache = () => {
-    Alert.alert(
-      'Limpar cache',
-      'Isso ira limpar dados temporarios do app. Voce nao perdera seus dados de conta.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', onPress: () => Alert.alert('Cache limpo', 'Dados temporarios foram removidos.') },
-      ],
-    );
-  };
-
-  const handleLogout = () => {
-    Alert.alert('Sair', 'Tem certeza que deseja sair?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: logout,
-      },
-    ]);
   };
 
   const handleDeleteAccount = () => {
     Alert.alert(
-      'Excluir conta',
-      'Esta acao e irreversivel. Todos os seus dados serao apagados permanentemente.',
+      'Apagar conta?',
+      'Sua conta será anonimizada. Atividades públicas preservadas com nome anônimo. Irreversível.',
       [
         { text: 'Cancelar', style: 'cancel' },
         {
-          text: 'Excluir permanentemente',
+          text: 'Apagar',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert(
-              'Confirmar exclusao',
-              'Tem certeza absoluta? Esta acao NAO pode ser desfeita.',
-              [
-                { text: 'Cancelar', style: 'cancel' },
-                {
-                  text: 'Sim, excluir',
-                  style: 'destructive',
-                  onPress: async () => {
-                    try {
-                      await api.delete('/users/me');
-                      logout();
-                    } catch {
-                      Alert.alert('Erro', 'Nao foi possivel excluir a conta. Tente novamente.');
-                    }
-                  },
-                },
-              ],
-            );
+          onPress: async () => {
+            try {
+              await api.delete('/users/me');
+              showToast('Conta anonimizada', 'success');
+              await logout();
+            } catch {
+              showToast('Erro ao apagar', 'error');
+            }
           },
         },
       ],
     );
   };
 
+  const handleUpgrade = async () => {
+    try {
+      const { data } = await api.post('/subscriptions/upgrade', { tier: 'premium' });
+      showToast(data.message || 'Upgrade!', 'success');
+      const { data: meData } = await api.get('/subscriptions/me');
+      setPlan(meData);
+    } catch {
+      showToast('Erro no upgrade', 'error');
+    }
+  };
+
+  const Row = ({ icon, label, value, onPress, danger, color = '#FF6B35', right }: any) => (
+    <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.6 : 1}>
+      <View style={[styles.rowIcon, { backgroundColor: color + '22' }]}>
+        <Ionicons name={icon} size={18} color={color} />
+      </View>
+      <Text style={[styles.rowLabel, danger && { color: '#F87171' }]}>{label}</Text>
+      {right || (
+        <>
+          {value !== undefined && <Text style={styles.rowValue} numberOfLines={1}>{value}</Text>}
+          {onPress && <Ionicons name="chevron-forward" size={16} color={colors.dark.secondaryText} />}
+        </>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
       <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
+        <TouchableOpacity onPress={() => navigation?.goBack?.()}>
+          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
         </TouchableOpacity>
-        <Text style={styles.title}>Configuracoes</Text>
-        <View style={{ width: 40 }} />
+        <Text style={styles.title}>Configurações</Text>
+        <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Privacy */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Privacidade</Text>
-          <View style={styles.card}>
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="eye-outline" size={20} color={colors.primary} />
-                <View style={styles.itemTextWrap}>
-                  <Text style={styles.itemLabel}>Perfil visivel</Text>
-                  <Text style={styles.itemDesc}>Aparecer nas buscas de outros usuarios</Text>
-                </View>
-              </View>
-              <Switch
-                value={privacy.profileVisible}
-                onValueChange={(v) => savePrivacySettings('profileVisible', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={privacy.profileVisible ? colors.primary : colors.secondaryText}
-              />
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="location-outline" size={20} color={colors.primary} />
-                <View style={styles.itemTextWrap}>
-                  <Text style={styles.itemLabel}>Compartilhar localizacao</Text>
-                  <Text style={styles.itemDesc}>Permitir que outros vejam sua area</Text>
-                </View>
-              </View>
-              <Switch
-                value={privacy.shareLocation}
-                onValueChange={(v) => savePrivacySettings('shareLocation', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={privacy.shareLocation ? colors.primary : colors.secondaryText}
-              />
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="navigate-outline" size={20} color={colors.primary} />
-                <View style={styles.itemTextWrap}>
-                  <Text style={styles.itemLabel}>Mostrar distancia</Text>
-                  <Text style={styles.itemDesc}>Exibir distancia no seu perfil</Text>
-                </View>
-              </View>
-              <Switch
-                value={privacy.showDistance}
-                onValueChange={(v) => savePrivacySettings('showDistance', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={privacy.showDistance ? colors.primary : colors.secondaryText}
-              />
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="ellipse" size={12} color={colors.success} style={{ marginLeft: 4, marginRight: 4 }} />
-                <View style={styles.itemTextWrap}>
-                  <Text style={styles.itemLabel}>Status online</Text>
-                  <Text style={styles.itemDesc}>Mostrar quando voce esta ativo</Text>
-                </View>
-              </View>
-              <Switch
-                value={privacy.showOnlineStatus}
-                onValueChange={(v) => savePrivacySettings('showOnlineStatus', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={privacy.showOnlineStatus ? colors.primary : colors.secondaryText}
-              />
-            </View>
-          </View>
-        </View>
+      <Text style={styles.sectionTitle}>CONTA</Text>
+      <View style={styles.section}>
+        <Row icon="person-outline" label="Nome" value={user?.name} />
+        <Row icon="mail-outline" label="Email" value={user?.email} />
+        <Row icon="create-outline" label="Editar perfil" onPress={() => navigation?.navigate?.('EditProfile')} />
+        <Row icon="lock-closed-outline" label="Alterar senha" onPress={() => showToast('Em breve', 'info')} />
+      </View>
 
-        {/* Notifications */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Notificacoes</Text>
-          <View style={styles.card}>
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="heart-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Matches</Text>
-              </View>
-              <Switch
-                value={notifications.matches}
-                onValueChange={(v) => saveNotificationSettings('matches', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={notifications.matches ? colors.primary : colors.secondaryText}
-              />
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="chatbubble-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Mensagens</Text>
-              </View>
-              <Switch
-                value={notifications.messages}
-                onValueChange={(v) => saveNotificationSettings('messages', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={notifications.messages ? colors.primary : colors.secondaryText}
-              />
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="calendar-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Eventos</Text>
-              </View>
-              <Switch
-                value={notifications.events}
-                onValueChange={(v) => saveNotificationSettings('events', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={notifications.events ? colors.primary : colors.secondaryText}
-              />
-            </View>
-            <View style={styles.divider} />
-            <View style={styles.switchItem}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="bar-chart-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Relatorio semanal</Text>
-              </View>
-              <Switch
-                value={notifications.weeklyReport}
-                onValueChange={(v) => saveNotificationSettings('weeklyReport', v)}
-                trackColor={{ false: colors.border, true: colors.primary + '60' }}
-                thumbColor={notifications.weeklyReport ? colors.primary : colors.secondaryText}
-              />
-            </View>
-          </View>
-        </View>
-
-        {/* Security */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Seguranca</Text>
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.linkItem} onPress={handleChangePassword}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="lock-closed-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Alterar senha</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity style={styles.linkItem} onPress={handleTerms}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="shield-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Termos e LGPD</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity style={styles.linkItem} onPress={handleReport}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="flag-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Denunciar problema</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* About */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Sobre</Text>
-          <View style={styles.card}>
-            <TouchableOpacity style={styles.linkItem} onPress={handleClearCache}>
-              <View style={styles.itemLeft}>
-                <Ionicons name="trash-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Limpar cache</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity
-              style={styles.linkItem}
-              onPress={() => Linking.openURL('mailto:suporte@sync-app.com')}
-            >
-              <View style={styles.itemLeft}>
-                <Ionicons name="mail-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Contatar suporte</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-            </TouchableOpacity>
-            <View style={styles.divider} />
-            <TouchableOpacity
-              style={styles.linkItem}
-              onPress={() => Alert.alert('Avaliar', 'Obrigado! Redirecionando para a loja...')}
-            >
-              <View style={styles.itemLeft}>
-                <Ionicons name="star-outline" size={20} color={colors.primary} />
-                <Text style={styles.itemLabel}>Avaliar o app</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Account actions */}
-        <View style={styles.section}>
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
-            <Ionicons name="log-out-outline" size={20} color={colors.error} />
-            <Text style={styles.logoutText}>Sair da conta</Text>
+      <Text style={styles.sectionTitle}>PLANO</Text>
+      <View style={styles.section}>
+        <Row
+          icon="star"
+          label={plan?.plan?.name || 'Free'}
+          value={plan?.plan?.price === 0 ? 'Grátis' : `R$ ${plan?.plan?.price}/mês`}
+          color="#FCD34D"
+        />
+        {plan?.currentTier === 'free' && (
+          <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgrade}>
+            <Text style={styles.upgradeBtnText}>⭐ Upgrade pra Premium (R$ 19/mês)</Text>
           </TouchableOpacity>
+        )}
+      </View>
 
-          <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteAccount}>
-            <Text style={styles.deleteText}>Excluir conta permanentemente</Text>
-          </TouchableOpacity>
-        </View>
+      <Text style={styles.sectionTitle}>NOTIFICAÇÕES</Text>
+      <View style={styles.section}>
+        <Row
+          icon="notifications"
+          label="Push notifications"
+          right={
+            <Switch
+              value={pushOn}
+              onValueChange={setPushOn}
+              trackColor={{ false: '#3A3A3F', true: '#FF6B35' }}
+              thumbColor="#fff"
+            />
+          }
+        />
+        <Row
+          icon="mail"
+          label="Notificações por email"
+          color="#3B82F6"
+          right={
+            <Switch
+              value={emailOn}
+              onValueChange={setEmailOn}
+              trackColor={{ false: '#3A3A3F', true: '#3B82F6' }}
+              thumbColor="#fff"
+            />
+          }
+        />
+      </View>
 
-        <Text style={styles.version}>Sync v1.0.0 (Build 1)</Text>
-        <View style={{ height: spacing.xxl }} />
-      </ScrollView>
-    </View>
+      <Text style={styles.sectionTitle}>SESSÕES ATIVAS</Text>
+      <View style={styles.section}>
+        {sessions.length === 0 ? (
+          <Text style={styles.emptyText}>Apenas esta sessão ativa.</Text>
+        ) : (
+          sessions.map((s) => (
+            <View key={s.familyId} style={styles.row}>
+              <View style={[styles.rowIcon, { backgroundColor: 'rgba(168,139,250,0.22)' }]}>
+                <Ionicons name="phone-portrait" size={18} color="#A78BFA" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowLabel} numberOfLines={1}>
+                  {(s.userAgent || 'Device').split('/')[0]} • {s.ipMasked || '—'}
+                </Text>
+                <Text style={styles.rowSub}>
+                  Desde {new Date(s.createdAt).toLocaleDateString('pt-BR')}
+                </Text>
+              </View>
+              <TouchableOpacity onPress={() => handleRevokeSession(s.familyId)}>
+                <Text style={styles.revokeText}>Revogar</Text>
+              </TouchableOpacity>
+            </View>
+          ))
+        )}
+      </View>
+
+      <Text style={styles.sectionTitle}>PRIVACIDADE & LGPD</Text>
+      <View style={styles.section}>
+        <Row icon="download-outline" label="Exportar meus dados" onPress={handleExportData} color="#10B981" />
+        <Row icon="document-text-outline" label="Política de privacidade" onPress={() => showToast('Em breve', 'info')} color="#10B981" />
+        <Row icon="document-outline" label="Termos de uso" onPress={() => showToast('Em breve', 'info')} color="#10B981" />
+      </View>
+
+      <Text style={styles.sectionTitle}>SUPORTE</Text>
+      <View style={styles.section}>
+        <Row icon="help-circle-outline" label="Central de ajuda" onPress={() => showToast('Em breve', 'info')} />
+        <Row icon="bug-outline" label="Reportar problema" onPress={() => Linking.openURL('mailto:support@sync.app').catch(() => {})} />
+        <Row icon="star-outline" label="Avaliar o app" onPress={() => showToast('Obrigado!', 'success')} />
+      </View>
+
+      <Text style={styles.sectionTitle}>CONTA</Text>
+      <View style={styles.section}>
+        <Row icon="log-out-outline" label="Sair" onPress={logout} color="#F87171" danger />
+        <Row icon="trash-outline" label="Apagar minha conta" onPress={handleDeleteAccount} color="#F87171" danger />
+      </View>
+
+      <Text style={styles.version}>Sync v1.0.0</Text>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.dark.background },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -411,111 +240,64 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-    marginBottom: spacing.md,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  section: {
-    paddingHorizontal: spacing.lg,
-    marginBottom: spacing.lg,
-  },
+  title: { fontSize: fontSize.xl, fontWeight: '800', color: colors.dark.text },
   sectionTitle: {
-    fontSize: fontSize.xs,
-    fontWeight: '600',
-    color: colors.secondaryText,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    color: colors.dark.secondaryText,
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.5,
+    marginTop: spacing.lg,
+    marginHorizontal: spacing.lg,
     marginBottom: spacing.sm,
   },
-  card: {
-    backgroundColor: colors.card,
+  section: {
+    marginHorizontal: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: borderRadius.md,
-    borderWidth: 1,
-    borderColor: colors.border,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  switchItem: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingHorizontal: spacing.md,
-    paddingVertical: 14,
+    paddingVertical: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+    gap: spacing.sm,
+    minHeight: 56,
   },
-  linkItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: spacing.md,
-    paddingVertical: 14,
-  },
-  itemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    flex: 1,
-  },
-  itemTextWrap: {
-    flex: 1,
-  },
-  itemLabel: {
-    fontSize: fontSize.md,
-    color: colors.text,
-  },
-  itemDesc: {
-    fontSize: fontSize.xs,
-    color: colors.secondaryText,
-    marginTop: 1,
-  },
-  divider: {
-    height: StyleSheet.hairlineWidth,
-    backgroundColor: colors.border,
-    marginLeft: spacing.md + 20 + spacing.md,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
+  rowIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: spacing.md,
-    backgroundColor: colors.card,
-    borderWidth: 1,
-    borderColor: colors.border,
+  },
+  rowLabel: { color: colors.dark.text, fontSize: 14, fontWeight: '600', flex: 1 },
+  rowValue: { color: colors.dark.secondaryText, fontSize: 13, maxWidth: 180 },
+  rowSub: { color: colors.dark.secondaryText, fontSize: 11, marginTop: 2 },
+  revokeText: { color: '#F87171', fontSize: 12, fontWeight: '700' },
+  emptyText: {
+    color: colors.dark.secondaryText,
+    padding: spacing.md,
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  upgradeBtn: {
+    backgroundColor: '#FF6B35',
+    margin: spacing.md,
+    padding: spacing.md,
     borderRadius: borderRadius.md,
-    gap: spacing.sm,
-  },
-  logoutText: {
-    fontSize: fontSize.md,
-    color: colors.error,
-    fontWeight: '600',
-  },
-  deleteBtn: {
     alignItems: 'center',
-    paddingVertical: spacing.md,
-    marginTop: spacing.sm,
   },
-  deleteText: {
-    fontSize: fontSize.sm,
-    color: colors.secondaryText,
-    textDecorationLine: 'underline',
-  },
+  upgradeBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   version: {
     textAlign: 'center',
-    fontSize: fontSize.xs,
-    color: colors.secondaryText,
-    marginTop: spacing.lg,
+    color: colors.dark.secondaryText,
+    fontSize: 11,
+    marginTop: spacing.xl,
   },
 });

@@ -138,9 +138,10 @@ const TESTIMONIALS = [
 interface Props {
   onStart: () => void;
   onLogin: () => void;
+  onDemo?: () => void;
 }
 
-export default function StravaLandingWeb({ onStart, onLogin }: Props) {
+export default function StravaLandingWeb({ onStart, onLogin, onDemo }: Props) {
   const { width } = useWindowDimensions();
   const fade = useRef(new Animated.Value(0)).current;
 
@@ -209,6 +210,11 @@ export default function StravaLandingWeb({ onStart, onLogin }: Props) {
             <TouchableOpacity style={styles.secondaryCta} onPress={onLogin}>
               <Text style={styles.secondaryCtaText}>Já tem conta? Entrar</Text>
             </TouchableOpacity>
+            {onDemo && (
+              <TouchableOpacity style={styles.secondaryCta} onPress={onDemo}>
+                <Text style={[styles.secondaryCtaText, { color: ACCENT }]}>👤 Testar como demo →</Text>
+              </TouchableOpacity>
+            )}
           </View>
           <View style={styles.heroBadges}>
             <View style={styles.heroBadge}>

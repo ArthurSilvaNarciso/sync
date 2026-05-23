@@ -100,6 +100,17 @@ export class User {
   @Column({ default: false })
   twoFactorEnabled: boolean;
 
+  // Subscription tier (free | premium | atleta_pro). Stripe-ready.
+  @Column({ type: 'varchar', length: 20, default: 'free' })
+  subscriptionTier: string;
+
+  @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true })
+  subscriptionExpiresAt: Date | null;
+
+  // Cron timestamps
+  @Column({ default: 0 })
+  totalXP: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -59,6 +59,11 @@ export type ProfileStackParamList = {
   Ranking: undefined;
   Achievements: undefined;
   Stats: undefined;
+  StatsDashboard: undefined;
+  Notifications: undefined;
+  Groups: undefined;
+  Training: undefined;
+  Feed: undefined;
 };
 
 // Root navigator

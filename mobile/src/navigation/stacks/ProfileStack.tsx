@@ -7,6 +7,11 @@ import SettingsScreen from '../../screens/Settings/SettingsScreen';
 import RankingScreen from '../../screens/Ranking/RankingScreen';
 import AchievementsScreen from '../../screens/Profile/AchievementsScreen';
 import StatsScreen from '../../screens/Profile/StatsScreen';
+import StatsDashboardScreen from '../../screens/Stats/StatsDashboardScreen';
+import NotificationsScreen from '../../screens/Notifications/NotificationsScreen';
+import GroupsScreen from '../../screens/Groups/GroupsScreen';
+import TrainingPlanScreen from '../../screens/Training/TrainingPlanScreen';
+import FeedScreen from '../../screens/Feed/FeedScreen';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -19,6 +24,11 @@ export default function ProfileStack() {
       <Stack.Screen name="Ranking" component={RankingScreen} />
       <Stack.Screen name="Achievements" component={AchievementsScreen} />
       <Stack.Screen name="Stats" component={StatsScreen} />
+      <Stack.Screen name="StatsDashboard" component={StatsDashboardScreen as any} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen as any} />
+      <Stack.Screen name="Groups" component={GroupsScreen as any} />
+      <Stack.Screen name="Training" component={TrainingPlanScreen as any} />
+      <Stack.Screen name="Feed" component={FeedScreen as any} />
     </Stack.Navigator>
   );
 }

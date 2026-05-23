@@ -204,6 +204,22 @@ export default function WelcomeScreen({ navigation }: Props) {
     </View>
   );
 
+  const handleDemoLogin = async () => {
+    try {
+      const { authService } = await import('../../services/auth.service');
+      const { useAuthStore } = await import('../../store/authStore');
+      const data = await authService.login('ana@demo.sync', 'demo1234');
+      useAuthStore.setState({
+        user: { ...data.user, onboardingCompleted: true },
+        token: data.accessToken,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (e: any) {
+      console.warn('Demo login failed:', e?.message);
+    }
+  };
+
   if (!isDesktop) {
     return <View style={styles.root}>{Hero}</View>;
   }
@@ -213,6 +229,7 @@ export default function WelcomeScreen({ navigation }: Props) {
     <StravaLandingWeb
       onStart={() => navigation.navigate('Register')}
       onLogin={() => navigation.navigate('Login')}
+      onDemo={handleDemoLogin}
     />
   );
 

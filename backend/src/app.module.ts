@@ -22,6 +22,7 @@ import { GroupsModule } from './groups/groups.module';
 import { ActivityFeedModule } from './activity-feed/activity-feed.module';
 import { SecurityModule } from './common/security/security.module';
 import { SeedModule } from './common/seed/seed.module';
+import { SubscriptionsModule } from './subscriptions/subscriptions.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -61,6 +62,7 @@ import { HealthController } from './health.controller';
     GroupsModule,
     ActivityFeedModule,
     SeedModule,
+    SubscriptionsModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
