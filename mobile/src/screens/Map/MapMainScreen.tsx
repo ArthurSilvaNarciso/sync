@@ -12,7 +12,9 @@ import {
   ScrollView,
   Dimensions,
 } from 'react-native';
-import MapView, { Marker, Circle, HeatLayer } from '../../components/map/SyncMap';
+import MapView, { Marker, Circle, HeatLayer, Polyline } from '../../components/map/SyncMap';
+import { planRoute, RouteResult } from '../../services/routing.service';
+import RoutePlannerPanel from '../../components/map/RoutePlannerPanel';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { MapStackParamList } from '../../navigation/types';
 import { Event as EventType } from '../../types';
@@ -69,6 +71,11 @@ export default function MapMainScreen({ navigation }: Props) {
   const [userCoords, setUserCoords] = useState<{ latitude: number; longitude: number } | null>(null);
   const [heatmapPoints, setHeatmapPoints] = useState<Array<[number, number]>>([]);
   const [showHeatmap, setShowHeatmap] = useState(false);
+  // Route planner state
+  const [routeMode, setRouteMode] = useState(false);
+  const [destination, setDestination] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [route, setRoute] = useState<RouteResult | null>(null);
+  const [routeLoading, setRouteLoading] = useState(false);
   const mapRef = useRef<MapView>(null);
 
   // Carrega heatmap quando ativado e há localização
@@ -295,9 +302,25 @@ export default function MapMainScreen({ navigation }: Props) {
         region={region}
         showsUserLocation
         showsMyLocationButton={false}
-        onPress={() => {
+        onPress={async (e: any) => {
           setSelectedEvent(null);
           setShowWeatherPanel(false);
+          // Modo planejador: usa coordenadas do clique
+          if (routeMode && userCoords) {
+            const coord =
+              e?.nativeEvent?.coordinate || // RN-Maps native
+              e?.latlng ||                  // Leaflet web
+              null;
+            const lat = coord?.latitude ?? coord?.lat;
+            const lng = coord?.longitude ?? coord?.lng;
+            if (lat == null || lng == null) return;
+            const dest = { latitude: lat, longitude: lng };
+            setDestination(dest);
+            setRouteLoading(true);
+            const result = await planRoute(userCoords, dest, 'foot');
+            setRoute(result);
+            setRouteLoading(false);
+          }
         }}
       >
         {/* Heatmap overlay — rotas populares */}
@@ -338,7 +361,62 @@ export default function MapMainScreen({ navigation }: Props) {
             <View style={[styles.markerArrow, { borderTopColor: sportColors[event.sport] || colors.primary }]} />
           </Marker>
         ))}
+
+        {/* Route planner: linha da rota planejada */}
+        {route?.coordinates && route.coordinates.length > 1 && (
+          <Polyline
+            coordinates={route.coordinates}
+            strokeColor="#FF6B35"
+            strokeWidth={5}
+          />
+        )}
+
+        {/* Marker do destino */}
+        {destination && (
+          <Marker coordinate={destination}>
+            <View style={[styles.marker, { backgroundColor: '#FF6B35' }]}>
+              <Ionicons name="flag" size={14} color="#fff" />
+            </View>
+          </Marker>
+        )}
       </MapView>
+
+      {/* Route mode toggle (canto direito) */}
+      <TouchableOpacity
+        style={[styles.routeBtn, routeMode && styles.routeBtnActive]}
+        onPress={() => {
+          const next = !routeMode;
+          setRouteMode(next);
+          if (!next) {
+            setDestination(null);
+            setRoute(null);
+          }
+        }}
+      >
+        <Ionicons
+          name={routeMode ? 'close' : 'navigate'}
+          size={20}
+          color={routeMode ? '#fff' : '#FF6B35'}
+        />
+      </TouchableOpacity>
+
+      {/* Painel inferior do planejador */}
+      {routeMode && (
+        <View style={styles.routePanelWrap}>
+          <RoutePlannerPanel
+            route={route}
+            loading={routeLoading}
+            onClear={() => { setDestination(null); setRoute(null); }}
+            onStart={(sport) => {
+              // Volta pra TrackingMain pra iniciar atividade com sport selecionado
+              setRouteMode(false);
+              setDestination(null);
+              setRoute(null);
+              navigation.getParent()?.navigate('TrackingTab' as never);
+            }}
+          />
+        </View>
+      )}
 
       {/* Top bar with location + weather */}
       <View style={styles.topBar}>
@@ -753,6 +831,32 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '600',
     color: colors.text,
+  },
+  routeBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 110 : 90,
+    right: spacing.md,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: colors.dark.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: '#FF6B35',
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  routeBtnActive: { backgroundColor: '#FF6B35' },
+  routePanelWrap: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: Platform.OS === 'ios' ? 90 : 80,
   },
   weatherChip: {
     flexDirection: 'row',
