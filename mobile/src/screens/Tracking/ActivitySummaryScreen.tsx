@@ -23,6 +23,7 @@ import api from '../../services/api';
 import { feedApi } from '../../services/feed.service';
 import { generateWorkoutSummary } from '../../utils/workout-summary';
 import { showToast } from '../../components/ui/Toast';
+import PostWorkoutRatingModal from '../../components/PostWorkoutRatingModal';
 
 type Props = {
   navigation: NativeStackNavigationProp<TrackingStackParamList, 'ActivitySummary'>;
@@ -34,6 +35,7 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
+  const [ratingModal, setRatingModal] = useState(true); // abre auto após finish
 
   useEffect(() => {
     loadActivity();
@@ -323,6 +325,14 @@ ${points}
           />
         </View>
       </ScrollView>
+
+      {/* Modal de rating pós-treino (Adidas RC style) */}
+      <PostWorkoutRatingModal
+        visible={ratingModal && !!activity?.id}
+        activityId={activity?.id || null}
+        onClose={() => setRatingModal(false)}
+        onSaved={() => setRatingModal(false)}
+      />
     </View>
   );
 }

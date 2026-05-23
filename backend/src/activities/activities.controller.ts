@@ -133,6 +133,27 @@ export class ActivitiesController {
     return this.activitiesService.getKudosCount(id).then((total) => ({ total }));
   }
 
+  // === RATING (pós-treino) ===
+  @Post(':id/rating')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Avaliar atividade (energia/satisfação/RPE/dor/tipo)' })
+  rate(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { energy?: number; satisfaction?: number; rpe?: number; pain?: number; workoutType?: string; weatherFelt?: string; notes?: string },
+  ) {
+    return this.activitiesService.upsertRating(id, user.id, body);
+  }
+
+  @Get(':id/rating')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Obter rating da atividade' })
+  getRating(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.activitiesService.getRating(id, user.id);
+  }
+
   // === HEATMAP ===
   @Get('heatmap/nearby')
   @ApiOperation({ summary: 'Heatmap de pontos GPS próximos (rotas populares)' })

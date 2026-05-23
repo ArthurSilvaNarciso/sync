@@ -7,12 +7,13 @@ import { Activity } from './entities/activity.entity';
 import { ActivityPoint } from './entities/activity-point.entity';
 import { ActivityComment } from './entities/activity-comment.entity';
 import { ActivityKudos } from './entities/activity-kudos.entity';
+import { ActivityRating } from './entities/activity-rating.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Activity, ActivityPoint, ActivityComment, ActivityKudos]),
+    TypeOrmModule.forFeature([Activity, ActivityPoint, ActivityComment, ActivityKudos, ActivityRating]),
     NotificationsModule,
     AuthModule, // pra JwtService no gateway
   ],

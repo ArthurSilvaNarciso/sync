@@ -5,6 +5,7 @@ import { Activity } from './entities/activity.entity';
 import { ActivityPoint } from './entities/activity-point.entity';
 import { ActivityComment } from './entities/activity-comment.entity';
 import { ActivityKudos } from './entities/activity-kudos.entity';
+import { ActivityRating } from './entities/activity-rating.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { AddPointDto } from './dto/add-point.dto';
 import { haversineMeters } from '../common/utils/haversine';
@@ -24,6 +25,8 @@ export class ActivitiesService {
     private readonly commentRepository: Repository<ActivityComment>,
     @InjectRepository(ActivityKudos)
     private readonly kudosRepository: Repository<ActivityKudos>,
+    @InjectRepository(ActivityRating)
+    private readonly ratingRepository: Repository<ActivityRating>,
     private readonly notificationsService: NotificationsService,
     private readonly pushService: PushService,
   ) {}
@@ -217,6 +220,40 @@ export class ActivitiesService {
       order: { startTime: 'DESC' },
       skip: (page - 1) * limit,
       take: limit,
+    });
+  }
+
+  // === ACTIVITY RATING (pós-treino) ===
+  async upsertRating(activityId: string, userId: string, data: any) {
+    const activity = await this.activityRepository.findOne({ where: { id: activityId } });
+    if (!activity) throw new NotFoundException('Atividade não encontrada');
+    if (activity.user_id !== userId) throw new BadRequestException('Sem permissão');
+
+    const existing = await this.ratingRepository.findOne({
+      where: { activity_id: activityId, user_id: userId },
+    });
+    const clean = {
+      energy: data.energy != null ? Math.max(1, Math.min(5, data.energy)) : null,
+      satisfaction: data.satisfaction != null ? Math.max(1, Math.min(5, data.satisfaction)) : null,
+      rpe: data.rpe != null ? Math.max(1, Math.min(10, data.rpe)) : null,
+      pain: data.pain != null ? Math.max(0, Math.min(5, data.pain)) : null,
+      workoutType: data.workoutType || null,
+      weatherFelt: data.weatherFelt || null,
+      notes: typeof data.notes === 'string' ? data.notes.slice(0, 500) : null,
+    };
+
+    if (existing) {
+      await this.ratingRepository.update(existing.id, clean);
+      return { ...existing, ...clean };
+    }
+    return this.ratingRepository.save(
+      this.ratingRepository.create({ activity_id: activityId, user_id: userId, ...clean }),
+    );
+  }
+
+  async getRating(activityId: string, userId: string) {
+    return this.ratingRepository.findOne({
+      where: { activity_id: activityId, user_id: userId },
     });
   }
 
