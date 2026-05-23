@@ -64,6 +64,9 @@ export type ProfileStackParamList = {
   Groups: undefined;
   Training: undefined;
   Feed: undefined;
+  Privacy: undefined;
+  Terms: undefined;
+  Help: undefined;
 };
 
 // Root navigator

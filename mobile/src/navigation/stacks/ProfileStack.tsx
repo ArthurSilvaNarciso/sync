@@ -12,6 +12,9 @@ import NotificationsScreen from '../../screens/Notifications/NotificationsScreen
 import GroupsScreen from '../../screens/Groups/GroupsScreen';
 import TrainingPlanScreen from '../../screens/Training/TrainingPlanScreen';
 import FeedScreen from '../../screens/Feed/FeedScreen';
+import PrivacyScreen from '../../screens/Legal/PrivacyScreen';
+import TermsScreen from '../../screens/Legal/TermsScreen';
+import HelpScreen from '../../screens/Legal/HelpScreen';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -29,6 +32,9 @@ export default function ProfileStack() {
       <Stack.Screen name="Groups" component={GroupsScreen as any} />
       <Stack.Screen name="Training" component={TrainingPlanScreen as any} />
       <Stack.Screen name="Feed" component={FeedScreen as any} />
+      <Stack.Screen name="Privacy" component={PrivacyScreen as any} />
+      <Stack.Screen name="Terms" component={TermsScreen as any} />
+      <Stack.Screen name="Help" component={HelpScreen as any} />
     </Stack.Navigator>
   );
 }

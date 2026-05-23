@@ -167,6 +167,24 @@ export class AuthService {
     };
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string, req?: Request): Promise<void> {
+    this.assertStrongPassword(newPassword);
+    const user = await this.userRepository
+      .createQueryBuilder('user')
+      .addSelect('user.password')
+      .where('user.id = :userId', { userId })
+      .getOne();
+    if (!user) throw new UnauthorizedException('Usuário não encontrado');
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      await this.audit.log({ userId, event: 'login_failure', req, detail: 'change_password_wrong_current' });
+      throw new BadRequestException('Senha atual incorreta');
+    }
+    const hashedPassword = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
+    await this.userRepository.update(userId, { password: hashedPassword });
+    await this.audit.log({ userId, event: 'password_changed', req });
+  }
+
   async resetPassword(token: string, newPassword: string, req?: Request): Promise<void> {
     this.assertStrongPassword(newPassword);
 

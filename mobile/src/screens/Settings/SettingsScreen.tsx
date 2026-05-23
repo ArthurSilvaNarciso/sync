@@ -16,6 +16,8 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import ChangePasswordModal from '../../components/ChangePasswordModal';
+import FeedbackModal from '../../components/FeedbackModal';
 
 interface Session {
   familyId: string;
@@ -31,6 +33,8 @@ export default function SettingsScreen({ navigation }: any) {
   const [plan, setPlan] = useState<any>(null);
   const [pushOn, setPushOn] = useState(true);
   const [emailOn, setEmailOn] = useState(true);
+  const [showChangePwd, setShowChangePwd] = useState(false);
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion' | 'rating' | 'support' | null>(null);
 
   useEffect(() => {
     api.get('/auth/sessions').then((r) => setSessions(r.data || [])).catch(() => {});
@@ -133,7 +137,7 @@ export default function SettingsScreen({ navigation }: any) {
         <Row icon="person-outline" label="Nome" value={user?.name} />
         <Row icon="mail-outline" label="Email" value={user?.email} />
         <Row icon="create-outline" label="Editar perfil" onPress={() => navigation?.navigate?.('EditProfile')} />
-        <Row icon="lock-closed-outline" label="Alterar senha" onPress={() => showToast('Em breve', 'info')} />
+        <Row icon="lock-closed-outline" label="Alterar senha" onPress={() => setShowChangePwd(true)} />
       </View>
 
       <Text style={styles.sectionTitle}>PLANO</Text>
@@ -209,15 +213,17 @@ export default function SettingsScreen({ navigation }: any) {
       <Text style={styles.sectionTitle}>PRIVACIDADE & LGPD</Text>
       <View style={styles.section}>
         <Row icon="download-outline" label="Exportar meus dados" onPress={handleExportData} color="#10B981" />
-        <Row icon="document-text-outline" label="Política de privacidade" onPress={() => showToast('Em breve', 'info')} color="#10B981" />
-        <Row icon="document-outline" label="Termos de uso" onPress={() => showToast('Em breve', 'info')} color="#10B981" />
+        <Row icon="document-text-outline" label="Política de privacidade" onPress={() => navigation?.navigate?.('Privacy')} color="#10B981" />
+        <Row icon="document-outline" label="Termos de uso" onPress={() => navigation?.navigate?.('Terms')} color="#10B981" />
       </View>
 
       <Text style={styles.sectionTitle}>SUPORTE</Text>
       <View style={styles.section}>
-        <Row icon="help-circle-outline" label="Central de ajuda" onPress={() => showToast('Em breve', 'info')} />
-        <Row icon="bug-outline" label="Reportar problema" onPress={() => Linking.openURL('mailto:support@sync.app').catch(() => {})} />
-        <Row icon="star-outline" label="Avaliar o app" onPress={() => showToast('Obrigado!', 'success')} />
+        <Row icon="help-circle-outline" label="Central de ajuda" onPress={() => navigation?.navigate?.('Help')} />
+        <Row icon="bug-outline" label="Reportar problema" onPress={() => setFeedbackType('bug')} color="#F87171" />
+        <Row icon="bulb-outline" label="Enviar sugestão" onPress={() => setFeedbackType('suggestion')} color="#FCD34D" />
+        <Row icon="chatbubble-outline" label="Falar com suporte" onPress={() => setFeedbackType('support')} color="#3B82F6" />
+        <Row icon="star-outline" label="Avaliar o app" onPress={() => setFeedbackType('rating')} color="#FF6B35" />
       </View>
 
       <Text style={styles.sectionTitle}>CONTA</Text>
@@ -227,6 +233,15 @@ export default function SettingsScreen({ navigation }: any) {
       </View>
 
       <Text style={styles.version}>Sync v1.0.0</Text>
+
+      <ChangePasswordModal visible={showChangePwd} onClose={() => setShowChangePwd(false)} />
+      {feedbackType && (
+        <FeedbackModal
+          visible={!!feedbackType}
+          type={feedbackType}
+          onClose={() => setFeedbackType(null)}
+        />
+      )}
     </ScrollView>
   );
 }

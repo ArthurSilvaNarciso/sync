@@ -23,6 +23,7 @@ import { ActivityFeedModule } from './activity-feed/activity-feed.module';
 import { SecurityModule } from './common/security/security.module';
 import { SeedModule } from './common/seed/seed.module';
 import { SubscriptionsModule } from './subscriptions/subscriptions.module';
+import { FeedbackModule } from './feedback/feedback.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -63,6 +64,7 @@ import { HealthController } from './health.controller';
     ActivityFeedModule,
     SeedModule,
     SubscriptionsModule,
+    FeedbackModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

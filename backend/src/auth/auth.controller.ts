@@ -28,6 +28,18 @@ class ResetPasswordDto {
   newPassword: string;
 }
 
+class ChangePasswordDto {
+  @IsString()
+  @MinLength(1)
+  @MaxLength(128)
+  currentPassword: string;
+
+  @IsString()
+  @MinLength(8)
+  @MaxLength(128)
+  newPassword: string;
+}
+
 class RefreshDto {
   @IsString()
   @MinLength(20)
@@ -69,6 +81,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Redefinir senha com token' })
   resetPassword(@Body() dto: ResetPasswordDto, @Req() req: Request) {
     return this.authService.resetPassword(dto.token, dto.newPassword, req);
+  }
+
+  @Post('change-password')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 300_000, limit: 5 } })
+  @ApiOperation({ summary: 'Alterar senha (autenticado, exige senha atual)' })
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() dto: ChangePasswordDto,
+    @Req() req: Request,
+  ) {
+    await this.authService.changePassword(user.id, dto.currentPassword, dto.newPassword, req);
+    return { ok: true, message: 'Senha alterada com sucesso' };
   }
 
   @Post('refresh')
