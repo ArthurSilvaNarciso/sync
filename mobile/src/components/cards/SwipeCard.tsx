@@ -1,9 +1,12 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DiscoveryUser, SPORTS, SportLevel } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import CompatibilityBadge from './CompatibilityBadge';
+import { calculateMatchCompatibility } from '../../utils/matchCompatibility';
+import { useAuthStore } from '../../store/authStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const CARD_WIDTH = SCREEN_WIDTH - 40;
@@ -31,7 +34,9 @@ interface SwipeCardProps {
   user: DiscoveryUser;
 }
 
-export default function SwipeCard({ user }: SwipeCardProps) {
+function SwipeCardInner({ user }: SwipeCardProps) {
+  const me = useAuthStore((s) => s.user);
+
   const sportLabels = user.sports?.map(
     (s) => SPORTS.find((sp) => sp.id === s)?.label || s,
   ) || [];
@@ -42,6 +47,22 @@ export default function SwipeCard({ user }: SwipeCardProps) {
 
   const levelConfig = user.level ? LEVEL_CONFIG[user.level as SportLevel] : null;
   const primarySport = user.sports?.[0];
+
+  const compatibility = useMemo(
+    () =>
+      calculateMatchCompatibility({
+        meSports: (me as any)?.sports,
+        themSports: user.sports,
+        meLevel: (me as any)?.level,
+        themLevel: user.level,
+        meObjectives: (me as any)?.objectives,
+        themObjectives: (user as any)?.objectives,
+        meAvailability: (me as any)?.availability,
+        themAvailability: (user as any)?.availability,
+        distanceKm: user.distance ?? null,
+      }),
+    [me, user],
+  );
 
   return (
     <View style={styles.card}>
@@ -62,6 +83,9 @@ export default function SwipeCard({ user }: SwipeCardProps) {
             <Ionicons name={levelConfig.icon} size={11} color="#FFF" />
             <Text style={styles.levelText}>{levelConfig.label}</Text>
           </View>
+        )}
+        {compatibility.score > 0 && (
+          <CompatibilityBadge result={compatibility} compact />
         )}
         {primarySport && (
           <View style={styles.sportBadge}>
@@ -120,6 +144,16 @@ export default function SwipeCard({ user }: SwipeCardProps) {
     </View>
   );
 }
+
+// Memoizado: SwipeCard só re-renderiza se o user.id mudar (ou bio/avatarUrl).
+// Hot path do deck de swipe — evita re-renders no PanResponder.
+const SwipeCard = React.memo(SwipeCardInner, (prev, next) =>
+  prev.user.id === next.user.id &&
+  prev.user.bio === next.user.bio &&
+  prev.user.avatarUrl === next.user.avatarUrl,
+);
+
+export default SwipeCard;
 
 const styles = StyleSheet.create({
   card: {
