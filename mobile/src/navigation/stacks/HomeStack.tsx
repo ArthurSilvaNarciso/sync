@@ -4,6 +4,7 @@ import { HomeStackParamList } from '../types';
 import DiscoveryScreen from '../../screens/Home/DiscoveryScreen';
 import UserProfileScreen from '../../screens/Profile/UserProfileScreen';
 import MatchScreen from '../../screens/Home/MatchScreen';
+import LikesReceivedScreen from '../../screens/Home/LikesReceivedScreen';
 
 const Stack = createNativeStackNavigator<HomeStackParamList>();
 
@@ -13,6 +14,7 @@ export default function HomeStack() {
       <Stack.Screen name="Discovery" component={DiscoveryScreen} />
       <Stack.Screen name="UserProfile" component={UserProfileScreen} />
       <Stack.Screen name="MatchScreen" component={MatchScreen} />
+      <Stack.Screen name="LikesReceived" component={LikesReceivedScreen} />
     </Stack.Navigator>
   );
 }

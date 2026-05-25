@@ -31,6 +31,7 @@ export type HomeStackParamList = {
   Discovery: undefined;
   UserProfile: { userId: string };
   MatchScreen: { matchId: string; userName: string };
+  LikesReceived: undefined;
 };
 
 export type ChatStackParamList = {
