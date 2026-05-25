@@ -83,6 +83,11 @@ export class UsersController {
     @Req() req: any,
   ) {
     if (!file) throw new BadRequestException('Arquivo não enviado');
+    // Strip EXIF + resize (privacidade + perf). Falha não bloqueia upload.
+    try {
+      const { stripExifInPlace } = await import('../common/utils/image-sanitize.util');
+      await stripExifInPlace(file.path, { maxWidth: 1024, maxHeight: 1024, quality: 88 });
+    } catch {}
     const protocol = req.protocol;
     const host = req.get('host');
     const url = `${protocol}://${host}/uploads/avatars/${file.filename}`;

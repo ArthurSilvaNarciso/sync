@@ -3,6 +3,11 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
+import { initSentry } from './common/sentry/sentry.init';
+import { SentryExceptionFilter } from './common/sentry/sentry.filter';
+
+// Inicializa Sentry o mais cedo possível (no-op se SENTRY_DSN não estiver setado)
+const sentry = initSentry();
 
 // Lazy require — pkg pode não estar instalado em dev/local
 let basicAuth: any;
@@ -10,9 +15,12 @@ try { basicAuth = require('express-basic-auth'); } catch {}
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  if (sentry.enabled) logger.log('Sentry error tracking ENABLED');
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
   });
+  // Global exception filter — captura 5xx → Sentry, mantém formato de resposta
+  app.useGlobalFilters(new SentryExceptionFilter());
 
   const isProd = process.env.NODE_ENV === 'production';
 

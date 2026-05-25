@@ -58,6 +58,13 @@ export class StoriesController {
     @Req() req: any,
   ) {
     if (!file) throw new BadRequestException('Mídia não enviada');
+    // Strip EXIF de imagens (vídeos não são processados aqui pra evitar bloqueio).
+    if (!file.mimetype.startsWith('video')) {
+      try {
+        const { stripExifInPlace } = await import('../common/utils/image-sanitize.util');
+        await stripExifInPlace(file.path, { maxWidth: 1920, maxHeight: 1920, quality: 88 });
+      } catch {}
+    }
     const protocol = req.protocol;
     const host = req.get('host');
     const url = `${protocol}://${host}/uploads/stories/${file.filename}`;
