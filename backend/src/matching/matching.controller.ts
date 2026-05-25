@@ -44,4 +44,16 @@ export class MatchingController {
   getNewMatchCount(@CurrentUser() user: User) {
     return this.matchingService.getNewMatchCount(user.id).then((count) => ({ count }));
   }
+
+  @Get('likes-received')
+  @ApiOperation({ summary: 'Listar usuários que te curtiram mas você ainda não respondeu' })
+  getLikesReceived(@CurrentUser() user: User) {
+    return this.matchingService.getLikesReceived(user.id);
+  }
+
+  @Get('likes-received/count')
+  @ApiOperation({ summary: 'Contagem de likes pendentes (badge)' })
+  getLikesReceivedCount(@CurrentUser() user: User) {
+    return this.matchingService.getLikesReceivedCount(user.id).then((count) => ({ count }));
+  }
 }

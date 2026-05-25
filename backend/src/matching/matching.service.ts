@@ -200,4 +200,51 @@ export class MatchingService {
       createdAt: match.createdAt,
     }));
   }
+
+  /**
+   * Lista usuários que deram like em mim e eu ainda não respondi.
+   * Permite a tela "Quem te curtiu" (feature de retenção forte).
+   */
+  async getLikesReceived(userId: string) {
+    // Likes recebidos
+    const received = await this.likeRepository
+      .createQueryBuilder('like')
+      .leftJoinAndSelect('like.fromUser', 'fromUser')
+      .where('like.to_user_id = :userId', { userId })
+      .orderBy('like.createdAt', 'DESC')
+      .limit(100)
+      .getMany();
+    if (received.length === 0) return [];
+
+    // Likes que EU já dei (pra filtrar fora os que já são match)
+    const myActions = await this.likeRepository.find({
+      where: { from_user_id: userId },
+      select: ['to_user_id'],
+    });
+    const respondedSet = new Set(myActions.map((l) => l.to_user_id));
+
+    return received
+      .filter((l) => !respondedSet.has(l.from_user_id))
+      .map((l) => ({
+        likeId: l.id,
+        createdAt: l.createdAt,
+        isSuperLike: l.isSuperLike,
+        user: l.fromUser
+          ? {
+              id: l.fromUser.id,
+              name: l.fromUser.name,
+              avatarUrl: l.fromUser.avatarUrl,
+              level: (l.fromUser as any).level,
+              sports: (l.fromUser as any).sports,
+              bio: l.fromUser.bio,
+            }
+          : null,
+      }))
+      .filter((x) => x.user != null);
+  }
+
+  async getLikesReceivedCount(userId: string): Promise<number> {
+    const list = await this.getLikesReceived(userId);
+    return list.length;
+  }
 }
