@@ -1,0 +1,2 @@
+# Placeholder pra existir o diretório antes da primeira migration ser gerada.
+# Use: npm run migration:generate -- src/migrations/NomeDaMigration

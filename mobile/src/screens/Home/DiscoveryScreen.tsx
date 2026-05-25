@@ -25,6 +25,7 @@ import { getCurrentLocation } from '../../services/location.service';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import StoriesBar from '../../components/StoriesBar';
+import { matchingApi } from '../../services/matching.service';
 import StoryViewerScreen from '../Stories/StoryViewerScreen';
 import CreateStoryScreen from '../Stories/CreateStoryScreen';
 import type { Story } from '../../services/stories.service';
@@ -61,6 +62,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [newMatchCount, setNewMatchCount] = useState(0);
+  const [likesReceivedCount, setLikesReceivedCount] = useState(0);
   const [lastSwipedUser, setLastSwipedUser] = useState<DiscoveryUser | null>(null);
   const [filterDistance, setFilterDistance] = useState(25);
   const [filterLevel, setFilterLevel] = useState('all');
@@ -118,6 +120,10 @@ export default function DiscoveryScreen({ navigation }: Props) {
     } catch (_error) {
       // silently fail
     }
+    try {
+      const count = await matchingApi.likesReceivedCount();
+      setLikesReceivedCount(count);
+    } catch {}
   };
 
   const loadWeather = async () => {
@@ -396,6 +402,21 @@ export default function DiscoveryScreen({ navigation }: Props) {
               <Ionicons name={weather.weatherIcon as any} size={14} color={recommendation.color} />
               <Text style={styles.weatherMiniTemp}>{weather.temperature}°</Text>
             </View>
+          )}
+          {/* Likes received (Tinder Gold-style) */}
+          {likesReceivedCount > 0 && (
+            <TouchableOpacity
+              style={styles.matchBadgeBtn}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('LikesReceived')}
+            >
+              <Ionicons name="star" size={20} color="#F59E0B" />
+              <View style={[styles.matchBadge, { backgroundColor: '#F59E0B' }]}>
+                <Text style={styles.matchBadgeText}>
+                  {likesReceivedCount > 9 ? '9+' : likesReceivedCount}
+                </Text>
+              </View>
+            </TouchableOpacity>
           )}
           {/* New matches badge */}
           {newMatchCount > 0 && (

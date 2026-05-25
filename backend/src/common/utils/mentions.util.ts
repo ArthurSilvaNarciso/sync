@@ -5,11 +5,14 @@
  */
 export function extractMentions(text: string): string[] {
   if (!text) return [];
-  const regex = /@([a-zA-Z0-9._]{3,30})/g;
+  // - Lookbehind: deve ter espaço, início de string ou pontuação antes do @
+  //   (assim emails como "user@domain.com" NÃO são detectados como mention)
+  // - Lookahead: rejeita usernames maiores que 30 chars
+  const regex = /(^|[\s\n\r.,;:!?(])@([a-zA-Z0-9._]{3,30})(?![a-zA-Z0-9._])/g;
   const set = new Set<string>();
   let m: RegExpExecArray | null;
   while ((m = regex.exec(text)) !== null) {
-    set.add(m[1].toLowerCase());
+    set.add(m[2].toLowerCase());
   }
   return Array.from(set);
 }
