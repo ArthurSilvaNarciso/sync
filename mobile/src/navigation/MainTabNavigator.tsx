@@ -11,13 +11,14 @@ import {
 import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { MainTabParamList } from './types';
 import { colors } from '../theme';
 
 import Logo from '../components/Logo';
 import HomeStack from './stacks/HomeStack';
 import MapStack from './stacks/MapStack';
-import TrackingStack from './stacks/TrackingStack';
+import TrackingStack, { TRACKING_FULLSCREEN_ROUTES } from './stacks/TrackingStack';
 import ChatStack from './stacks/ChatStack';
 import ProfileStack from './stacks/ProfileStack';
 
@@ -135,6 +136,12 @@ function TabItem({
 
 // ================== Custom Tab Bar ==================
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  // Honra tabBarStyle: {display:'none'} setado via options da rota focada
+  const focusedRoute = state.routes[state.index];
+  const focusedOptions = descriptors[focusedRoute.key]?.options;
+  const tabBarStyle = focusedOptions?.tabBarStyle as any;
+  if (tabBarStyle && tabBarStyle.display === 'none') return null;
+
   return (
     <View style={styles.barContainer} pointerEvents="box-none">
       {/* Glass background com gradient sutil */}
@@ -198,7 +205,17 @@ export default function MainTabNavigator() {
     >
       <Tab.Screen name="HomeTab" component={HomeStack} />
       <Tab.Screen name="MapTab" component={MapStack} />
-      <Tab.Screen name="TrackingTab" component={TrackingStack} />
+      <Tab.Screen
+        name="TrackingTab"
+        component={TrackingStack}
+        options={({ route }) => {
+          const focused = getFocusedRouteNameFromRoute(route) ?? 'TrackingMain';
+          const hidden = TRACKING_FULLSCREEN_ROUTES.has(focused);
+          return {
+            tabBarStyle: hidden ? { display: 'none' } : undefined,
+          };
+        }}
+      />
       <Tab.Screen name="ChatTab" component={ChatStack} />
       <Tab.Screen name="ProfileTab" component={ProfileStack} />
     </Tab.Navigator>

@@ -18,3 +18,11 @@ export default function TrackingStack() {
     </Stack.Navigator>
   );
 }
+
+/**
+ * Rotas em que a tab bar inferior deve ser ocultada (modo full-immersive).
+ */
+export const TRACKING_FULLSCREEN_ROUTES = new Set([
+  'ActiveTracking',
+  'ActivitySummary',
+]);
