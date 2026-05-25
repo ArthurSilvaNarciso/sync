@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { RootStackParamList } from './types';
 import { useAuthStore } from '../store/authStore';
@@ -9,6 +10,7 @@ import api from '../services/api';
 import AuthNavigator from './AuthNavigator';
 import OnboardingNavigator from './OnboardingNavigator';
 import MainTabNavigator from './MainTabNavigator';
+import NetworkBanner from '../components/NetworkBanner';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 
@@ -48,14 +50,17 @@ export default function RootNavigator() {
   }
 
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
-      {!isAuthenticated ? (
-        <Stack.Screen name="Auth" component={AuthNavigator} />
-      ) : !user?.onboardingCompleted ? (
-        <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
-      ) : (
-        <Stack.Screen name="Main" component={MainTabNavigator} />
-      )}
-    </Stack.Navigator>
+    <View style={{ flex: 1 }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }}>
+        {!isAuthenticated ? (
+          <Stack.Screen name="Auth" component={AuthNavigator} />
+        ) : !user?.onboardingCompleted ? (
+          <Stack.Screen name="Onboarding" component={OnboardingNavigator} />
+        ) : (
+          <Stack.Screen name="Main" component={MainTabNavigator} />
+        )}
+      </Stack.Navigator>
+      <NetworkBanner />
+    </View>
   );
 }
