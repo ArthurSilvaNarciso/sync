@@ -105,9 +105,9 @@ export class ActivitiesController {
   @Get(':id/comments')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Listar comentários' })
-  comments(@Param('id') id: string) {
-    return this.activitiesService.listComments(id);
+  @ApiOperation({ summary: 'Listar comentários (com reactions agregadas)' })
+  comments(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.activitiesService.listComments(id, user.id);
   }
 
   @Delete('comments/:commentId')
@@ -116,6 +116,27 @@ export class ActivitiesController {
   @ApiOperation({ summary: 'Deletar próprio comentário' })
   deleteComment(@CurrentUser() user: User, @Param('commentId') commentId: string) {
     return this.activitiesService.deleteComment(commentId, user.id);
+  }
+
+  // === COMMENT REACTIONS ===
+  @Post('comments/:commentId/reactions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Toggle reaction (emoji) num comentário' })
+  reactComment(
+    @CurrentUser() user: User,
+    @Param('commentId') commentId: string,
+    @Body() body: { emoji: string },
+  ) {
+    return this.activitiesService.toggleReaction(commentId, user.id, body.emoji);
+  }
+
+  @Get('comments/:commentId/reactions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar reações de um comentário com usuários' })
+  listReactions(@Param('commentId') commentId: string) {
+    return this.activitiesService.listReactions(commentId);
   }
 
   // === KUDOS ===

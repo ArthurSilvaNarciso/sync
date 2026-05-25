@@ -6,6 +6,7 @@ import { ActivityPoint } from './entities/activity-point.entity';
 import { ActivityComment } from './entities/activity-comment.entity';
 import { ActivityKudos } from './entities/activity-kudos.entity';
 import { ActivityRating } from './entities/activity-rating.entity';
+import { CommentReaction } from './entities/comment-reaction.entity';
 import { CreateActivityDto } from './dto/create-activity.dto';
 import { AddPointDto } from './dto/add-point.dto';
 import { haversineMeters } from '../common/utils/haversine';
@@ -13,6 +14,12 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../notifications/push.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { sanitizeText } from '../common/security/sanitize.util';
+import { extractMentions } from '../common/utils/mentions.util';
+import { User } from '../users/entities/user.entity';
+import { ILike, In } from 'typeorm';
+
+// Lista branca de emoji-reaction permitidas (curto, validado)
+const ALLOWED_REACTIONS = new Set(['❤️', '🔥', '💪', '🚀', '👏', '🙌', '😂', '🎉']);
 
 @Injectable()
 export class ActivitiesService {
@@ -27,9 +34,52 @@ export class ActivitiesService {
     private readonly kudosRepository: Repository<ActivityKudos>,
     @InjectRepository(ActivityRating)
     private readonly ratingRepository: Repository<ActivityRating>,
+    @InjectRepository(CommentReaction)
+    private readonly reactionRepository: Repository<CommentReaction>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
     private readonly notificationsService: NotificationsService,
     private readonly pushService: PushService,
   ) {}
+
+  // ===== MENTIONS HELPERS =====
+  private async resolveMentionsToUserIds(text: string, excludeUserId: string): Promise<string[]> {
+    const usernames = extractMentions(text);
+    if (usernames.length === 0) return [];
+    // Resolve por nome (partial match case-insensitive, primeira palavra prioritária)
+    const ids = new Set<string>();
+    for (const u of usernames) {
+      const user = await this.userRepository.findOne({
+        where: [
+          { name: ILike(u) },
+          { name: ILike(`${u} %`) },
+          { name: ILike(`% ${u} %`) },
+          { name: ILike(`% ${u}`) },
+        ],
+        select: ['id'],
+      });
+      if (user && user.id !== excludeUserId) ids.add(user.id);
+    }
+    return Array.from(ids);
+  }
+
+  private async notifyMentions(mentionedIds: string[], commenterId: string, activityId: string, commentId: string, preview: string) {
+    if (mentionedIds.length === 0) return;
+    await Promise.allSettled(
+      mentionedIds.map(uid =>
+        Promise.all([
+          this.notificationsService.create(
+            uid,
+            NotificationType.NEW_MESSAGE,
+            'Você foi mencionado',
+            preview,
+            JSON.stringify({ activityId, commentId, mentionFrom: commenterId }),
+          ),
+          this.pushService.sendToUser(uid, '@menção 💬', preview, { type: 'mention', activityId, commentId }),
+        ])
+      )
+    );
+  }
 
   // === COMMENTS ===
   async addComment(activityId: string, userId: string, content: string): Promise<ActivityComment> {
@@ -39,13 +89,23 @@ export class ActivitiesService {
     if (!clean) {
       throw new BadRequestException('Comentário inválido');
     }
+
+    // Resolve menções a IDs de usuário (ignora o próprio comentarista)
+    const mentionedIds = await this.resolveMentionsToUserIds(clean, userId);
+
     const saved = await this.commentRepository.save(
-      this.commentRepository.create({ activity_id: activityId, user_id: userId, content: clean }),
+      this.commentRepository.create({
+        activity_id: activityId,
+        user_id: userId,
+        content: clean,
+        mentioned_user_ids: mentionedIds,
+      }),
     );
 
-    // Notifica dono da atividade (se não foi ele próprio que comentou)
-    if (activity.user_id !== userId) {
-      const preview = clean.length > 60 ? clean.slice(0, 60) + '…' : clean;
+    const preview = clean.length > 60 ? clean.slice(0, 60) + '…' : clean;
+
+    // Notifica dono da atividade (se não foi ele próprio que comentou e não está nas menções pra evitar duplicar)
+    if (activity.user_id !== userId && !mentionedIds.includes(activity.user_id)) {
       Promise.all([
         this.notificationsService.create(
           activity.user_id,
@@ -62,16 +122,40 @@ export class ActivitiesService {
         ),
       ]).catch(() => {});
     }
+
+    // Notifica menções (async, não bloqueia resposta)
+    this.notifyMentions(mentionedIds, userId, activityId, saved.id, preview).catch(() => {});
+
     return saved;
   }
 
-  async listComments(activityId: string) {
-    return this.commentRepository.find({
+  async listComments(activityId: string, viewerId?: string) {
+    const comments = await this.commentRepository.find({
       where: { activity_id: activityId },
       relations: ['user'],
       order: { createdAt: 'DESC' },
       take: 100,
     });
+    if (comments.length === 0) return [];
+    const ids = comments.map(c => c.id);
+    const reactions = await this.reactionRepository.find({ where: { comment_id: In(ids) } });
+    // agrega por (comment_id, emoji)
+    type Agg = { count: number; mine: boolean };
+    const map = new Map<string, Map<string, Agg>>();
+    for (const r of reactions) {
+      if (!map.has(r.comment_id)) map.set(r.comment_id, new Map());
+      const inner = map.get(r.comment_id)!;
+      const cur = inner.get(r.emoji) || { count: 0, mine: false };
+      cur.count++;
+      if (viewerId && r.user_id === viewerId) cur.mine = true;
+      inner.set(r.emoji, cur);
+    }
+    return comments.map(c => ({
+      ...c,
+      reactions: map.has(c.id)
+        ? Array.from(map.get(c.id)!.entries()).map(([emoji, agg]) => ({ emoji, count: agg.count, mine: agg.mine }))
+        : [],
+    }));
   }
 
   async deleteComment(commentId: string, userId: string): Promise<void> {
@@ -79,6 +163,48 @@ export class ActivitiesService {
     if (!comment) throw new NotFoundException('Comentário não encontrado');
     if (comment.user_id !== userId) throw new BadRequestException('Sem permissão');
     await this.commentRepository.delete(commentId);
+  }
+
+  // === COMMENT REACTIONS ===
+  async toggleReaction(commentId: string, userId: string, emoji: string): Promise<{ added: boolean; count: number; emoji: string }> {
+    const clean = (emoji || '').trim();
+    if (!ALLOWED_REACTIONS.has(clean)) {
+      throw new BadRequestException('Emoji não permitido');
+    }
+    const comment = await this.commentRepository.findOne({ where: { id: commentId } });
+    if (!comment) throw new NotFoundException('Comentário não encontrado');
+
+    const existing = await this.reactionRepository.findOne({
+      where: { comment_id: commentId, user_id: userId, emoji: clean },
+    });
+    let added: boolean;
+    if (existing) {
+      await this.reactionRepository.delete(existing.id);
+      added = false;
+    } else {
+      await this.reactionRepository.save(
+        this.reactionRepository.create({ comment_id: commentId, user_id: userId, emoji: clean }),
+      );
+      added = true;
+      // Notifica autor do comentário (silencioso)
+      if (comment.user_id !== userId) {
+        this.pushService
+          .sendToUser(comment.user_id, `Reação ${clean}`, 'Alguém reagiu ao seu comentário', { type: 'comment_reaction', commentId })
+          .catch(() => {});
+      }
+    }
+    const count = await this.reactionRepository.count({ where: { comment_id: commentId, emoji: clean } });
+    return { added, count, emoji: clean };
+  }
+
+  async listReactions(commentId: string) {
+    const rows = await this.reactionRepository.find({
+      where: { comment_id: commentId },
+      relations: ['user'],
+      order: { createdAt: 'ASC' },
+      take: 200,
+    });
+    return rows;
   }
 
   // === KUDOS (likes) ===

@@ -31,6 +31,10 @@ export class ActivityComment {
   @Column({ type: 'text' })
   content: string;
 
+  // Array de user IDs mencionados (parsed do content). Vazio quando nenhum.
+  @Column({ type: 'simple-array', default: '' })
+  mentioned_user_ids: string[];
+
   @CreateDateColumn()
   createdAt: Date;
 }
