@@ -20,6 +20,8 @@ import { trackingSocket } from '../../services/tracking-socket.service';
 import { Share } from 'react-native';
 import { announce, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
 import { AutoPauseDetector } from '../../utils/auto-pause';
+import HoldToFinishButton from '../../components/tracking/HoldToFinishButton';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -214,26 +216,29 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
     setIsPaused(!isPaused);
   };
 
-  const handleFinish = () => {
-    Alert.alert('Finalizar', 'Deseja encerrar a atividade?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Finalizar',
-        style: 'destructive',
-        onPress: async () => {
-          locationSub.current?.remove();
-          if (timerRef.current) clearInterval(timerRef.current);
-          if (audioOn) announce.finish(distance / 1000, elapsed / 60);
-          try {
-            await api.put(`/activities/${activityId}/finish`);
-            navigation.replace('ActivitySummary', { activityId });
-          } catch {
-            Alert.alert('Erro', 'Nao foi possivel finalizar a atividade. Tente novamente.');
-          }
-        },
-      },
-    ]);
+  const [confirmingFinish, setConfirmingFinish] = useState(false);
+  const [finishing, setFinishing] = useState(false);
+
+  const requestFinish = () => setConfirmingFinish(true);
+
+  const doFinish = async () => {
+    setFinishing(true);
+    locationSub.current?.remove();
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (audioOn) announce.finish(distance / 1000, elapsed / 60);
+    try {
+      await api.put(`/activities/${activityId}/finish`);
+      setConfirmingFinish(false);
+      navigation.replace('ActivitySummary', { activityId });
+    } catch (e) {
+      setFinishing(false);
+      setConfirmingFinish(false);
+      Alert.alert('Erro', 'Nao foi possivel finalizar a atividade. Tente novamente.');
+    }
   };
+
+  // Compat: alguns lugares ainda referenciam handleFinish
+  const handleFinish = requestFinish;
 
   const handleShareLive = async () => {
     if (sharing) return;
@@ -436,38 +441,44 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
 
         {/* Control buttons fixos no rodapé */}
         <View style={styles.controlsBar}>
-          <TouchableOpacity style={styles.sideBtn} onPress={isPaused ? handleFinish : handleLap}>
-            <Ionicons
-              name={isPaused ? 'stop' : 'flag-outline'}
-              size={22}
-              color={isPaused ? '#F87171' : colors.dark.text}
-            />
-            <Text style={styles.sideBtnLabel}>{isPaused ? 'Finalizar' : `Volta ${laps.length + 1}`}</Text>
+          {/* ESQUERDA: Lap (running) ou placeholder (paused) */}
+          <TouchableOpacity
+            style={[styles.sideBtn, isPaused && { opacity: 0.4 }]}
+            onPress={handleLap}
+            disabled={isPaused}
+          >
+            <Ionicons name="flag-outline" size={22} color={colors.dark.text} />
+            <Text style={styles.sideBtnLabel}>{isPaused ? `${laps.length} voltas` : `Volta ${laps.length + 1}`}</Text>
           </TouchableOpacity>
 
+          {/* CENTRO: Pause/Resume (sempre principal) */}
           <TouchableOpacity
             style={[styles.mainControlBtn, isPaused ? styles.resumeBtn : styles.pauseBtn]}
             onPress={togglePause}
+            accessibilityLabel={isPaused ? 'Retomar' : 'Pausar'}
           >
             <Ionicons name={isPaused ? 'play' : 'pause'} size={34} color="#fff" />
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.sideBtn}
-            onPress={() => { if (isPaused) { setIsPaused(false); startTracking(); startTimer(); } }}
-            disabled={!isPaused}
-          >
-            <Ionicons
-              name={isPaused ? 'refresh-outline' : 'list-outline'}
-              size={22}
-              color={isPaused ? colors.dark.text : colors.dark.secondaryText}
-            />
-            <Text style={[styles.sideBtnLabel, !isPaused && { color: colors.dark.secondaryText }]}>
-              {isPaused ? 'Continuar' : `${laps.length} voltas`}
-            </Text>
-          </TouchableOpacity>
+          {/* DIREITA: Finalizar SEMPRE visivel (hold-to-confirm) */}
+          <View style={styles.sideBtn}>
+            <HoldToFinishButton onFinish={doFinish} small label="Segure pra finalizar" />
+            <Text style={[styles.sideBtnLabel, { color: '#F87171', marginTop: 6 }]}>Finalizar</Text>
+          </View>
         </View>
       </View>
+
+      <ConfirmModal
+        visible={confirmingFinish}
+        title="Finalizar treino?"
+        message={`Você correu ${(distance / 1000).toFixed(2)} km em ${Math.floor(elapsed / 60)}min. Confirma encerrar?`}
+        confirmLabel="Finalizar"
+        cancelLabel="Continuar"
+        destructive
+        loading={finishing}
+        onConfirm={doFinish}
+        onCancel={() => setConfirmingFinish(false)}
+      />
     </View>
   );
 }
