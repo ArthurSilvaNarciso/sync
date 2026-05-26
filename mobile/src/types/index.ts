@@ -12,6 +12,7 @@ export interface User {
   email: string;
   bio?: string;
   avatarUrl?: string;
+  profilePhotos?: string[] | null;  // min 3 fotos de perfil (base64 data URLs)
   birthDate?: string;
   sports?: string[];
   level: SportLevel;

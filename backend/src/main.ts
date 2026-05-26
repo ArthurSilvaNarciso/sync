@@ -2,6 +2,7 @@ import { NestFactory, Reflector } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
+import { json, urlencoded } from 'express';
 import { AppModule } from './app.module';
 import { initSentry } from './common/sentry/sentry.init';
 import { SentryExceptionFilter } from './common/sentry/sentry.filter';
@@ -23,6 +24,10 @@ async function bootstrap() {
   app.useGlobalFilters(new SentryExceptionFilter());
 
   const isProd = process.env.NODE_ENV === 'production';
+
+  // Aumenta limite do body para 12MB pra suportar upload de fotos base64 (3×550KB = ~1.65MB + margem)
+  app.use(json({ limit: '12mb' }));
+  app.use(urlencoded({ extended: true, limit: '12mb' }));
 
   // ===== SECURITY HEADERS =====
   // CSP habilitada com whitelist enxuta. Imagens externas (Unsplash, OSM, avatars)

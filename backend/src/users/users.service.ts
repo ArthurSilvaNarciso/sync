@@ -84,6 +84,16 @@ export class UsersService {
     return this.findById(userId);
   }
 
+  // Salvar fotos do perfil (array de data URLs base64, máx 5)
+  async updateProfilePhotos(userId: string, photos: string[]): Promise<User> {
+    if (!Array.isArray(photos) || photos.length < 1) {
+      throw new Error('Envie pelo menos 1 foto.');
+    }
+    const limited = photos.slice(0, 5);
+    await this.userRepository.update(userId, { profilePhotos: limited });
+    return this.findById(userId);
+  }
+
   // Buscar usuários por nome
   async searchUsers(
     query: string,

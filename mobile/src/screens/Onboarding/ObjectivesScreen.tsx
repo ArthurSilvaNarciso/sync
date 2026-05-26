@@ -33,7 +33,7 @@ export default function ObjectivesScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <ProgressBar current={3} total={5} />
+          <ProgressBar current={3} total={6} />
         </View>
       </View>
 

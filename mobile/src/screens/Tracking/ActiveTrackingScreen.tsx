@@ -86,32 +86,54 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
     }
   }, [distance, audioOn]);
 
+  const isPausedRef = useRef(false);
+
   const startTimer = () => {
+    // Prevent duplicate intervals
+    if (timerRef.current) clearInterval(timerRef.current);
     timerRef.current = setInterval(() => {
-      setElapsed((prev) => prev + 1);
+      if (!isPausedRef.current) {
+        setElapsed((prev) => prev + 1);
+      }
     }, 1000);
   };
 
   const startTracking = async () => {
     try {
-      // Web: usa navigator.geolocation (Expo Location é instável no web)
+      // Web: usa navigator.geolocation com throttle de 2s para evitar re-renders excessivos
       if (Platform.OS === 'web') {
         if (typeof navigator === 'undefined' || !navigator.geolocation) {
           Alert.alert('GPS indisponível', 'Seu navegador não suporta geolocalização.');
           return;
         }
-        const id = navigator.geolocation.watchPosition(
+        // Get current position first to center the map immediately
+        navigator.geolocation.getCurrentPosition(
           (pos) => handleNewPoint({
             latitude: pos.coords.latitude,
             longitude: pos.coords.longitude,
             altitude: pos.coords.altitude ?? undefined,
           }),
+          () => {},
+          { enableHighAccuracy: true, timeout: 10000 },
+        );
+        let lastWebGPS = 0;
+        const id = navigator.geolocation.watchPosition(
+          (pos) => {
+            const now = Date.now();
+            if (now - lastWebGPS < 2000) return; // throttle: no more than 1 update/2s
+            lastWebGPS = now;
+            handleNewPoint({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude,
+              altitude: pos.coords.altitude ?? undefined,
+            });
+          },
           (err) => {
             if (err.code === err.PERMISSION_DENIED) {
               Alert.alert('Permissão negada', 'Libere a localização no cadeado da barra de endereço.');
             }
           },
-          { enableHighAccuracy: true, maximumAge: 2000, timeout: 30000 },
+          { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 },
         );
         locationSub.current = { remove: () => navigator.geolocation.clearWatch(id) };
         return;
@@ -206,14 +228,24 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
   };
 
   const togglePause = () => {
-    if (isPaused) {
+    const newPaused = !isPaused;
+    isPausedRef.current = newPaused;
+    if (!newPaused) {
+      // Resuming: remove any stale subscription before creating a new one
+      locationSub.current?.remove();
+      locationSub.current = null;
       startTracking();
       startTimer();
+      if (audioOn) announce.resume();
     } else {
+      // Pausing
       locationSub.current?.remove();
+      locationSub.current = null;
       if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = null;
+      if (audioOn) announce.pause();
     }
-    setIsPaused(!isPaused);
+    setIsPaused(newPaused);
   };
 
   const [confirmingFinish, setConfirmingFinish] = useState(false);
@@ -221,21 +253,32 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
 
   const requestFinish = () => setConfirmingFinish(true);
 
+  // Use a ref so HoldToFinishButton always calls the latest version even across re-renders
+  const doFinishRef = useRef<() => void>(() => {});
+
   const doFinish = async () => {
+    if (finishing) return; // prevent double-call
     setFinishing(true);
+    isPausedRef.current = true;
     locationSub.current?.remove();
-    if (timerRef.current) clearInterval(timerRef.current);
+    locationSub.current = null;
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     if (audioOn) announce.finish(distance / 1000, elapsed / 60);
     try {
       await api.put(`/activities/${activityId}/finish`);
       setConfirmingFinish(false);
       navigation.replace('ActivitySummary', { activityId });
-    } catch (e) {
+    } catch (e: any) {
       setFinishing(false);
       setConfirmingFinish(false);
-      Alert.alert('Erro', 'Nao foi possivel finalizar a atividade. Tente novamente.');
+      const msg = e?.response?.data?.message || 'Não foi possível finalizar a atividade. Tente novamente.';
+      Alert.alert('Erro ao finalizar', Array.isArray(msg) ? msg.join(' • ') : msg);
     }
   };
+
+  // Keep ref in sync with latest doFinish on every render
+  doFinishRef.current = doFinish;
+  const stableDoFinish = useRef(() => doFinishRef.current()).current;
 
   // Compat: alguns lugares ainda referenciam handleFinish
   const handleFinish = requestFinish;
@@ -460,11 +503,11 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
             <Ionicons name={isPaused ? 'play' : 'pause'} size={34} color="#fff" />
           </TouchableOpacity>
 
-          {/* DIREITA: Finalizar SEMPRE visivel (hold-to-confirm) */}
-          <View style={styles.sideBtn}>
-            <HoldToFinishButton onFinish={doFinish} small label="Segure pra finalizar" />
+          {/* DIREITA: Finalizar — hold 1.2s ou toque para confirmar */}
+          <TouchableOpacity style={styles.sideBtn} onPress={requestFinish} activeOpacity={0.7}>
+            <HoldToFinishButton onFinish={stableDoFinish} small label="Segure pra finalizar" />
             <Text style={[styles.sideBtnLabel, { color: '#F87171', marginTop: 6 }]}>Finalizar</Text>
-          </View>
+          </TouchableOpacity>
         </View>
       </View>
 

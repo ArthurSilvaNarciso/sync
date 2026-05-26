@@ -35,7 +35,7 @@ export default function SportsScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={22} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <ProgressBar current={1} total={5} />
+          <ProgressBar current={1} total={6} />
         </View>
       </View>
 

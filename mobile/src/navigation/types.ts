@@ -17,6 +17,7 @@ export type OnboardingStackParamList = {
   Objectives: undefined;
   Availability: undefined;
   Location: undefined;
+  Photos: undefined;  // ← Obrigatório mínimo 3 fotos
 };
 
 // Tabs principais

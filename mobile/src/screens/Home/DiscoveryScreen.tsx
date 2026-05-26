@@ -70,7 +70,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
   const [creatingStory, setCreatingStory] = useState(false);
-  const [viewingStory, setViewingStory] = useState<{ stories: Story[]; initialIndex: number } | null>(null);
+  const [viewingStory, setViewingStory] = useState<{ stories: Story[]; initialIndex: number; markSeen?: (userId: string) => void } | null>(null);
   const [storiesRefreshKey, setStoriesRefreshKey] = useState(0);
   const position = useRef(new Animated.ValueXY()).current;
   const emptyPulse = useRef(new Animated.Value(1)).current;
@@ -448,16 +448,25 @@ export default function DiscoveryScreen({ navigation }: Props) {
       <StoriesBar
         key={storiesRefreshKey}
         onAddStory={() => setCreatingStory(true)}
-        onOpenStory={(_id, stories) => setViewingStory({ stories, initialIndex: 0 })}
+        onOpenStory={(_id, stories, markSeen) => {
+          // markSeen will be called when viewer closes so ring turns gray
+          setViewingStory({ stories, initialIndex: 0, markSeen });
+        }}
       />
 
       {/* Story Viewer Modal */}
       {viewingStory && (
-        <Modal visible animationType="fade" transparent onRequestClose={() => setViewingStory(null)}>
+        <Modal visible animationType="fade" transparent onRequestClose={() => {
+          viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
+          setViewingStory(null);
+        }}>
           <StoryViewerScreen
             initialStories={viewingStory.stories}
             initialIndex={viewingStory.initialIndex}
-            onClose={() => setViewingStory(null)}
+            onClose={() => {
+              viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
+              setViewingStory(null);
+            }}
           />
         </Modal>
       )}

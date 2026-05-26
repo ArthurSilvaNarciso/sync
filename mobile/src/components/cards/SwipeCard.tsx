@@ -1,5 +1,12 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Image, Dimensions } from 'react-native';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  Dimensions,
+  TouchableWithoutFeedback,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { DiscoveryUser, SPORTS, SportLevel } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
@@ -36,6 +43,20 @@ interface SwipeCardProps {
 
 function SwipeCardInner({ user }: SwipeCardProps) {
   const me = useAuthStore((s) => s.user);
+  const [photoIndex, setPhotoIndex] = useState(0);
+
+  // Build photo gallery: profilePhotos first, then avatarUrl as fallback
+  const photos = useMemo(() => {
+    const gallery: string[] = [];
+    if (user.profilePhotos && user.profilePhotos.length > 0) {
+      gallery.push(...user.profilePhotos);
+    } else if (user.avatarUrl) {
+      gallery.push(user.avatarUrl);
+    }
+    return gallery;
+  }, [user.profilePhotos, user.avatarUrl]);
+
+  const currentPhoto = photos[photoIndex] || null;
 
   const sportLabels = user.sports?.map(
     (s) => SPORTS.find((sp) => sp.id === s)?.label || s,
@@ -64,17 +85,54 @@ function SwipeCardInner({ user }: SwipeCardProps) {
     [me, user],
   );
 
+  const handleTap = (side: 'left' | 'right') => {
+    if (photos.length <= 1) return;
+    setPhotoIndex((prev) => {
+      if (side === 'right') return Math.min(prev + 1, photos.length - 1);
+      return Math.max(prev - 1, 0);
+    });
+  };
+
   return (
     <View style={styles.card}>
+      {/* Photo */}
       <Image
         source={
-          user.avatarUrl
-            ? { uri: user.avatarUrl }
+          currentPhoto
+            ? { uri: currentPhoto }
             : require('../../assets/images/default-avatar.png')
         }
         style={styles.image}
         defaultSource={require('../../assets/images/default-avatar.png')}
       />
+
+      {/* Tap zones for photo navigation */}
+      {photos.length > 1 && (
+        <View style={styles.tapZones} pointerEvents="box-none">
+          <TouchableWithoutFeedback onPress={() => handleTap('left')}>
+            <View style={styles.tapLeft} />
+          </TouchableWithoutFeedback>
+          <TouchableWithoutFeedback onPress={() => handleTap('right')}>
+            <View style={styles.tapRight} />
+          </TouchableWithoutFeedback>
+        </View>
+      )}
+
+      {/* Photo dots indicator */}
+      {photos.length > 1 && (
+        <View style={styles.dotsRow}>
+          {photos.map((_, i) => (
+            <View
+              key={i}
+              style={[
+                styles.dot,
+                { backgroundColor: i === photoIndex ? '#fff' : 'rgba(255,255,255,0.4)' },
+                i === photoIndex && styles.dotActive,
+              ]}
+            />
+          ))}
+        </View>
+      )}
 
       {/* Top badges row */}
       <View style={styles.topRow}>
@@ -84,18 +142,20 @@ function SwipeCardInner({ user }: SwipeCardProps) {
             <Text style={styles.levelText}>{levelConfig.label}</Text>
           </View>
         )}
-        {compatibility.score > 0 && (
-          <CompatibilityBadge result={compatibility} compact />
-        )}
-        {primarySport && (
-          <View style={styles.sportBadge}>
-            <Ionicons
-              name={SPORT_ICONS[primarySport] || SPORT_ICONS.default}
-              size={14}
-              color="#FFF"
-            />
-          </View>
-        )}
+        <View style={styles.topRight}>
+          {compatibility.score > 0 && (
+            <CompatibilityBadge result={compatibility} compact />
+          )}
+          {primarySport && (
+            <View style={styles.sportBadge}>
+              <Ionicons
+                name={SPORT_ICONS[primarySport] || SPORT_ICONS.default}
+                size={14}
+                color="#FFF"
+              />
+            </View>
+          )}
+        </View>
       </View>
 
       {/* Strong bottom gradient */}
@@ -110,14 +170,28 @@ function SwipeCardInner({ user }: SwipeCardProps) {
             {age && <Text style={styles.age}>, {age}</Text>}
           </View>
 
-          <View style={styles.distanceRow}>
-            <Ionicons name="location" size={12} color={colors.dark.accent} />
-            <Text style={styles.distance}>
-              {user.distance < 1
-                ? `${Math.round(user.distance * 1000)}m de distância`
-                : `${user.distance.toFixed(1)}km de distância`}
-            </Text>
-          </View>
+          {user.city && (
+            <View style={styles.distanceRow}>
+              <Ionicons name="location" size={12} color={colors.dark.accent} />
+              <Text style={styles.distance}>
+                {user.distance < 1
+                  ? `${Math.round(user.distance * 1000)}m de distância`
+                  : `${user.distance.toFixed(1)}km de distância`}
+                {user.city ? ` · ${user.city}` : ''}
+              </Text>
+            </View>
+          )}
+
+          {!user.city && (
+            <View style={styles.distanceRow}>
+              <Ionicons name="location" size={12} color={colors.dark.accent} />
+              <Text style={styles.distance}>
+                {user.distance < 1
+                  ? `${Math.round(user.distance * 1000)}m de distância`
+                  : `${user.distance.toFixed(1)}km de distância`}
+              </Text>
+            </View>
+          )}
 
           {sportLabels.length > 0 && (
             <View style={styles.tags}>
@@ -139,18 +213,27 @@ function SwipeCardInner({ user }: SwipeCardProps) {
               {user.bio}
             </Text>
           )}
+
+          {/* Photo count hint if multiple photos */}
+          {photos.length > 1 && (
+            <Text style={styles.photoHint}>
+              <Ionicons name="images-outline" size={11} color="rgba(255,255,255,0.5)" />
+              {' '}{photos.length} fotos · toque para navegar
+            </Text>
+          )}
         </View>
       </LinearGradient>
     </View>
   );
 }
 
-// Memoizado: SwipeCard só re-renderiza se o user.id mudar (ou bio/avatarUrl).
+// Memoizado: SwipeCard só re-renderiza se o user.id mudar.
 // Hot path do deck de swipe — evita re-renders no PanResponder.
 const SwipeCard = React.memo(SwipeCardInner, (prev, next) =>
   prev.user.id === next.user.id &&
   prev.user.bio === next.user.bio &&
-  prev.user.avatarUrl === next.user.avatarUrl,
+  prev.user.avatarUrl === next.user.avatarUrl &&
+  JSON.stringify(prev.user.profilePhotos) === JSON.stringify(next.user.profilePhotos),
 );
 
 export default SwipeCard;
@@ -173,14 +256,51 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  tapZones: {
+    ...StyleSheet.absoluteFillObject,
+    flexDirection: 'row',
+    // Only cover top 60% (leave bottom gradient for info)
+    height: '60%',
+  },
+  tapLeft: {
+    flex: 1,
+    height: '100%',
+  },
+  tapRight: {
+    flex: 1,
+    height: '100%',
+  },
+  dotsRow: {
+    position: 'absolute',
+    top: spacing.sm,
+    left: spacing.md,
+    right: spacing.md,
+    flexDirection: 'row',
+    gap: 4,
+    justifyContent: 'center',
+  },
+  dot: {
+    flex: 1,
+    height: 3,
+    borderRadius: 2,
+    maxWidth: 48,
+  },
+  dotActive: {
+    backgroundColor: '#fff',
+  },
   topRow: {
     position: 'absolute',
-    top: spacing.lg,
+    top: spacing.lg + 8,
     left: spacing.md,
     right: spacing.md,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
+  },
+  topRight: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   levelBadge: {
     flexDirection: 'row',
@@ -189,7 +309,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: borderRadius.full,
-    backdropFilter: 'blur(10px)',
   },
   levelText: {
     fontSize: 11,
@@ -271,5 +390,11 @@ const styles = StyleSheet.create({
     color: 'rgba(255,255,255,0.8)',
     marginTop: spacing.sm,
     lineHeight: 20,
+  },
+  photoHint: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.45)',
+    marginTop: spacing.xs,
+    fontWeight: '500',
   },
 });

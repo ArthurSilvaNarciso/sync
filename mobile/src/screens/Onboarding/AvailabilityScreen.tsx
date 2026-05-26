@@ -33,7 +33,7 @@ export default function AvailabilityScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <ProgressBar current={4} total={5} />
+          <ProgressBar current={4} total={6} />
         </View>
       </View>
 

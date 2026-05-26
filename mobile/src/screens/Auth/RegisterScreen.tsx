@@ -85,7 +85,6 @@ export default function RegisterScreen({ navigation }: Props) {
     setLoading(true);
     try {
       await register(name.trim(), email.trim().toLowerCase(), password, confirmPassword);
-      showToast('Conta criada! 🎉', 'success');
     } catch (error: any) {
       const msg = error.response?.data?.message;
       const detail = Array.isArray(msg) ? msg.join(' • ') : msg;

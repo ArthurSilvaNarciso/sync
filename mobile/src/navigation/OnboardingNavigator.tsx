@@ -6,6 +6,7 @@ import LevelScreen from '../screens/Onboarding/LevelScreen';
 import ObjectivesScreen from '../screens/Onboarding/ObjectivesScreen';
 import AvailabilityScreen from '../screens/Onboarding/AvailabilityScreen';
 import LocationScreen from '../screens/Onboarding/LocationScreen';
+import PhotosScreen from '../screens/Onboarding/PhotosScreen';
 
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
@@ -22,6 +23,7 @@ export default function OnboardingNavigator() {
       <Stack.Screen name="Objectives" component={ObjectivesScreen} />
       <Stack.Screen name="Availability" component={AvailabilityScreen} />
       <Stack.Screen name="Location" component={LocationScreen} />
+      <Stack.Screen name="Photos" component={PhotosScreen} />
     </Stack.Navigator>
   );
 }

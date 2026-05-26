@@ -18,6 +18,8 @@ type Props = {
   navigation: NativeStackNavigationProp<OnboardingStackParamList, 'Location'>;
 };
 
+export type LocationHandleFinish = () => Promise<void>;
+
 // Cidades brasileiras pré-cadastradas para fallback manual
 const CITIES: { name: string; lat: number; lng: number }[] = [
   { name: 'São Paulo, SP', lat: -23.5505, lng: -46.6333 },
@@ -130,7 +132,7 @@ export default function LocationScreen({ navigation }: Props) {
           <Ionicons name="arrow-back" size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: spacing.md }}>
-          <ProgressBar current={5} total={5} />
+          <ProgressBar current={5} total={6} />
         </View>
       </View>
 
@@ -218,8 +220,8 @@ export default function LocationScreen({ navigation }: Props) {
       </View>
 
       <Button
-        title="Finalizar"
-        onPress={handleFinish}
+        title="Continuar"
+        onPress={() => navigation.navigate('Photos')}
         disabled={!granted}
         loading={loading}
         style={styles.button}

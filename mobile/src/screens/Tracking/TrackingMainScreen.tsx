@@ -127,10 +127,9 @@ export default function TrackingMainScreen({ navigation }: Props) {
         startTime: new Date().toISOString(),
       });
       navigation.navigate('ActiveTracking', { activityId: data.id });
-    } catch (error) {
-      console.log('Error starting activity:', error);
-      // Navigate anyway for demo
-      navigation.navigate('ActiveTracking', { activityId: 'demo-' + Date.now() });
+    } catch (error: any) {
+      const msg = error?.response?.data?.message || 'Não foi possível iniciar o treino. Verifique sua conexão e tente novamente.';
+      Alert.alert('Erro ao iniciar', Array.isArray(msg) ? msg.join(' • ') : msg);
     } finally {
       setLoading(false);
     }

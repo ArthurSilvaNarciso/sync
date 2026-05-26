@@ -40,6 +40,10 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   avatarUrl: string | null;
 
+  // Fotos do perfil (mínimo 3 na criação). Armazenado como JSON array de data URLs.
+  @Column({ type: 'simple-json', nullable: true })
+  profilePhotos: string[] | null;
+
   @Column({ type: 'varchar', nullable: true })
   birthDate: string | null;
 

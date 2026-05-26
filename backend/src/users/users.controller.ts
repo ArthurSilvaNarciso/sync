@@ -68,6 +68,31 @@ export class UsersController {
     return this.usersService.updateAvatar(user.id, avatarBase64);
   }
 
+  @Post('me/photos')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload de fotos do perfil como base64 (máx 5, cada ~400KB)' })
+  async uploadProfilePhotos(
+    @CurrentUser() user: User,
+    @Body('photos') photos: string[],
+  ) {
+    if (!Array.isArray(photos) || photos.length < 3) {
+      throw new BadRequestException('Envie pelo menos 3 fotos para continuar.');
+    }
+    if (photos.length > 5) {
+      throw new BadRequestException('Máximo de 5 fotos permitido.');
+    }
+    for (const photo of photos) {
+      if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
+        throw new BadRequestException('Formato inválido. Cada foto deve ser data:image/... base64.');
+      }
+      if (photo.length > 550_000) {
+        throw new BadRequestException('Uma das fotos é muito grande. Máximo ~400KB cada após compressão.');
+      }
+    }
+    return this.usersService.updateProfilePhotos(user.id, photos);
+  }
+
   @Put('location')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
