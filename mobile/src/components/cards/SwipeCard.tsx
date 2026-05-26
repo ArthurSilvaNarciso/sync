@@ -39,9 +39,10 @@ const SPORT_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
 
 interface SwipeCardProps {
   user: DiscoveryUser;
+  cardHeight?: number;
 }
 
-function SwipeCardInner({ user }: SwipeCardProps) {
+function SwipeCardInner({ user, cardHeight }: SwipeCardProps) {
   const me = useAuthStore((s) => s.user);
   const [photoIndex, setPhotoIndex] = useState(0);
 
@@ -93,8 +94,11 @@ function SwipeCardInner({ user }: SwipeCardProps) {
     });
   };
 
+  // Respect cardHeight prop so the card never overflows cardsContainer
+  const computedHeight = cardHeight && cardHeight > 0 ? cardHeight : CARD_WIDTH * 1.38;
+
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, { height: computedHeight }]}>
       {/* Photo */}
       <Image
         source={
@@ -233,6 +237,7 @@ const SwipeCard = React.memo(SwipeCardInner, (prev, next) =>
   prev.user.id === next.user.id &&
   prev.user.bio === next.user.bio &&
   prev.user.avatarUrl === next.user.avatarUrl &&
+  prev.cardHeight === next.cardHeight &&
   JSON.stringify(prev.user.profilePhotos) === JSON.stringify(next.user.profilePhotos),
 );
 

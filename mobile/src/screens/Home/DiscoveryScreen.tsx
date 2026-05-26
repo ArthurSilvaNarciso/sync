@@ -72,6 +72,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [creatingStory, setCreatingStory] = useState(false);
   const [viewingStory, setViewingStory] = useState<{ stories: Story[]; initialIndex: number; markSeen?: (userId: string) => void } | null>(null);
   const [storiesRefreshKey, setStoriesRefreshKey] = useState(0);
+  const [deckH, setDeckH] = useState(0);
   const position = useRef(new Animated.ValueXY()).current;
   const emptyPulse = useRef(new Animated.Value(1)).current;
   const matchBadgeScale = useRef(new Animated.Value(0)).current;
@@ -484,10 +485,13 @@ export default function DiscoveryScreen({ navigation }: Props) {
         </Modal>
       )}
 
-      <View style={styles.cardsContainer}>
+      <View
+        style={styles.cardsContainer}
+        onLayout={(e) => setDeckH(e.nativeEvent.layout.height)}
+      >
         {nextUser && (
           <View style={[styles.cardWrapper, { zIndex: 0, transform: [{ scale: 0.95 }] }]}>
-            <SwipeCard user={nextUser} />
+            <SwipeCard user={nextUser} cardHeight={deckH > 0 ? deckH - 8 : undefined} />
           </View>
         )}
 
@@ -512,7 +516,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
             <Text style={[styles.overlayText, { color: colors.dislikeRed }]}>NOPE</Text>
           </Animated.View>
 
-          <SwipeCard user={currentUser} />
+          <SwipeCard user={currentUser} cardHeight={deckH > 0 ? deckH - 8 : undefined} />
         </Animated.View>
       </View>
 
