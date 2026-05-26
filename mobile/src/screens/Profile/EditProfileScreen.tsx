@@ -30,6 +30,27 @@ type Props = {
 
 const ACCENT = '#FF6B35';
 
+/** Web-only: usa canvas para redimensionar a imagem para quadrado de `size`px e retornar data URL */
+function resizeAvatarForWeb(uri: string, size: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    if (typeof window === 'undefined') { reject(new Error('no window')); return; }
+    const img = new (window as any).Image() as HTMLImageElement;
+    img.onload = () => {
+      const canvas = (window as any).document.createElement('canvas') as HTMLCanvasElement;
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d')!;
+      const side = Math.min(img.naturalWidth, img.naturalHeight);
+      const ox = (img.naturalWidth - side) / 2;
+      const oy = (img.naturalHeight - side) / 2;
+      ctx.drawImage(img, ox, oy, side, side, 0, 0, size, size);
+      resolve(canvas.toDataURL('image/jpeg', 0.55));
+    };
+    img.onerror = () => reject(new Error('Falha ao carregar imagem'));
+    img.src = uri;
+  });
+}
+
 export default function EditProfileScreen({ navigation }: Props) {
   const { user, setUser } = useAuthStore();
   const [name, setName] = useState(user?.name || '');
@@ -57,31 +78,27 @@ export default function EditProfileScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5,   // baixa qualidade para manter base64 pequeno
+        base64: true,   // pede base64 direto (nativo)
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
 
       setUploadingAvatar(true);
-      const form = new FormData();
+      let avatarBase64: string;
+
       if (Platform.OS === 'web') {
-        // Web: asset.uri é blob, precisamos do File real
-        const blob = await fetch(asset.uri).then((r) => r.blob());
-        const fileName = (asset.fileName || 'avatar.jpg').replace(/[^\w.-]/g, '_');
-        form.append('avatar', new File([blob], fileName, { type: blob.type || 'image/jpeg' }));
+        // Web: redimensiona via canvas para 300×300 e converte para data URL
+        avatarBase64 = await resizeAvatarForWeb(asset.uri, 300);
       } else {
-        form.append('avatar', {
-          uri: asset.uri,
-          name: asset.fileName || `avatar-${Date.now()}.jpg`,
-          type: asset.mimeType || 'image/jpeg',
-        } as any);
+        // Native: ImagePicker já entrega base64 raw
+        const mime = asset.mimeType || 'image/jpeg';
+        avatarBase64 = `data:${mime};base64,${asset.base64}`;
       }
 
-      const { data } = await api.post('/users/me/avatar', form, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        transformRequest: (d) => d, // não deixar o axios re-stringificar
-      });
+      const { data } = await api.post('/users/me/avatar', { avatarBase64 });
       setUser(data);
+      Alert.alert('Foto atualizada!', 'Seu avatar foi salvo com sucesso.');
     } catch (error: any) {
       console.log('avatar upload error', error?.response?.data || error?.message);
       Alert.alert('Erro', error?.response?.data?.message || 'Não foi possível enviar a foto');

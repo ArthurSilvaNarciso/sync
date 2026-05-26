@@ -212,22 +212,35 @@ export default function RegisterScreen({ navigation }: Props) {
                 )}
               </View>
 
-              <TouchableOpacity
-                style={styles.termsRow}
-                onPress={() => setAcceptedTerms(!acceptedTerms)}
-              >
-                <Ionicons
-                  name={acceptedTerms ? 'checkbox' : 'square-outline'}
-                  size={22}
-                  color={acceptedTerms ? ACCENT : 'rgba(255,255,255,0.5)'}
-                />
+              <View style={styles.termsRow}>
+                <TouchableOpacity
+                  onPress={() => setAcceptedTerms(!acceptedTerms)}
+                  hitSlop={10}
+                  style={{ paddingRight: 6 }}
+                >
+                  <Ionicons
+                    name={acceptedTerms ? 'checkbox' : 'square-outline'}
+                    size={22}
+                    color={acceptedTerms ? ACCENT : 'rgba(255,255,255,0.5)'}
+                  />
+                </TouchableOpacity>
                 <Text style={styles.termsText}>
                   Aceito os{' '}
-                  <Text style={styles.termsLink}>termos de uso</Text>
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('Terms')}
+                  >
+                    termos de uso
+                  </Text>
                   {' '}e{' '}
-                  <Text style={styles.termsLink}>privacidade</Text>
+                  <Text
+                    style={styles.termsLink}
+                    onPress={() => navigation.navigate('Privacy')}
+                  >
+                    privacidade
+                  </Text>
                 </Text>
-              </TouchableOpacity>
+              </View>
 
               <Pressable
                 onPress={handleRegister}

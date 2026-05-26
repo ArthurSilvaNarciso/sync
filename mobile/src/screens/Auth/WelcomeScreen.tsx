@@ -195,8 +195,8 @@ export default function WelcomeScreen({ navigation }: Props) {
 
             <Text style={styles.terms}>
               Ao continuar, você aceita nossos{' '}
-              <Text style={styles.termsLink}>Termos</Text> e{' '}
-              <Text style={styles.termsLink}>Privacidade</Text>
+              <Text style={styles.termsLink} onPress={() => navigation.navigate('Terms')}>Termos</Text> e{' '}
+              <Text style={styles.termsLink} onPress={() => navigation.navigate('Privacy')}>Privacidade</Text>
             </Text>
           </View>
         </Animated.View>

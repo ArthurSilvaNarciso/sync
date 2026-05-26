@@ -7,16 +7,10 @@ import {
   Body,
   Param,
   Query,
-  Req,
   UseGuards,
-  UseInterceptors,
-  UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname } from 'path';
-import { ApiTags, ApiOperation, ApiBearerAuth, ApiConsumes } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ReportUserDto } from './dto/report-user.dto';
@@ -56,42 +50,22 @@ export class UsersController {
   @Post('me/avatar')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiConsumes('multipart/form-data')
-  @ApiOperation({ summary: 'Upload do avatar do usuário (max 5MB)' })
-  @UseInterceptors(
-    FileInterceptor('avatar', {
-      storage: diskStorage({
-        destination: './uploads/avatars',
-        filename: (_req, file, cb) => {
-          const safeExt = extname(file.originalname).toLowerCase().slice(0, 5) || '.jpg';
-          const random = Math.random().toString(36).slice(2, 10);
-          cb(null, `${Date.now()}-${random}${safeExt}`);
-        },
-      }),
-      limits: { fileSize: 5 * 1024 * 1024 },
-      fileFilter: (_req, file, cb) => {
-        if (!/^image\/(jpe?g|png|webp|gif)$/.test(file.mimetype)) {
-          return cb(new BadRequestException('Formato inválido. Use JPG, PNG, WEBP ou GIF.'), false);
-        }
-        cb(null, true);
-      },
-    }),
-  )
+  @ApiOperation({ summary: 'Upload do avatar como base64 (max ~400KB após compressão)' })
   async uploadAvatar(
     @CurrentUser() user: User,
-    @UploadedFile() file: Express.Multer.File,
-    @Req() req: any,
+    @Body('avatarBase64') avatarBase64: string,
   ) {
-    if (!file) throw new BadRequestException('Arquivo não enviado');
-    // Strip EXIF + resize (privacidade + perf). Falha não bloqueia upload.
-    try {
-      const { stripExifInPlace } = await import('../common/utils/image-sanitize.util');
-      await stripExifInPlace(file.path, { maxWidth: 1024, maxHeight: 1024, quality: 88 });
-    } catch {}
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const url = `${protocol}://${host}/uploads/avatars/${file.filename}`;
-    return this.usersService.updateAvatar(user.id, url);
+    if (!avatarBase64 || typeof avatarBase64 !== 'string') {
+      throw new BadRequestException('Imagem não enviada');
+    }
+    if (!avatarBase64.startsWith('data:image/')) {
+      throw new BadRequestException('Formato inválido. Envie data:image/... base64.');
+    }
+    // ~400KB de imagem comprimida equivale a ~530K chars de base64
+    if (avatarBase64.length > 550_000) {
+      throw new BadRequestException('Imagem muito grande. Máximo ~400KB após compressão.');
+    }
+    return this.usersService.updateAvatar(user.id, avatarBase64);
   }
 
   @Put('location')

@@ -6,6 +6,8 @@ export type AuthStackParamList = {
   Welcome: undefined;
   Login: undefined;
   Register: undefined;
+  Terms: undefined;
+  Privacy: undefined;
 };
 
 // Stack de onboarding

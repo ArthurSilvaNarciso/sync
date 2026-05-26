@@ -3,12 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { OnboardingStackParamList } from '../../navigation/types';
 import { useOnboardingStore } from '../../store/onboardingStore';
+import { useAuthStore } from '../../store/authStore';
 import { SPORTS } from '../../types';
 import { colors, fontSize, spacing } from '../../theme';
 import ScreenContainer from '../../components/layout/ScreenContainer';
 import ProgressBar from '../../components/ui/ProgressBar';
 import Chip from '../../components/ui/Chip';
 import Button from '../../components/ui/Button';
+import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
   navigation: NativeStackNavigationProp<OnboardingStackParamList, 'Sports'>;
@@ -16,6 +18,7 @@ type Props = {
 
 export default function SportsScreen({ navigation }: Props) {
   const { sports, setSports } = useOnboardingStore();
+  const logout = useAuthStore((s) => s.logout);
 
   const toggleSport = (id: string) => {
     if (sports.includes(id)) {
@@ -27,7 +30,14 @@ export default function SportsScreen({ navigation }: Props) {
 
   return (
     <ScreenContainer>
-      <ProgressBar current={1} total={5} />
+      <View style={styles.topRow}>
+        <TouchableOpacity onPress={logout} style={styles.backBtn} hitSlop={10}>
+          <Ionicons name="arrow-back" size={22} color={colors.text} />
+        </TouchableOpacity>
+        <View style={{ flex: 1, marginLeft: spacing.md }}>
+          <ProgressBar current={1} total={5} />
+        </View>
+      </View>
 
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <Text style={styles.title}>Quais esportes voce pratica?</Text>
@@ -58,6 +68,21 @@ export default function SportsScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  topRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   scroll: {
     flex: 1,
     marginTop: spacing.xl,

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,15 +10,18 @@ import {
   Platform,
   Alert,
   ActionSheetIOS,
+  Animated,
+  Pressable,
+  Easing,
 } from 'react-native';
 import MapView, { Polyline, Marker } from '../../components/map/SyncMap';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { TrackingStackParamList } from '../../navigation/types';
 import { Activity } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
-import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { feedApi } from '../../services/feed.service';
 import { generateWorkoutSummary } from '../../utils/workout-summary';
@@ -30,23 +33,62 @@ type Props = {
   route: RouteProp<TrackingStackParamList, 'ActivitySummary'>;
 };
 
+const ACCENT = '#FF6B35';
+
+const SPORT_ICONS: Record<string, keyof typeof Ionicons.glyphMap> = {
+  running: 'walk',
+  cycling: 'bicycle',
+  swimming: 'water',
+  hiking: 'trail-sign',
+  gym: 'barbell',
+};
+
+const SPORT_LABELS: Record<string, string> = {
+  running: 'Corrida',
+  cycling: 'Ciclismo',
+  swimming: 'Natação',
+  hiking: 'Trilha',
+  gym: 'Academia',
+};
+
 export default function ActivitySummaryScreen({ navigation, route }: Props) {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
-  const [ratingModal, setRatingModal] = useState(true); // abre auto após finish
+  const [ratingModal, setRatingModal] = useState(true);
+
+  // Celebration animation
+  const checkScale = useRef(new Animated.Value(0)).current;
+  const checkOpacity = useRef(new Animated.Value(0)).current;
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const statsSlide = useRef(new Animated.Value(30)).current;
 
   useEffect(() => {
     loadActivity();
   }, []);
+
+  useEffect(() => {
+    if (!loading && activity) {
+      Animated.sequence([
+        Animated.parallel([
+          Animated.spring(checkScale, { toValue: 1, tension: 70, friction: 7, useNativeDriver: true }),
+          Animated.timing(checkOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
+        ]),
+        Animated.parallel([
+          Animated.timing(headerFade, { toValue: 1, duration: 400, useNativeDriver: true }),
+          Animated.timing(statsSlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
+        ]),
+      ]).start();
+    }
+  }, [loading, activity]);
 
   const loadActivity = async () => {
     try {
       const { data } = await api.get(`/activities/${route.params.activityId}`);
       setActivity(data);
     } catch (error) {
-      console.log('Error:', error);
+      console.log('Error loading activity:', error);
     } finally {
       setLoading(false);
     }
@@ -56,11 +98,9 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
     if (!activity) return;
     try {
       await Share.share({
-        message: `Completei ${(activity.distance / 1000).toFixed(2)}km em ${formatDuration(activity.duration)}! #Sync #${activity.sport}`,
+        message: `Completei ${(activity.distance / 1000).toFixed(2)}km em ${formatDuration(activity.duration)} no Sync! 🔥 #Sync #${activity.sport}`,
       });
-    } catch {
-      // compartilhamento cancelado
-    }
+    } catch {}
   };
 
   const generateGpx = (): string => {
@@ -71,34 +111,22 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
           `    <trkpt lat="${p.latitude}" lon="${p.longitude}">\n      <time>${p.timestamp}</time>${p.altitude != null ? `\n      <ele>${p.altitude}</ele>` : ''}\n    </trkpt>`,
       )
       .join('\n');
-
-    return `<?xml version="1.0" encoding="UTF-8"?>
-<gpx version="1.1" creator="Sync App">
-  <trk>
-    <name>${activity.sport} - ${new Date(activity.startTime).toLocaleDateString('pt-BR')}</name>
-    <trkseg>
-${points}
-    </trkseg>
-  </trk>
-</gpx>`;
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<gpx version="1.1" creator="Sync App">\n  <trk>\n    <name>${activity.sport} - ${new Date(activity.startTime).toLocaleDateString('pt-BR')}</name>\n    <trkseg>\n${points}\n    </trkseg>\n  </trk>\n</gpx>`;
   };
 
   const generateCsv = (): string => {
     if (!activity?.points?.length) return '';
     const header = 'latitude,longitude,altitude,timestamp';
-    const rows = activity.points.map(
-      (p) => `${p.latitude},${p.longitude},${p.altitude ?? ''},${p.timestamp}`,
-    );
+    const rows = activity.points.map((p) => `${p.latitude},${p.longitude},${p.altitude ?? ''},${p.timestamp}`);
     return [header, ...rows].join('\n');
   };
 
   const handleExport = () => {
     if (!activity) return;
-
     const doExport = (format: 'gpx' | 'csv') => {
       const content = format === 'gpx' ? generateGpx() : generateCsv();
       if (!content) {
-        Alert.alert('Sem dados', 'Esta atividade nao tem pontos GPS para exportar.');
+        Alert.alert('Sem dados', 'Esta atividade não tem pontos GPS para exportar.');
         return;
       }
       Share.share({
@@ -106,7 +134,6 @@ ${points}
         message: content,
       }).catch(() => {});
     };
-
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
         { options: ['Cancelar', 'Exportar GPX', 'Exportar CSV'], cancelButtonIndex: 0 },
@@ -124,209 +151,226 @@ ${points}
     }
   };
 
-  if (loading || !activity) {
+  const handlePostToFeed = async () => {
+    if (!activity || posting) return;
+    setPosting(true);
+    try {
+      await feedApi.publish({
+        activityId: activity.id,
+        caption: `Mais um treino concluído! 🔥`,
+        distanceKm: activity.distance / 1000,
+        durationSeconds: activity.duration,
+        avgPace: activity.avgPace,
+        calories: estimateCalories(activity),
+        sport: activity.sport,
+      });
+      setPosted(true);
+      showToast('Publicado no feed! 🎉', 'success');
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || 'Erro ao publicar', 'error');
+    } finally {
+      setPosting(false);
+    }
+  };
+
+  if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.dark.accent} />
+      <View style={styles.loadingScreen}>
+        <ActivityIndicator size="large" color={ACCENT} />
+        <Text style={styles.loadingText}>Salvando atividade…</Text>
       </View>
     );
   }
 
-  const coordinates = activity.points?.map((p) => ({
-    latitude: p.latitude,
-    longitude: p.longitude,
-  })) || [];
+  if (!activity) {
+    return (
+      <View style={styles.loadingScreen}>
+        <Ionicons name="alert-circle-outline" size={48} color="#EF4444" />
+        <Text style={[styles.loadingText, { color: '#EF4444', marginTop: spacing.md }]}>
+          Atividade não encontrada
+        </Text>
+        <TouchableOpacity style={styles.backFallback} onPress={() => navigation.popToTop()}>
+          <Text style={{ color: ACCENT, fontWeight: '700' }}>Voltar ao início</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
-  const formatDuration = (seconds: number) => {
-    const h = Math.floor(seconds / 3600);
-    const m = Math.floor((seconds % 3600) / 60);
-    const s = seconds % 60;
-    if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
-
-  const sportLabels: Record<string, string> = {
-    running: 'Corrida',
-    cycling: 'Ciclismo',
-    swimming: 'Natacao',
-    hiking: 'Trilha',
-    gym: 'Academia',
-  };
+  const coordinates = activity.points?.map((p) => ({ latitude: p.latitude, longitude: p.longitude })) || [];
+  const calories = estimateCalories(activity);
+  const elevGain = estimateElevation(activity);
+  const sportIcon = SPORT_ICONS[activity.sport] || 'fitness';
+  const sportLabel = SPORT_LABELS[activity.sport] || activity.sport;
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={styles.header}>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.popToTop()}
-          >
-            <Ionicons name="close" size={24} color={colors.dark.text} />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>Resumo</Text>
-          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-            <Ionicons name="share-outline" size={22} color={colors.dark.accent} />
-          </TouchableOpacity>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} bounces>
 
-        {/* Sport badge + date */}
-        <View style={styles.sportBadge}>
-          <Text style={styles.sportText}>
-            {sportLabels[activity.sport] || activity.sport}
-          </Text>
-        </View>
-        <Text style={styles.dateText}>
-          {new Date(activity.startTime).toLocaleDateString('pt-BR', {
-            weekday: 'long',
-            day: '2-digit',
-            month: 'long',
-            year: 'numeric',
-          })}
-        </Text>
+        {/* ── Celebration Header ── */}
+        <LinearGradient
+          colors={['rgba(255,107,53,0.18)', 'rgba(10,10,15,0)']}
+          locations={[0, 1]}
+          style={styles.heroGradient}
+        >
+          <View style={styles.topBar}>
+            <TouchableOpacity style={styles.topBtn} onPress={() => navigation.popToTop()}>
+              <Ionicons name="close" size={20} color={colors.dark.text} />
+            </TouchableOpacity>
+            <Text style={styles.topTitle}>Atividade Salva</Text>
+            <TouchableOpacity style={styles.topBtn} onPress={handleShare}>
+              <Ionicons name="share-social-outline" size={20} color={ACCENT} />
+            </TouchableOpacity>
+          </View>
 
-        {/* Main stat - distance */}
-        <View style={styles.mainStat}>
-          <Text style={styles.mainStatValue}>
-            {(activity.distance / 1000).toFixed(2)}
-          </Text>
-          <Text style={styles.mainStatUnit}>km</Text>
-        </View>
+          {/* Checkmark + sport badge */}
+          <Animated.View style={[styles.celebrationCenter, { opacity: checkOpacity, transform: [{ scale: checkScale }] }]}>
+            <View style={styles.checkCircle}>
+              <LinearGradient colors={[ACCENT, '#FF3D00']} style={styles.checkGradient}>
+                <Ionicons name="checkmark" size={40} color="#fff" />
+              </LinearGradient>
+            </View>
+            <View style={styles.sportBadge}>
+              <Ionicons name={sportIcon} size={14} color={ACCENT} />
+              <Text style={styles.sportBadgeText}>{sportLabel.toUpperCase()}</Text>
+            </View>
+          </Animated.View>
 
-        {/* Map with route */}
-        {coordinates.length > 0 && (
-          <View style={styles.mapContainer}>
+          {/* Date */}
+          <Animated.Text style={[styles.dateText, { opacity: headerFade }]}>
+            {new Date(activity.startTime).toLocaleDateString('pt-BR', {
+              weekday: 'long',
+              day: '2-digit',
+              month: 'long',
+            })}
+          </Animated.Text>
+        </LinearGradient>
+
+        {/* ── Hero Stat (distance) ── */}
+        <Animated.View style={[styles.heroStat, { opacity: headerFade, transform: [{ translateY: statsSlide }] }]}>
+          <Text style={styles.heroValue}>{(activity.distance / 1000).toFixed(2)}</Text>
+          <Text style={styles.heroUnit}>km</Text>
+        </Animated.View>
+
+        {/* ── Map ── */}
+        {coordinates.length > 1 && (
+          <Animated.View style={[styles.mapContainer, { opacity: headerFade }]}>
             <MapView
               style={styles.map}
               initialRegion={{
                 latitude: coordinates[0].latitude,
                 longitude: coordinates[0].longitude,
-                latitudeDelta: 0.015,
-                longitudeDelta: 0.015,
+                latitudeDelta: 0.018,
+                longitudeDelta: 0.018,
               }}
               scrollEnabled={false}
               userInterfaceStyle="dark"
               customMapStyle={darkMapStyle}
             >
-              <Polyline
-                coordinates={coordinates}
-                strokeColor={colors.dark.accent}
-                strokeWidth={4}
-              />
+              <Polyline coordinates={coordinates} strokeColor={ACCENT} strokeWidth={4} />
               <Marker coordinate={coordinates[0]}>
-                <View style={styles.marker}>
-                  <Ionicons name="flag" size={10} color={colors.white} />
+                <View style={[styles.mapDot, { backgroundColor: '#22C55E' }]}>
+                  <Ionicons name="flag" size={9} color="#fff" />
                 </View>
               </Marker>
-              {coordinates.length > 1 && (
-                <Marker coordinate={coordinates[coordinates.length - 1]}>
-                  <View style={[styles.marker, styles.endMarker]}>
-                    <Ionicons name="checkmark" size={10} color={colors.white} />
-                  </View>
-                </Marker>
-              )}
+              <Marker coordinate={coordinates[coordinates.length - 1]}>
+                <View style={[styles.mapDot, { backgroundColor: ACCENT }]}>
+                  <Ionicons name="checkmark" size={9} color="#fff" />
+                </View>
+              </Marker>
             </MapView>
-          </View>
+          </Animated.View>
         )}
 
-        {/* Metrics grid */}
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricCard}>
-            <Ionicons name="time-outline" size={20} color={colors.dark.accent} />
-            <Text style={styles.metricValue}>
-              {formatDuration(activity.duration)}
-            </Text>
-            <Text style={styles.metricLabel}>Tempo total</Text>
+        {/* ── Stats Grid ── */}
+        <Animated.View style={[styles.statsSection, { opacity: headerFade, transform: [{ translateY: statsSlide }] }]}>
+          <View style={styles.statsGrid}>
+            <StatCard icon="time-outline" value={formatDuration(activity.duration)} label="Tempo" />
+            <StatCard
+              icon="speedometer-outline"
+              value={activity.avgPace ? `${activity.avgPace.toFixed(1)}'` : '--'}
+              label="Ritmo /km"
+            />
+            <StatCard
+              icon="flash-outline"
+              value={activity.avgSpeed ? `${activity.avgSpeed.toFixed(1)}` : '--'}
+              label="km/h"
+            />
+            <StatCard icon="flame-outline" value={`${calories}`} label="kcal" accent />
+            {elevGain > 0 && (
+              <StatCard icon="trending-up-outline" value={`+${elevGain}m`} label="Ganho alt." />
+            )}
+            {(activity.points?.length ?? 0) > 0 && (
+              <StatCard icon="location-outline" value={`${activity.points?.length ?? 0}`} label="Pontos GPS" />
+            )}
           </View>
-          <View style={styles.metricCard}>
-            <Ionicons name="speedometer-outline" size={20} color={colors.dark.accent} />
-            <Text style={styles.metricValue}>
-              {activity.avgPace?.toFixed(2) || '--'}
-            </Text>
-            <Text style={styles.metricLabel}>Ritmo (min/km)</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Ionicons name="flash-outline" size={20} color={colors.dark.accent} />
-            <Text style={styles.metricValue}>
-              {activity.avgSpeed?.toFixed(1) || '--'}
-            </Text>
-            <Text style={styles.metricLabel}>Velocidade (km/h)</Text>
-          </View>
-          <View style={styles.metricCard}>
-            <Ionicons name="flame-outline" size={20} color={colors.dark.accent} />
-            <Text style={styles.metricValue}>
-              {Math.round((activity.distance / 1000) * 60)}
-            </Text>
-            <Text style={styles.metricLabel}>Calorias (kcal)</Text>
-          </View>
-        </View>
+        </Animated.View>
 
-        {/* Resumo natural */}
-        <View style={styles.summaryBox}>
-          <Ionicons name="sparkles" size={16} color={colors.dark.accent} />
+        {/* ── AI Summary ── */}
+        <Animated.View style={[styles.summaryCard, { opacity: headerFade }]}>
+          <View style={styles.summaryHeader}>
+            <Ionicons name="sparkles" size={16} color={ACCENT} />
+            <Text style={styles.summaryTitle}>Resumo do treino</Text>
+          </View>
           <Text style={styles.summaryText}>
             {generateWorkoutSummary({
               distanceKm: activity.distance / 1000,
               durationMinutes: activity.duration / 60,
               avgPaceMinPerKm: activity.avgPace || 0,
-              calories: Math.round((activity.distance / 1000) * 60),
+              calories,
               sport: activity.sport,
             })}
           </Text>
-        </View>
+        </Animated.View>
 
-        {/* Action buttons */}
-        <View style={styles.actions}>
-          {!posted && (
-            <Button
-              title={posting ? 'Publicando…' : '📢 Postar no feed'}
-              loading={posting}
-              onPress={async () => {
-                if (!activity || posting) return;
-                setPosting(true);
-                try {
-                  await feedApi.publish({
-                    activityId: activity.id,
-                    caption: `Mais um treino no Sync! 🔥`,
-                    distanceKm: activity.distance / 1000,
-                    durationSeconds: activity.duration,
-                    avgPace: activity.avgPace,
-                    calories: Math.round((activity.distance / 1000) * 60),
-                    sport: activity.sport,
-                  });
-                  setPosted(true);
-                  showToast('Publicado no feed! 🎉', 'success');
-                } catch (e: any) {
-                  showToast(e?.response?.data?.message || 'Erro ao publicar', 'error');
-                } finally {
-                  setPosting(false);
-                }
-              }}
-              style={styles.actionBtn}
-            />
-          )}
-          {posted && (
-            <View style={[styles.exportBtn, { borderColor: '#22C55E' }]}>
-              <Ionicons name="checkmark-circle" size={18} color="#22C55E" />
-              <Text style={[styles.exportBtnText, { color: '#22C55E' }]}>Publicado no feed</Text>
+        {/* ── Actions ── */}
+        <Animated.View style={[styles.actions, { opacity: headerFade }]}>
+          {/* Primary: Post to feed */}
+          {!posted ? (
+            <Pressable
+              onPress={handlePostToFeed}
+              disabled={posting}
+              style={({ pressed }) => [styles.postBtn, pressed && { opacity: 0.85 }]}
+            >
+              <LinearGradient colors={[ACCENT, '#FF3D00']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={styles.postBtnInner}>
+                {posting ? (
+                  <>
+                    <ActivityIndicator size="small" color="#fff" />
+                    <Text style={styles.postBtnText}>Publicando…</Text>
+                  </>
+                ) : (
+                  <>
+                    <Ionicons name="megaphone-outline" size={20} color="#fff" />
+                    <Text style={styles.postBtnText}>Publicar no Feed</Text>
+                    <Ionicons name="arrow-forward" size={18} color="rgba(255,255,255,0.7)" />
+                  </>
+                )}
+              </LinearGradient>
+            </Pressable>
+          ) : (
+            <View style={styles.postedBadge}>
+              <Ionicons name="checkmark-circle" size={20} color="#22C55E" />
+              <Text style={styles.postedText}>Publicado no feed!</Text>
             </View>
           )}
+
+          {/* Secondary: Export GPX */}
           {activity.points && activity.points.length > 0 && (
-            <TouchableOpacity style={styles.exportBtn} onPress={handleExport}>
-              <Ionicons name="download-outline" size={18} color={colors.dark.accent} />
-              <Text style={styles.exportBtnText}>Exportar rota (GPX/CSV)</Text>
+            <TouchableOpacity style={styles.secondaryBtn} onPress={handleExport}>
+              <Ionicons name="download-outline" size={18} color={ACCENT} />
+              <Text style={styles.secondaryBtnText}>Exportar rota (GPX / CSV)</Text>
             </TouchableOpacity>
           )}
-          <Button
-            title="Voltar ao inicio"
-            variant="outline"
-            onPress={() => navigation.popToTop()}
-            style={styles.actionBtn}
-          />
-        </View>
+
+          {/* Tertiary: Go home */}
+          <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.popToTop()}>
+            <Text style={styles.homeBtnText}>Pronto</Text>
+          </TouchableOpacity>
+        </Animated.View>
+
+        <View style={{ height: 60 }} />
       </ScrollView>
 
-      {/* Modal de rating pós-treino (Adidas RC style) */}
+      {/* Post-workout rating modal */}
       <PostWorkoutRatingModal
         visible={ratingModal && !!activity?.id}
         activityId={activity?.id || null}
@@ -337,186 +381,332 @@ ${points}
   );
 }
 
+// ─────────────────────── helpers ───────────────────────
+
+function formatDuration(seconds: number): string {
+  const h = Math.floor(seconds / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const s = seconds % 60;
+  if (h > 0) return `${h}h ${m.toString().padStart(2, '0')}m`;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
+function estimateCalories(activity: Activity): number {
+  // MET × weight(70kg) × duration(h) — rough approximation
+  const metMap: Record<string, number> = { running: 9, cycling: 7, swimming: 8, hiking: 6, gym: 5 };
+  const met = metMap[activity.sport] || 6;
+  const hours = activity.duration / 3600;
+  return Math.round(met * 70 * hours);
+}
+
+function estimateElevation(activity: Activity): number {
+  if (!activity.points?.length) return 0;
+  let gain = 0;
+  for (let i = 1; i < activity.points.length; i++) {
+    const diff = (activity.points[i].altitude ?? 0) - (activity.points[i - 1].altitude ?? 0);
+    if (diff > 0) gain += diff;
+  }
+  return Math.round(gain);
+}
+
+// ─────────────────────── StatCard ───────────────────────
+
+function StatCard({
+  icon,
+  value,
+  label,
+  accent = false,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  value: string;
+  label: string;
+  accent?: boolean;
+}) {
+  return (
+    <View style={[cardStyles.card, accent && cardStyles.cardAccent]}>
+      <Ionicons name={icon} size={18} color={accent ? ACCENT : colors.dark.secondaryText} />
+      <Text style={[cardStyles.value, accent && { color: ACCENT }]}>{value}</Text>
+      <Text style={cardStyles.label}>{label}</Text>
+    </View>
+  );
+}
+
+const cardStyles = StyleSheet.create({
+  card: {
+    flex: 1,
+    minWidth: '46%',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.07)',
+    padding: spacing.md,
+    alignItems: 'center',
+    gap: 4,
+  },
+  cardAccent: {
+    borderColor: ACCENT + '35',
+    backgroundColor: ACCENT + '0D',
+  },
+  value: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.dark.text,
+    fontVariant: ['tabular-nums'],
+  },
+  label: {
+    fontSize: 10,
+    color: colors.dark.secondaryText,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+    fontWeight: '600',
+  },
+});
+
+// ─────────────────────── map style ───────────────────────
+
 const darkMapStyle = [
-  { elementType: 'geometry', stylers: [{ color: '#1d1d2e' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#8e8ea0' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#1d1d2e' }] },
+  { elementType: 'geometry', stylers: [{ color: '#1a1a28' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#6b6b88' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#1a1a28' }] },
   { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#2a2a40' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0e1626' }] },
-  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#252540' }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#0a0e1a' }] },
+  { featureType: 'poi', elementType: 'geometry', stylers: [{ color: '#202030' }] },
+  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#1e1e30' }] },
 ];
+
+// ─────────────────────── styles ───────────────────────
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colors.dark.background,
   },
-  center: {
+  loadingScreen: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
     backgroundColor: colors.dark.background,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.md,
   },
-  header: {
+  loadingText: {
+    color: colors.dark.secondaryText,
+    fontSize: fontSize.md,
+  },
+  backFallback: {
+    marginTop: spacing.lg,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.lg,
+  },
+
+  // Header / hero
+  heroGradient: {
+    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingBottom: spacing.lg,
+  },
+  topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    marginBottom: spacing.xl,
   },
-  backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.dark.surface,
-    justifyContent: 'center',
+  topBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  topTitle: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: colors.dark.secondaryText,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+
+  celebrationCenter: {
     alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.md,
   },
-  headerTitle: {
-    fontSize: fontSize.lg,
-    fontWeight: '600',
-    color: colors.dark.text,
+  checkCircle: {
+    width: 80, height: 80, borderRadius: 40,
+    shadowColor: ACCENT, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5, shadowRadius: 20, elevation: 14,
   },
-  shareBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.dark.surface,
-    justifyContent: 'center',
-    alignItems: 'center',
+  checkGradient: {
+    flex: 1, borderRadius: 40,
+    justifyContent: 'center', alignItems: 'center',
   },
   sportBadge: {
-    alignSelf: 'center',
-    backgroundColor: colors.dark.accent + '20',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.full,
-    marginTop: spacing.sm,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: ACCENT + '18',
+    borderWidth: 1, borderColor: ACCENT + '35',
+    paddingHorizontal: spacing.md, paddingVertical: 6,
+    borderRadius: 20,
   },
-  sportText: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.dark.accent,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+  sportBadgeText: {
+    color: ACCENT, fontSize: 11, fontWeight: '800', letterSpacing: 1.5,
   },
   dateText: {
-    fontSize: fontSize.sm,
-    color: colors.dark.secondaryText,
     textAlign: 'center',
-    marginTop: spacing.xs,
+    color: colors.dark.secondaryText,
+    fontSize: fontSize.sm,
     textTransform: 'capitalize',
   },
-  mainStat: {
+
+  // Big distance stat
+  heroStat: {
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'center',
-    marginTop: spacing.lg,
+    paddingVertical: spacing.xl,
+    gap: 6,
   },
-  mainStatValue: {
-    fontSize: 64,
+  heroValue: {
+    fontSize: 76,
     fontWeight: '200',
     color: colors.dark.text,
     fontVariant: ['tabular-nums'],
+    letterSpacing: -2,
   },
-  mainStatUnit: {
-    fontSize: fontSize.xl,
+  heroUnit: {
+    fontSize: 26,
+    fontWeight: '300',
     color: colors.dark.secondaryText,
-    marginLeft: spacing.sm,
+    paddingBottom: 8,
   },
+
+  // Map
   mapContainer: {
     marginHorizontal: spacing.lg,
-    marginTop: spacing.lg,
-    borderRadius: borderRadius.md,
+    borderRadius: borderRadius.lg,
     overflow: 'hidden',
-    height: 200,
+    height: 220,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
+    marginBottom: spacing.lg,
   },
-  map: {
-    flex: 1,
+  map: { flex: 1 },
+  mapDot: {
+    width: 22, height: 22, borderRadius: 11,
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 2, borderColor: 'rgba(0,0,0,0.4)',
   },
-  marker: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: colors.dark.success,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(0,230,118,0.3)',
+
+  // Stats grid
+  statsSection: {
+    paddingHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
   },
-  endMarker: {
-    backgroundColor: colors.dark.accent,
-    borderColor: 'rgba(255,107,53,0.3)',
-  },
-  metricsGrid: {
+  statsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    paddingHorizontal: spacing.lg,
-    marginTop: spacing.lg,
     gap: spacing.sm,
   },
-  metricCard: {
-    width: '48%',
-    flexGrow: 1,
-    backgroundColor: colors.dark.surface,
-    borderRadius: borderRadius.md,
-    padding: spacing.md,
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  metricValue: {
-    fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.dark.text,
-    fontVariant: ['tabular-nums'],
-  },
-  metricLabel: {
-    fontSize: 11,
-    color: colors.dark.secondaryText,
-    textTransform: 'uppercase',
-  },
-  summaryBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing.sm,
+
+  // AI summary
+  summaryCard: {
     marginHorizontal: spacing.lg,
-    marginTop: spacing.md,
+    marginBottom: spacing.lg,
     padding: spacing.md,
-    borderRadius: borderRadius.md,
-    backgroundColor: 'rgba(255,107,53,0.08)',
+    borderRadius: borderRadius.lg,
+    backgroundColor: 'rgba(255,107,53,0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(255,107,53,0.25)',
+    borderColor: ACCENT + '25',
+  },
+  summaryHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: spacing.sm,
+  },
+  summaryTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: ACCENT,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   summaryText: {
-    flex: 1,
     color: colors.dark.text,
     fontSize: fontSize.sm,
-    lineHeight: 20,
+    lineHeight: 21,
+    opacity: 0.9,
   },
+
+  // Actions
   actions: {
     paddingHorizontal: spacing.lg,
-    paddingTop: spacing.xl,
-    paddingBottom: spacing.xxl,
+    gap: spacing.md,
   },
-  actionBtn: {
-    marginBottom: spacing.md,
+  postBtn: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
   },
-  exportBtn: {
+  postBtnInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: spacing.sm,
-    paddingVertical: 12,
-    borderRadius: borderRadius.sm,
-    backgroundColor: colors.dark.accent + '15',
-    borderWidth: 1,
-    borderColor: colors.dark.accent + '30',
-    marginBottom: spacing.md,
+    gap: 10,
+    paddingVertical: 17,
+    paddingHorizontal: spacing.lg,
   },
-  exportBtnText: {
+  postBtnText: {
+    flex: 1,
+    textAlign: 'center',
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+  postedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 16,
+    borderRadius: 14,
+    backgroundColor: 'rgba(34,197,94,0.1)',
+    borderWidth: 1,
+    borderColor: '#22C55E40',
+  },
+  postedText: {
+    color: '#22C55E',
+    fontSize: fontSize.md,
+    fontWeight: '700',
+  },
+  secondaryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: ACCENT + '12',
+    borderWidth: 1,
+    borderColor: ACCENT + '28',
+  },
+  secondaryBtnText: {
+    color: ACCENT,
     fontSize: fontSize.sm,
     fontWeight: '600',
-    color: colors.dark.accent,
+  },
+  homeBtn: {
+    alignItems: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  homeBtnText: {
+    color: colors.dark.secondaryText,
+    fontSize: fontSize.md,
+    fontWeight: '600',
   },
 });
