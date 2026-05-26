@@ -56,7 +56,9 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
-  const [ratingModal, setRatingModal] = useState(true);
+  // Start hidden — show only after the user has seen the summary (2.5s delay)
+  const [ratingModal, setRatingModal] = useState(false);
+  const ratingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Celebration animation
   const checkScale = useRef(new Animated.Value(0)).current;
@@ -66,6 +68,10 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     loadActivity();
+    return () => {
+      // Clean up timer on unmount
+      if (ratingTimerRef.current) clearTimeout(ratingTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -79,7 +85,10 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
           Animated.timing(headerFade, { toValue: 1, duration: 400, useNativeDriver: true }),
           Animated.timing(statsSlide, { toValue: 0, duration: 450, easing: Easing.out(Easing.cubic), useNativeDriver: true }),
         ]),
-      ]).start();
+      ]).start(() => {
+        // Show the rating modal only after the user has had time to see the summary
+        ratingTimerRef.current = setTimeout(() => setRatingModal(true), 2500);
+      });
     }
   }, [loading, activity]);
 
@@ -87,18 +96,28 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
     try {
       const { data } = await api.get(`/activities/${route.params.activityId}`);
       setActivity(data);
-    } catch (error) {
-      console.log('Error loading activity:', error);
-    } finally {
       setLoading(false);
+    } catch (error) {
+      console.log('Error loading activity (attempt 1):', error);
+      // Retry once after 1.5s — the finish endpoint may still be writing to DB
+      try {
+        await new Promise<void>((res) => setTimeout(res, 1500));
+        const { data } = await api.get(`/activities/${route.params.activityId}`);
+        setActivity(data);
+      } catch (retryErr) {
+        console.log('Error loading activity (attempt 2):', retryErr);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const handleShare = async () => {
     if (!activity) return;
     try {
+      const distKm = ((activity.distance ?? 0) / 1000).toFixed(2);
       await Share.share({
-        message: `Completei ${(activity.distance / 1000).toFixed(2)}km em ${formatDuration(activity.duration)} no Sync! 🔥 #Sync #${activity.sport}`,
+        message: `Completei ${distKm}km em ${formatDuration(activity.duration ?? 0)} no Sync! 🔥 #Sync #${activity.sport}`,
       });
     } catch {}
   };
@@ -247,7 +266,7 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
 
         {/* ── Hero Stat (distance) ── */}
         <Animated.View style={[styles.heroStat, { opacity: headerFade, transform: [{ translateY: statsSlide }] }]}>
-          <Text style={styles.heroValue}>{(activity.distance / 1000).toFixed(2)}</Text>
+          <Text style={styles.heroValue}>{((activity.distance ?? 0) / 1000).toFixed(2)}</Text>
           <Text style={styles.heroUnit}>km</Text>
         </Animated.View>
 
@@ -284,7 +303,7 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
         {/* ── Stats Grid ── */}
         <Animated.View style={[styles.statsSection, { opacity: headerFade, transform: [{ translateY: statsSlide }] }]}>
           <View style={styles.statsGrid}>
-            <StatCard icon="time-outline" value={formatDuration(activity.duration)} label="Tempo" />
+            <StatCard icon="time-outline" value={formatDuration(activity.duration ?? 0)} label="Tempo" />
             <StatCard
               icon="speedometer-outline"
               value={activity.avgPace ? `${activity.avgPace.toFixed(1)}'` : '--'}
@@ -313,8 +332,8 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
           </View>
           <Text style={styles.summaryText}>
             {generateWorkoutSummary({
-              distanceKm: activity.distance / 1000,
-              durationMinutes: activity.duration / 60,
+              distanceKm: (activity.distance ?? 0) / 1000,
+              durationMinutes: (activity.duration ?? 0) / 60,
               avgPaceMinPerKm: activity.avgPace || 0,
               calories,
               sport: activity.sport,
@@ -395,7 +414,7 @@ function estimateCalories(activity: Activity): number {
   // MET × weight(70kg) × duration(h) — rough approximation
   const metMap: Record<string, number> = { running: 9, cycling: 7, swimming: 8, hiking: 6, gym: 5 };
   const met = metMap[activity.sport] || 6;
-  const hours = activity.duration / 3600;
+  const hours = (activity.duration ?? 0) / 3600;
   return Math.round(met * 70 * hours);
 }
 

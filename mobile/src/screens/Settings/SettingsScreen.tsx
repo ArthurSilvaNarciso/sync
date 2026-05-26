@@ -10,7 +10,9 @@ import {
   Switch,
   Alert,
   Linking,
+  Share,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
@@ -34,6 +36,16 @@ export default function SettingsScreen({ navigation }: any) {
   const [pushOn, setPushOn] = useState(true);
   const [emailOn, setEmailOn] = useState(true);
   const [showChangePwd, setShowChangePwd] = useState(false);
+
+  // Load persisted notification preferences
+  useEffect(() => {
+    AsyncStorage.multiGet(['notif_push', 'notif_email']).then((pairs) => {
+      const pushVal = pairs.find(([k]) => k === 'notif_push')?.[1];
+      const emailVal = pairs.find(([k]) => k === 'notif_email')?.[1];
+      if (pushVal !== null && pushVal !== undefined) setPushOn(pushVal === 'true');
+      if (emailVal !== null && emailVal !== undefined) setEmailOn(emailVal === 'true');
+    }).catch(() => {});
+  }, []);
   const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion' | 'rating' | 'support' | null>(null);
 
   useEffect(() => {
@@ -65,8 +77,11 @@ export default function SettingsScreen({ navigation }: any) {
         URL.revokeObjectURL(url);
         showToast('Dados exportados!', 'success');
       } else {
-        showToast('Em mobile: copie do log', 'info');
-        console.log(json);
+        await Share.share({
+          message: json,
+          title: `sync-meus-dados-${Date.now()}.json`,
+        });
+        showToast('Dados exportados!', 'success');
       }
     } catch {
       showToast('Erro ao exportar', 'error');
@@ -163,7 +178,10 @@ export default function SettingsScreen({ navigation }: any) {
           right={
             <Switch
               value={pushOn}
-              onValueChange={setPushOn}
+              onValueChange={(val) => {
+                setPushOn(val);
+                AsyncStorage.setItem('notif_push', String(val)).catch(() => {});
+              }}
               trackColor={{ false: '#3A3A3F', true: '#FF6B35' }}
               thumbColor="#fff"
             />
@@ -176,7 +194,10 @@ export default function SettingsScreen({ navigation }: any) {
           right={
             <Switch
               value={emailOn}
-              onValueChange={setEmailOn}
+              onValueChange={(val) => {
+                setEmailOn(val);
+                AsyncStorage.setItem('notif_email', String(val)).catch(() => {});
+              }}
               trackColor={{ false: '#3A3A3F', true: '#3B82F6' }}
               thumbColor="#fff"
             />
@@ -226,9 +247,20 @@ export default function SettingsScreen({ navigation }: any) {
         <Row icon="star-outline" label="Avaliar o app" onPress={() => setFeedbackType('rating')} color="#FF6B35" />
       </View>
 
-      <Text style={styles.sectionTitle}>CONTA</Text>
+      <Text style={styles.sectionTitle}>AÇÕES</Text>
       <View style={styles.section}>
-        <Row icon="log-out-outline" label="Sair" onPress={logout} color="#F87171" danger />
+        <Row
+          icon="log-out-outline"
+          label="Sair"
+          onPress={() => {
+            Alert.alert('Sair', 'Deseja encerrar sua sessão?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Sair', style: 'destructive', onPress: logout },
+            ]);
+          }}
+          color="#F87171"
+          danger
+        />
         <Row icon="trash-outline" label="Apagar minha conta" onPress={handleDeleteAccount} color="#F87171" danger />
       </View>
 

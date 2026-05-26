@@ -59,6 +59,10 @@ export default function EditProfileScreen({ navigation }: Props) {
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
+  // Guard: if user is null (e.g. concurrent logout), render nothing
+  // Must be after all hooks to satisfy Rules of Hooks
+  if (!user) return null;
+
   const toggleSport = (id: string) => {
     setSports((prev) =>
       prev.includes(id) ? prev.filter((s) => s !== id) : [...prev, id],
@@ -92,6 +96,11 @@ export default function EditProfileScreen({ navigation }: Props) {
         avatarBase64 = await resizeAvatarForWeb(asset.uri, 300);
       } else {
         // Native: ImagePicker já entrega base64 raw
+        if (!asset.base64) {
+          Alert.alert('Erro', 'Não foi possível ler a imagem. Tente novamente.');
+          setUploadingAvatar(false);
+          return;
+        }
         const mime = asset.mimeType || 'image/jpeg';
         avatarBase64 = `data:${mime};base64,${asset.base64}`;
       }
@@ -108,9 +117,13 @@ export default function EditProfileScreen({ navigation }: Props) {
   };
 
   const handleSave = async () => {
+    if (!name.trim()) {
+      Alert.alert('Campo obrigatório', 'O nome não pode ser vazio.');
+      return;
+    }
     setLoading(true);
     try {
-      const { data } = await api.put('/users/me', { name, bio, sports });
+      const { data } = await api.put('/users/me', { name: name.trim(), bio, sports });
       setUser(data);
       Alert.alert('Sucesso', 'Perfil atualizado!');
       navigation.goBack();
@@ -135,7 +148,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
           {/* Avatar uploader */}
           <View style={styles.avatarSection}>
-            <TouchableOpacity onPress={pickAvatar} activeOpacity={0.8} style={styles.avatarWrap}>
+            <TouchableOpacity onPress={pickAvatar} disabled={uploadingAvatar} activeOpacity={0.8} style={styles.avatarWrap}>
               {user?.avatarUrl ? (
                 <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
               ) : (

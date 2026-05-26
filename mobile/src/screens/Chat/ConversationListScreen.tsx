@@ -26,10 +26,11 @@ type Props = {
 export default function ConversationListScreen({ navigation }: Props) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const searchAnim = useState(new Animated.Value(0))[0];
+  const searchAnim = React.useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     loadConversations();
@@ -44,32 +45,13 @@ export default function ConversationListScreen({ navigation }: Props) {
   }, [showSearch]);
 
   const loadConversations = async () => {
+    setError(false);
     try {
       const { data } = await api.get('/chat/conversations');
-      setConversations(data);
-    } catch (error) {
-      console.log('Error loading conversations:', error);
-      // Mock data for demo
-      setConversations([
-        {
-          matchId: '1',
-          user: { id: '1', name: 'Ana Silva', avatarUrl: '', email: '', level: 'intermediate' as any, isActive: true, onboardingCompleted: true, createdAt: '' },
-          lastMessage: { id: '1', match_id: '1', sender_id: '1', content: 'Vamos correr amanha?', isRead: false, createdAt: new Date(Date.now() - 300000).toISOString() },
-          unreadCount: 2,
-        },
-        {
-          matchId: '2',
-          user: { id: '2', name: 'Carlos Mendes', avatarUrl: '', email: '', level: 'advanced' as any, isActive: true, onboardingCompleted: true, createdAt: '' },
-          lastMessage: { id: '2', match_id: '2', sender_id: '2', content: 'Show! Fechado para o pedal', isRead: true, createdAt: new Date(Date.now() - 7200000).toISOString() },
-          unreadCount: 0,
-        },
-        {
-          matchId: '3',
-          user: { id: '3', name: 'Julia Santos', avatarUrl: '', email: '', level: 'beginner' as any, isActive: true, onboardingCompleted: true, createdAt: '' },
-          lastMessage: { id: '3', match_id: '3', sender_id: '3', content: 'Qual academia voce frequenta?', isRead: false, createdAt: new Date(Date.now() - 86400000).toISOString() },
-          unreadCount: 1,
-        },
-      ]);
+      setConversations(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(true);
+      setConversations([]);
     } finally {
       setLoading(false);
     }
@@ -93,8 +75,8 @@ export default function ConversationListScreen({ navigation }: Props) {
 
   const filteredConversations = searchQuery
     ? conversations.filter((c) =>
-        c.user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        c.lastMessage?.content.toLowerCase().includes(searchQuery.toLowerCase())
+        (c.user?.name ?? '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (c.lastMessage?.content ?? '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : conversations;
 
@@ -121,9 +103,6 @@ export default function ConversationListScreen({ navigation }: Props) {
           }
           style={styles.avatar}
         />
-        {item.unreadCount > 0 && (
-          <View style={styles.onlineDot} />
-        )}
       </View>
       <View style={styles.info}>
         <View style={styles.nameRow}>
@@ -159,6 +138,24 @@ export default function ConversationListScreen({ navigation }: Props) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.center}>
+        <Ionicons name="wifi-outline" size={44} color={colors.primary + '40'} />
+        <Text style={styles.emptyTitle}>Erro ao carregar</Text>
+        <Text style={styles.emptyText}>Verifique sua conexão e tente novamente.</Text>
+        <TouchableOpacity
+          style={styles.discoverBtn}
+          onPress={() => { setLoading(true); loadConversations(); }}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="refresh" size={18} color={colors.primary} />
+          <Text style={styles.discoverBtnText}>Tentar novamente</Text>
+        </TouchableOpacity>
       </View>
     );
   }

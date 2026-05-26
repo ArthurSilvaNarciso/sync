@@ -33,7 +33,7 @@ export type MainTabParamList = {
 export type HomeStackParamList = {
   Discovery: undefined;
   UserProfile: { userId: string };
-  MatchScreen: { matchId: string; userName: string };
+  MatchScreen: { matchId: string; userName: string; userId: string };
   LikesReceived: undefined;
 };
 

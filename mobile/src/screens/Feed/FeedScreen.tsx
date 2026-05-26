@@ -26,14 +26,18 @@ function formatPace(min: number): string {
 }
 
 function formatDuration(seconds: number): string {
+  if (!seconds || !isFinite(seconds) || seconds < 0) return '0min';
   const h = Math.floor(seconds / 3600);
   const m = Math.floor((seconds % 3600) / 60);
   if (h > 0) return `${h}h ${m}min`;
   return `${m}min`;
 }
 
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
+function timeAgo(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const ts = new Date(iso).getTime();
+  if (!isFinite(ts)) return '';
+  const diff = Date.now() - ts;
   const min = Math.floor(diff / 60000);
   if (min < 1) return 'agora';
   if (min < 60) return `há ${min}min`;
@@ -58,20 +62,27 @@ const SPORT_ICONS: Record<string, string> = {
   yoga: 'leaf',
 };
 
-function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => void }) {
+function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Promise<void> }) {
   const [liked, setLiked] = useState(false);
   const [likesCount, setLikesCount] = useState(post.likesCount || 0);
   const heartScale = React.useRef(new Animated.Value(1)).current;
 
-  const handleLike = () => {
+  const handleLike = async () => {
     if (liked) return;
+    // Optimistic update
     setLiked(true);
     setLikesCount((c) => c + 1);
     Animated.sequence([
       Animated.timing(heartScale, { toValue: 1.4, duration: 150, useNativeDriver: true }),
       Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, friction: 4 }),
     ]).start();
-    onLike(post.id);
+    try {
+      await onLike(post.id);
+    } catch {
+      // Rollback on failure
+      setLiked(false);
+      setLikesCount((c) => c - 1);
+    }
   };
 
   const sportKey = post.sport?.toLowerCase() || 'running';
@@ -175,14 +186,17 @@ function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => vo
 export default function FeedScreen() {
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const data = await feedApi.list(1);
       setPosts(data || []);
     } catch {
+      setLoadError(true);
       setPosts([]);
     } finally {
       setLoading(false);
@@ -199,10 +213,8 @@ export default function FeedScreen() {
     setRefreshing(false);
   };
 
-  const handleLike = async (postId: string) => {
-    try {
-      await feedApi.like(postId);
-    } catch {}
+  const handleLike = async (postId: string): Promise<void> => {
+    await feedApi.like(postId);
   };
 
   return (
@@ -225,7 +237,15 @@ export default function FeedScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
         }
         ListEmptyComponent={
-          loading ? null : (
+          loading ? null : loadError ? (
+            <View style={styles.empty}>
+              <Ionicons name="cloud-offline-outline" size={64} color={colors.dark.secondaryText} />
+              <Text style={styles.emptyTitle}>Erro ao carregar</Text>
+              <Text style={styles.emptyText}>
+                Verifique sua conexão e puxe para baixo para tentar novamente.
+              </Text>
+            </View>
+          ) : (
             <View style={styles.empty}>
               <Ionicons name="newspaper-outline" size={64} color={colors.dark.secondaryText} />
               <Text style={styles.emptyTitle}>Feed vazio</Text>

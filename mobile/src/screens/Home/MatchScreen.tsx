@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Dimensions, SafeAreaView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, CommonActions } from '@react-navigation/native';
@@ -16,7 +16,7 @@ type Props = {
 };
 
 export default function MatchScreen({ navigation, route }: Props) {
-  const { matchId, userName } = route.params;
+  const { matchId, userName, userId } = route.params;
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartRotate = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
@@ -25,6 +25,12 @@ export default function MatchScreen({ navigation, route }: Props) {
   const sparkle1 = useRef(new Animated.Value(0)).current;
   const sparkle2 = useRef(new Animated.Value(0)).current;
   const sparkle3 = useRef(new Animated.Value(0)).current;
+
+  // Refs to hold loop animation handles for cleanup
+  const sparkle1LoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const sparkle2LoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const sparkle3LoopRef = useRef<Animated.CompositeAnimation | null>(null);
+  const heartRotateLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
     // Entrance animation sequence
@@ -52,8 +58,12 @@ export default function MatchScreen({ navigation, route }: Props) {
     ]).start();
 
     // Sparkle animations
-    const animateSparkle = (sparkle: Animated.Value, delay: number) => {
-      Animated.loop(
+    const animateSparkle = (
+      sparkle: Animated.Value,
+      delay: number,
+      loopRef: React.MutableRefObject<Animated.CompositeAnimation | null>,
+    ) => {
+      const loop = Animated.loop(
         Animated.sequence([
           Animated.delay(delay),
           Animated.timing(sparkle, {
@@ -69,12 +79,14 @@ export default function MatchScreen({ navigation, route }: Props) {
             useNativeDriver: true,
           }),
         ]),
-      ).start();
+      );
+      loopRef.current = loop;
+      loop.start();
     };
 
-    animateSparkle(sparkle1, 0);
-    animateSparkle(sparkle2, 400);
-    animateSparkle(sparkle3, 800);
+    animateSparkle(sparkle1, 0, sparkle1LoopRef);
+    animateSparkle(sparkle2, 400, sparkle2LoopRef);
+    animateSparkle(sparkle3, 800, sparkle3LoopRef);
 
     // Title fade in
     Animated.timing(titleOpacity, {
@@ -101,7 +113,7 @@ export default function MatchScreen({ navigation, route }: Props) {
     }).start();
 
     // Heart slow rotation
-    Animated.loop(
+    const heartLoop = Animated.loop(
       Animated.sequence([
         Animated.timing(heartRotate, {
           toValue: 1,
@@ -116,25 +128,38 @@ export default function MatchScreen({ navigation, route }: Props) {
           useNativeDriver: true,
         }),
       ]),
-    ).start();
+    );
+    heartRotateLoopRef.current = heartLoop;
+    heartLoop.start();
+
+    // Stop all loops on unmount to prevent memory leaks
+    return () => {
+      sparkle1LoopRef.current?.stop();
+      sparkle2LoopRef.current?.stop();
+      sparkle3LoopRef.current?.stop();
+      heartRotateLoopRef.current?.stop();
+    };
   }, []);
 
   const goToChat = () => {
-    navigation.goBack();
-    // Navigate to chat tab with this match
-    navigation.getParent()?.dispatch(
-      CommonActions.navigate({
-        name: 'ChatTab',
-        params: {
-          screen: 'ChatRoom',
+    // Dispatch first, then goBack — prevents navigation on a stale ref
+    const parent = navigation.getParent();
+    if (parent) {
+      parent.dispatch(
+        CommonActions.navigate({
+          name: 'ChatTab',
           params: {
-            matchId,
-            userName,
-            userId: '',
+            screen: 'ChatRoom',
+            params: {
+              matchId,
+              userName,
+              userId,
+            },
           },
-        },
-      }),
-    );
+        }),
+      );
+    }
+    navigation.goBack();
   };
 
   const rotate = heartRotate.interpolate({

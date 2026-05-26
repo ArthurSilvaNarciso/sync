@@ -63,6 +63,7 @@ export default function MyProfileScreen({ navigation }: Props) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
     loadStats();
@@ -71,6 +72,7 @@ export default function MyProfileScreen({ navigation }: Props) {
   }, []);
 
   const loadStats = async () => {
+    setStatsLoading(true);
     try {
       const { data } = await api.get('/stats');
       setStats({
@@ -88,7 +90,8 @@ export default function MyProfileScreen({ navigation }: Props) {
       // fallback: pega só atividades
       try {
         const { data } = await api.get('/activities/history');
-        const activities = data[0] || [];
+        // data is the activity array directly, not a tuple
+        const activities = Array.isArray(data) ? data : [];
         const totalDistance = activities.reduce((sum: number, a: any) => sum + (a.distance || 0), 0);
         const totalDuration = activities.reduce((sum: number, a: any) => sum + (a.duration || 0), 0);
         setStats((s) => ({
@@ -100,6 +103,8 @@ export default function MyProfileScreen({ navigation }: Props) {
       } catch {
         // sem stats
       }
+    } finally {
+      setStatsLoading(false);
     }
   };
 
@@ -263,14 +268,16 @@ export default function MyProfileScreen({ navigation }: Props) {
               <Text style={styles.city}>{user.city}</Text>
             </View>
           )}
-          <View style={styles.levelBadge}>
-            <Ionicons
-              name={levelIcons[user.level] as any}
-              size={14}
-              color={colors.white}
-            />
-            <Text style={styles.levelText}>{levelLabels[user.level]}</Text>
-          </View>
+          {user.level && (levelIcons[user.level] || levelLabels[user.level]) && (
+            <View style={styles.levelBadge}>
+              <Ionicons
+                name={(levelIcons[user.level] || 'fitness') as any}
+                size={14}
+                color={colors.white}
+              />
+              <Text style={styles.levelText}>{levelLabels[user.level] || user.level}</Text>
+            </View>
+          )}
         </View>
       </ImageBackground>
 

@@ -69,7 +69,7 @@ export default function LikesReceivedScreen() {
         if (action === 'like') {
           haptic.success();
           if (res.matched) {
-            navigation.navigate('MatchScreen', { matchId: res.matchId, userName: item.user.name });
+            navigation.navigate('MatchScreen', { matchId: res.matchId, userName: item.user.name, userId: item.user.id });
           }
         } else {
           haptic.light();

@@ -185,6 +185,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
           navigation.navigate('MatchScreen', {
             matchId: data.matchId,
             userName: currentUser.name,
+            userId: currentUser.id,
           });
         }
       } catch (error) {
