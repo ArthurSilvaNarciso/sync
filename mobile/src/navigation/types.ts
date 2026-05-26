@@ -68,6 +68,8 @@ export type ProfileStackParamList = {
   Groups: undefined;
   Training: undefined;
   Feed: undefined;
+  Comments: { postId: string; postAuthorName: string };
+  UserSearch: undefined;
   Privacy: undefined;
   Terms: undefined;
   Help: undefined;

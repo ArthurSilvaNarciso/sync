@@ -174,6 +174,7 @@ export default function MatchScreen({ navigation, route }: Props) {
       end={{ x: 1, y: 1 }}
       style={styles.container}
     >
+      <SafeAreaView style={styles.safeArea}>
       <View style={styles.content}>
         {/* Sparkles */}
         <Animated.View style={[styles.sparkle, styles.sparkle1, { opacity: sparkle1, transform: [{ scale: sparkle1 }] }]}>
@@ -200,8 +201,8 @@ export default function MatchScreen({ navigation, route }: Props) {
 
         {/* Subtitle */}
         <Animated.View style={{ opacity: subtitleOpacity }}>
-          <Text style={styles.subtitle}>
-            Voce e <Text style={styles.userName}>{userName}</Text> querem treinar juntos!
+          <Text style={styles.subtitle} numberOfLines={3}>
+            Voce e <Text style={styles.userName}>{userName.length > 22 ? userName.slice(0, 22) + '…' : userName}</Text> querem treinar juntos!
           </Text>
           <View style={styles.matchBadge}>
             <Ionicons name="fitness" size={16} color={colors.white} />
@@ -225,12 +226,16 @@ export default function MatchScreen({ navigation, route }: Props) {
           />
         </Animated.View>
       </View>
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    flex: 1,
+  },
+  safeArea: {
     flex: 1,
   },
   content: {

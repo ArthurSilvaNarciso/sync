@@ -43,6 +43,7 @@ const levelIcons: Record<SportLevel, string> = {
 interface Stats {
   totalActivities: number;
   totalDistanceKm: number;
+  weeklyDistanceKm: number;
   totalDuration: number;
   currentStreak: number;
   bestStreak: number;
@@ -55,7 +56,7 @@ interface Stats {
 export default function MyProfileScreen({ navigation }: Props) {
   const { user } = useAuthStore();
   const [stats, setStats] = useState<Stats>({
-    totalActivities: 0, totalDistanceKm: 0, totalDuration: 0,
+    totalActivities: 0, totalDistanceKm: 0, weeklyDistanceKm: 0, totalDuration: 0,
     currentStreak: 0, bestStreak: 0,
     averagePace: 0, averageSpeed: 0,
     totalMatches: 0, totalEvents: 0,
@@ -75,9 +76,12 @@ export default function MyProfileScreen({ navigation }: Props) {
     setStatsLoading(true);
     try {
       const { data } = await api.get('/stats');
+      // Compute start-of-current-week for weekly distance
+      const weeklyKm = data.weeklyDistance ?? data.weeklyDistanceKm ?? 0;
       setStats({
         totalActivities: data.totalActivities || 0,
         totalDistanceKm: data.totalDistance || 0,
+        weeklyDistanceKm: weeklyKm,
         totalDuration: (data.totalDuration || 0) * 3600,
         currentStreak: data.currentStreak || 0,
         bestStreak: data.bestStreak || 0,
@@ -92,12 +96,23 @@ export default function MyProfileScreen({ navigation }: Props) {
         const { data } = await api.get('/activities/history');
         // data is the activity array directly, not a tuple
         const activities = Array.isArray(data) ? data : [];
+        // Compute weekly distance by filtering activities from the current week
+        const now = new Date();
+        const weekStart = new Date(now);
+        weekStart.setDate(now.getDate() - now.getDay()); // Sunday
+        weekStart.setHours(0, 0, 0, 0);
+        const weeklyActivities = activities.filter((a: any) => {
+          const d = new Date(a.createdAt || a.startTime || 0);
+          return d >= weekStart;
+        });
         const totalDistance = activities.reduce((sum: number, a: any) => sum + (a.distance || 0), 0);
+        const weeklyDistance = weeklyActivities.reduce((sum: number, a: any) => sum + (a.distance || 0), 0);
         const totalDuration = activities.reduce((sum: number, a: any) => sum + (a.duration || 0), 0);
         setStats((s) => ({
           ...s,
           totalActivities: activities.length,
           totalDistanceKm: totalDistance / 1000,
+          weeklyDistanceKm: weeklyDistance / 1000,
           totalDuration,
         }));
       } catch {
@@ -399,7 +414,7 @@ export default function MyProfileScreen({ navigation }: Props) {
             {
               icon: 'navigate-outline' as const,
               label: 'Corra 5km esta semana',
-              progress: Math.min(stats.totalDistanceKm, 5),
+              progress: Math.min(stats.weeklyDistanceKm, 5),
               total: 5,
               unit: 'km',
               color: '#2E7BFF',

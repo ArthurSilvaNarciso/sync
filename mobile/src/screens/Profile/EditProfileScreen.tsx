@@ -172,13 +172,14 @@ export default function EditProfileScreen({ navigation }: Props) {
             <Text style={styles.avatarHint}>Toque para trocar sua foto</Text>
           </View>
 
-          <Input label="Nome" value={name} onChangeText={setName} />
+          <Input label="Nome" value={name} onChangeText={setName} maxLength={50} />
           <Input
             label="Bio"
             value={bio}
             onChangeText={setBio}
             multiline
             placeholder="Conte sobre voce..."
+            maxLength={300}
           />
 
           <Text style={styles.label}>Esportes</Text>

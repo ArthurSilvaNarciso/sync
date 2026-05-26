@@ -1,5 +1,5 @@
-// Feed de atividades estilo Strava — cards com rota, stats, fotos, comentários inline
-import React, { useEffect, useState, useCallback } from 'react';
+// Feed de atividades estilo Strava — cards com rota, stats, comentários
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,9 +10,11 @@ import {
   RefreshControl,
   Platform,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { feedApi, FeedPost } from '../../services/feed.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { showToast } from '../../components/ui/Toast';
@@ -49,40 +51,33 @@ function timeAgo(iso: string | null | undefined): string {
 }
 
 const SPORT_ICONS: Record<string, string> = {
-  running: 'walk',
-  corrida: 'walk',
-  cycling: 'bicycle',
-  ciclismo: 'bicycle',
-  swimming: 'water',
-  natação: 'water',
-  hiking: 'trail-sign',
-  trilha: 'trail-sign',
-  gym: 'barbell',
-  academia: 'barbell',
+  running: 'walk', corrida: 'walk',
+  cycling: 'bicycle', ciclismo: 'bicycle',
+  swimming: 'water', natação: 'water',
+  hiking: 'trail-sign', trilha: 'trail-sign',
+  gym: 'barbell', academia: 'barbell',
   yoga: 'leaf',
 };
 
-function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Promise<void> }) {
-  const [liked, setLiked] = useState(false);
-  const [likesCount, setLikesCount] = useState(post.likesCount || 0);
-  const heartScale = React.useRef(new Animated.Value(1)).current;
+interface FeedCardProps {
+  post: FeedPost;
+  liked: boolean;
+  likesCount: number;
+  onLike: (id: string, currentlyLiked: boolean) => void;
+  onComment: (post: FeedPost) => void;
+}
 
-  const handleLike = async () => {
-    if (liked) return;
-    // Optimistic update
-    setLiked(true);
-    setLikesCount((c) => c + 1);
-    Animated.sequence([
-      Animated.timing(heartScale, { toValue: 1.4, duration: 150, useNativeDriver: true }),
-      Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, friction: 4 }),
-    ]).start();
-    try {
-      await onLike(post.id);
-    } catch {
-      // Rollback on failure
-      setLiked(false);
-      setLikesCount((c) => c - 1);
+function FeedCard({ post, liked, likesCount, onLike, onComment }: FeedCardProps) {
+  const heartScale = useRef(new Animated.Value(1)).current;
+
+  const handleLike = () => {
+    if (!liked) {
+      Animated.sequence([
+        Animated.timing(heartScale, { toValue: 1.4, duration: 150, useNativeDriver: true }),
+        Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, friction: 4 }),
+      ]).start();
     }
+    onLike(post.id, liked);
   };
 
   const sportKey = post.sport?.toLowerCase() || 'running';
@@ -91,7 +86,7 @@ function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Pr
 
   return (
     <View style={styles.card}>
-      {/* Header: avatar + name + time */}
+      {/* Header */}
       <View style={styles.cardHeader}>
         <Image
           source={
@@ -110,12 +105,11 @@ function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Pr
             </Text>
           </View>
         </View>
-        <TouchableOpacity hitSlop={10}>
+        <TouchableOpacity hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
           <Ionicons name="ellipsis-horizontal" size={20} color={colors.dark.secondaryText} />
         </TouchableOpacity>
       </View>
 
-      {/* Caption */}
       {post.caption && <Text style={styles.caption}>{post.caption}</Text>}
 
       {/* Hero distance */}
@@ -142,18 +136,17 @@ function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Pr
         </View>
       </View>
 
-      {/* Foto */}
       {post.photoUrl && (
-        <Image
-          source={{ uri: post.photoUrl }}
-          style={styles.photo}
-          resizeMode="cover"
-        />
+        <Image source={{ uri: post.photoUrl }} style={styles.photo} resizeMode="cover" />
       )}
 
       {/* Actions */}
       <View style={styles.actions}>
-        <TouchableOpacity style={styles.actionBtn} onPress={handleLike} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={handleLike}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        >
           <Animated.View style={{ transform: [{ scale: heartScale }] }}>
             <Ionicons
               name={liked ? 'heart' : 'heart-outline'}
@@ -161,21 +154,36 @@ function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Pr
               color={liked ? '#F87171' : colors.dark.text}
             />
           </Animated.View>
-          <Text style={styles.actionLabel}>{likesCount}</Text>
+          <Text style={[styles.actionLabel, liked && { color: '#F87171' }]}>{likesCount}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          onPress={() => onComment(post)}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        >
           <Ionicons name="chatbubble-outline" size={20} color={colors.dark.text} />
           <Text style={styles.actionLabel}>{post.commentsCount || 0}</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.actionBtn} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+          onPress={() => {
+            import('react-native').then(({ Share }) => {
+              Share.share({ message: `Confira esse treino no Sync! 🔥 ${(post.distanceKm || 0).toFixed(2)}km` });
+            });
+          }}
+        >
           <Ionicons name="share-social-outline" size={20} color={colors.dark.text} />
         </TouchableOpacity>
 
         <View style={{ flex: 1 }} />
 
-        <TouchableOpacity style={styles.actionBtn} hitSlop={8}>
+        <TouchableOpacity
+          style={styles.actionBtn}
+          hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+        >
           <Ionicons name="bookmark-outline" size={20} color={colors.dark.text} />
         </TouchableOpacity>
       </View>
@@ -184,37 +192,101 @@ function FeedCard({ post, onLike }: { post: FeedPost; onLike: (id: string) => Pr
 }
 
 export default function FeedScreen() {
+  const navigation = useNavigation<any>();
   const [posts, setPosts] = useState<FeedPost[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  // Track liked state + counts at parent level to survive FlatList cell recycling
+  const [likedMap, setLikedMap] = useState<Record<string, boolean>>({});
+  const [countMap, setCountMap] = useState<Record<string, number>>({});
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setLoadError(false);
+  const PAGE_SIZE = 20;
+
+  const load = useCallback(async (pg = 1, append = false) => {
+    if (pg === 1) { setLoading(true); setLoadError(false); }
+    else setLoadingMore(true);
     try {
-      const data = await feedApi.list(1);
-      setPosts(data || []);
+      const data = await feedApi.list(pg);
+      const newPosts = data || [];
+      if (append) {
+        setPosts((prev) => {
+          // deduplicate by id
+          const ids = new Set(prev.map((p) => p.id));
+          return [...prev, ...newPosts.filter((p) => !ids.has(p.id))];
+        });
+      } else {
+        setPosts(newPosts);
+        // Initialize like counts from API data
+        const newCounts: Record<string, number> = {};
+        newPosts.forEach((p) => { newCounts[p.id] = p.likesCount || 0; });
+        setCountMap((prev) => ({ ...newCounts, ...prev }));
+      }
+      setHasMore(newPosts.length === PAGE_SIZE);
+      setPage(pg);
     } catch {
       setLoadError(true);
-      setPosts([]);
+      if (!append) setPosts([]);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   }, []);
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  useEffect(() => { load(1); }, [load]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await load();
+    setLikedMap({});
+    await load(1, false);
     setRefreshing(false);
   };
 
-  const handleLike = async (postId: string): Promise<void> => {
-    await feedApi.like(postId);
+  const onEndReached = () => {
+    if (!loadingMore && hasMore && !loading) {
+      load(page + 1, true);
+    }
+  };
+
+  const handleLike = async (postId: string, currentlyLiked: boolean) => {
+    // Optimistic update
+    setLikedMap((prev) => ({ ...prev, [postId]: !currentlyLiked }));
+    setCountMap((prev) => ({
+      ...prev,
+      [postId]: Math.max(0, (prev[postId] ?? 0) + (currentlyLiked ? -1 : 1)),
+    }));
+    try {
+      if (currentlyLiked) {
+        await feedApi.unlike(postId);
+      } else {
+        await feedApi.like(postId);
+      }
+    } catch {
+      // Rollback
+      setLikedMap((prev) => ({ ...prev, [postId]: currentlyLiked }));
+      setCountMap((prev) => ({
+        ...prev,
+        [postId]: Math.max(0, (prev[postId] ?? 0) + (currentlyLiked ? 1 : -1)),
+      }));
+      showToast('Erro ao curtir', 'error');
+    }
+  };
+
+  const handleComment = (post: FeedPost) => {
+    navigation.navigate('Comments', { postId: post.id, postAuthorName: post.user?.name || 'Atleta' });
+  };
+
+  const ListFooter = () => {
+    if (!loadingMore) return <View style={{ height: 100 }} />;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color={colors.primary} />
+        <Text style={styles.footerText}>Carregando mais...</Text>
+      </View>
+    );
   };
 
   return (
@@ -224,45 +296,72 @@ export default function FeedScreen() {
           <Logo size={32} variant="filled" />
           <Text style={styles.title}>Feed</Text>
         </View>
-        <TouchableOpacity hitSlop={8}>
-          <Ionicons name="notifications-outline" size={22} color={colors.dark.text} />
-        </TouchableOpacity>
+        <View style={styles.headerRight}>
+          <TouchableOpacity
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            onPress={() => navigation.navigate('UserSearch')}
+          >
+            <Ionicons name="search-outline" size={22} color={colors.dark.text} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            onPress={() => navigation.navigate('Notifications')}
+          >
+            <Ionicons name="notifications-outline" size={22} color={colors.dark.text} />
+          </TouchableOpacity>
+        </View>
       </View>
 
-      <FlatList
-        data={posts}
-        keyExtractor={(p) => p.id}
-        renderItem={({ item }) => <FeedCard post={item} onLike={handleLike} />}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
-        }
-        ListEmptyComponent={
-          loading ? null : loadError ? (
-            <View style={styles.empty}>
-              <Ionicons name="cloud-offline-outline" size={64} color={colors.dark.secondaryText} />
-              <Text style={styles.emptyTitle}>Erro ao carregar</Text>
-              <Text style={styles.emptyText}>
-                Verifique sua conexão e puxe para baixo para tentar novamente.
-              </Text>
-            </View>
-          ) : (
-            <View style={styles.empty}>
-              <Ionicons name="newspaper-outline" size={64} color={colors.dark.secondaryText} />
-              <Text style={styles.emptyTitle}>Feed vazio</Text>
-              <Text style={styles.emptyText}>
-                Quando você ou seus amigos completarem treinos e postarem aqui, vai aparecer.
-              </Text>
-            </View>
-          )
-        }
-        contentContainerStyle={{ paddingBottom: 100 }}
-      />
+      {loading && !refreshing ? (
+        <View style={styles.center}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={(p) => p.id}
+          renderItem={({ item }) => (
+            <FeedCard
+              post={item}
+              liked={likedMap[item.id] ?? false}
+              likesCount={countMap[item.id] ?? item.likesCount ?? 0}
+              onLike={handleLike}
+              onComment={handleComment}
+            />
+          )}
+          extraData={{ likedMap, countMap }}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />
+          }
+          onEndReached={onEndReached}
+          onEndReachedThreshold={0.4}
+          ListFooterComponent={<ListFooter />}
+          ListEmptyComponent={
+            loadError ? (
+              <View style={styles.empty}>
+                <Ionicons name="cloud-offline-outline" size={64} color={colors.dark.secondaryText} />
+                <Text style={styles.emptyTitle}>Erro ao carregar</Text>
+                <Text style={styles.emptyText}>Puxe para baixo para tentar novamente.</Text>
+              </View>
+            ) : (
+              <View style={styles.empty}>
+                <Ionicons name="newspaper-outline" size={64} color={colors.dark.secondaryText} />
+                <Text style={styles.emptyTitle}>Feed vazio</Text>
+                <Text style={styles.emptyText}>
+                  Complete um treino e poste aqui para ver seu feed.
+                </Text>
+              </View>
+            )
+          }
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.dark.background },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -273,6 +372,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.05)',
   },
+  headerRight: { flexDirection: 'row', gap: spacing.md, alignItems: 'center' },
   title: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.dark.text },
   card: {
     backgroundColor: 'rgba(255,255,255,0.03)',
@@ -329,10 +429,7 @@ const styles = StyleSheet.create({
   actionLabel: { color: colors.dark.text, fontSize: 13, fontWeight: '600' },
   empty: { alignItems: 'center', marginTop: 100, paddingHorizontal: spacing.xl },
   emptyTitle: { color: colors.dark.text, fontSize: 18, fontWeight: '700', marginTop: spacing.md },
-  emptyText: {
-    color: colors.dark.secondaryText,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    fontSize: 14,
-  },
+  emptyText: { color: colors.dark.secondaryText, textAlign: 'center', marginTop: spacing.sm, fontSize: 14 },
+  footerLoader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: spacing.lg },
+  footerText: { color: colors.dark.secondaryText, fontSize: 13 },
 });

@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Image,
-  TouchableOpacity,
-  ActivityIndicator,
+  View, Text, StyleSheet, ScrollView, Image,
+  TouchableOpacity, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -15,38 +10,122 @@ import { User, SPORTS, OBJECTIVES, AVAILABILITY, SportLevel } from '../../types'
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
-  navigation: NativeStackNavigationProp<HomeStackParamList, 'UserProfile'>;
-  route: RouteProp<HomeStackParamList, 'UserProfile'>;
+  navigation: NativeStackNavigationProp<any>;
+  route: RouteProp<any, any>;
 };
 
-const levelLabels: Record<SportLevel, string> = {
+const levelLabels: Record<string, string> = {
   [SportLevel.BEGINNER]: 'Iniciante',
-  [SportLevel.INTERMEDIATE]: 'Intermediario',
-  [SportLevel.ADVANCED]: 'Avancado',
+  [SportLevel.INTERMEDIATE]: 'Intermediário',
+  [SportLevel.ADVANCED]: 'Avançado',
+};
+
+const levelColors: Record<string, string> = {
+  [SportLevel.BEGINNER]: '#4ADE80',
+  [SportLevel.INTERMEDIATE]: '#FB923C',
+  [SportLevel.ADVANCED]: '#F87171',
 };
 
 export default function UserProfileScreen({ navigation, route }: Props) {
+  const { userId } = route.params as { userId: string };
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [blocking, setBlocking] = useState(false);
 
-  useEffect(() => {
-    loadUser();
-  }, []);
+  useEffect(() => { loadUser(); }, []);
 
   const loadUser = async () => {
     try {
-      const { data } = await api.get(`/users/${route.params.userId}`);
+      const { data } = await api.get(`/users/${userId}`);
       setUser(data);
-    } catch (error) {
-      console.log('Error loading user:', error);
+    } catch {
+      showToast('Erro ao carregar perfil', 'error');
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading || !user) {
+  const handleMoreOptions = () => {
+    Alert.alert(
+      'Opções',
+      undefined,
+      [
+        {
+          text: 'Bloquear usuário',
+          style: 'destructive',
+          onPress: confirmBlock,
+        },
+        {
+          text: 'Denunciar usuário',
+          style: 'destructive',
+          onPress: handleReport,
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ],
+    );
+  };
+
+  const confirmBlock = () => {
+    Alert.alert(
+      'Bloquear usuário?',
+      `Você não verá mais ${user?.name || 'este usuário'} no app e eles não poderão te contatar.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Bloquear',
+          style: 'destructive',
+          onPress: async () => {
+            setBlocking(true);
+            try {
+              await api.post(`/users/${userId}/block`);
+              showToast('Usuário bloqueado', 'success');
+              navigation.goBack();
+            } catch {
+              showToast('Erro ao bloquear usuário', 'error');
+            } finally {
+              setBlocking(false);
+            }
+          },
+        },
+      ],
+    );
+  };
+
+  const handleReport = () => {
+    Alert.alert(
+      'Denunciar usuário',
+      'Qual é o motivo da denúncia?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Spam ou fraude',
+          onPress: () => submitReport('spam'),
+        },
+        {
+          text: 'Conteúdo inadequado',
+          onPress: () => submitReport('inappropriate'),
+        },
+        {
+          text: 'Assédio',
+          onPress: () => submitReport('harassment'),
+        },
+      ],
+    );
+  };
+
+  const submitReport = async (reason: string) => {
+    try {
+      await api.post(`/users/${userId}/report`, { reason });
+      showToast('Denúncia enviada. Obrigado!', 'success');
+    } catch {
+      showToast('Erro ao enviar denúncia', 'error');
+    }
+  };
+
+  if (loading) {
     return (
       <View style={styles.center}>
         <ActivityIndicator size="large" color={colors.primary} />
@@ -54,178 +133,216 @@ export default function UserProfileScreen({ navigation, route }: Props) {
     );
   }
 
-  return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Header com foto */}
-      <View style={styles.header}>
-        <Image
-          source={
-            user.avatarUrl
-              ? { uri: user.avatarUrl }
-              : require('../../assets/images/default-avatar.png')
-          }
-          style={styles.avatar}
-        />
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => navigation.goBack()}
-        >
-          <Ionicons name="arrow-back" size={24} color={colors.white} />
+  if (!user) {
+    return (
+      <View style={styles.center}>
+        <Ionicons name="person-outline" size={48} color={colors.dark.secondaryText} />
+        <Text style={styles.errorText}>Perfil não encontrado</Text>
+        <TouchableOpacity style={styles.backBtnFallback} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>Voltar</Text>
         </TouchableOpacity>
       </View>
+    );
+  }
 
-      <View style={styles.content}>
-        <Text style={styles.name}>{user.name}</Text>
-        {user.city && (
-          <Text style={styles.city}>
-            <Ionicons name="location-outline" size={14} /> {user.city}
-          </Text>
-        )}
+  const levelColor = levelColors[user.level] || colors.primary;
 
-        {/* Bio */}
-        {user.bio && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Sobre</Text>
-            <Text style={styles.bio}>{user.bio}</Text>
-          </View>
-        )}
+  return (
+    <View style={styles.container}>
+      <ScrollView showsVerticalScrollIndicator={false} bounces>
 
-        {/* Esportes */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Esportes</Text>
-          <View style={styles.tags}>
-            {user.sports?.map((s) => {
-              const sport = SPORTS.find((sp) => sp.id === s);
-              return (
-                <View key={s} style={styles.tag}>
-                  <Text style={styles.tagText}>{sport?.label || s}</Text>
-                </View>
-              );
-            })}
+        {/* Hero photo */}
+        <View style={styles.heroWrap}>
+          <Image
+            source={
+              user.avatarUrl
+                ? { uri: user.avatarUrl }
+                : require('../../assets/images/default-avatar.png')
+            }
+            style={styles.heroImage}
+            resizeMode="cover"
+          />
+          {/* Gradient overlay */}
+          <View style={styles.heroOverlay} />
+
+          {/* Back button */}
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={22} color={colors.white} />
+          </TouchableOpacity>
+
+          {/* More / block-report */}
+          <TouchableOpacity
+            style={styles.moreBtn}
+            onPress={handleMoreOptions}
+            disabled={blocking}
+          >
+            {blocking
+              ? <ActivityIndicator size="small" color={colors.white} />
+              : <Ionicons name="ellipsis-vertical" size={20} color={colors.white} />
+            }
+          </TouchableOpacity>
+
+          {/* Name overlay */}
+          <View style={styles.heroNameWrap}>
+            <Text style={styles.heroName} numberOfLines={1}>{user.name}</Text>
+            {user.city && (
+              <View style={styles.heroLocation}>
+                <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.8)" />
+                <Text style={styles.heroCity} numberOfLines={1}>{user.city}</Text>
+              </View>
+            )}
           </View>
         </View>
 
-        {/* Nivel */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nivel</Text>
-          <Text style={styles.value}>{levelLabels[user.level]}</Text>
+        {/* Content */}
+        <View style={styles.content}>
+
+          {/* Level badge */}
+          {user.level && (
+            <View style={[styles.levelBadge, { borderColor: levelColor + '50', backgroundColor: levelColor + '12' }]}>
+              <Ionicons name="trophy-outline" size={14} color={levelColor} />
+              <Text style={[styles.levelText, { color: levelColor }]}>
+                {levelLabels[user.level] || user.level}
+              </Text>
+            </View>
+          )}
+
+          {/* Bio */}
+          {user.bio && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Sobre</Text>
+              <Text style={styles.bio}>{user.bio}</Text>
+            </View>
+          )}
+
+          {/* Sports */}
+          {user.sports && user.sports.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Esportes</Text>
+              <View style={styles.tags}>
+                {user.sports.map((s) => {
+                  const sport = SPORTS.find((sp) => sp.id === s);
+                  return (
+                    <View key={s} style={styles.tag}>
+                      <Text style={styles.tagText}>{sport?.label || s}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Availability */}
+          {user.availability && user.availability.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Disponibilidade</Text>
+              <View style={styles.tags}>
+                {user.availability.map((a) => {
+                  const item = AVAILABILITY.find((av) => av.id === a);
+                  return (
+                    <View key={a} style={styles.tag}>
+                      <Text style={styles.tagText}>{item?.label || a}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Objectives */}
+          {user.objectives && user.objectives.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.sectionTitle}>Objetivos</Text>
+              <View style={styles.tags}>
+                {user.objectives.map((o) => {
+                  const obj = OBJECTIVES.find((ob) => ob.id === o);
+                  return (
+                    <View key={o} style={styles.tag}>
+                      <Text style={styles.tagText}>{obj?.label || o}</Text>
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Bottom spacer */}
+          <View style={{ height: 40 }} />
         </View>
-
-        {/* Disponibilidade */}
-        {user.availability && user.availability.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Disponibilidade</Text>
-            <View style={styles.tags}>
-              {user.availability.map((a) => {
-                const item = AVAILABILITY.find((av) => av.id === a);
-                return (
-                  <View key={a} style={styles.tag}>
-                    <Text style={styles.tagText}>{item?.label || a}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-
-        {/* Objetivos */}
-        {user.objectives && user.objectives.length > 0 && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Objetivos</Text>
-            <View style={styles.tags}>
-              {user.objectives.map((o) => {
-                const obj = OBJECTIVES.find((ob) => ob.id === o);
-                return (
-                  <View key={o} style={styles.tag}>
-                    <Text style={styles.tagText}>{obj?.label || o}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </View>
-        )}
-      </View>
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
+  container: { flex: 1, backgroundColor: colors.dark.background },
   center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.dark.background,
   },
-  header: {
-    height: 350,
+  errorText: { color: colors.dark.secondaryText, fontSize: fontSize.md },
+  backBtnFallback: {
+    paddingHorizontal: spacing.xl, paddingVertical: spacing.sm,
+    backgroundColor: colors.primary, borderRadius: borderRadius.md, marginTop: spacing.md,
   },
-  avatar: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+  backBtnText: { color: colors.white, fontWeight: '700' },
+  heroWrap: { height: 380, position: 'relative' },
+  heroImage: { width: '100%', height: '100%' },
+  heroOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   backBtn: {
     position: 'absolute',
-    top: 50,
+    top: Platform.OS === 'ios' ? 54 : 40,
     left: spacing.lg,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center',
   },
-  content: {
-    padding: spacing.lg,
+  moreBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 54 : 40,
+    right: spacing.lg,
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    justifyContent: 'center', alignItems: 'center',
   },
-  name: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.text,
+  heroNameWrap: {
+    position: 'absolute', bottom: spacing.lg, left: spacing.lg, right: spacing.lg,
   },
-  city: {
-    fontSize: fontSize.sm,
-    color: colors.secondaryText,
-    marginTop: 4,
+  heroName: {
+    fontSize: 28, fontWeight: '800', color: colors.white,
+    textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
-  section: {
-    marginTop: spacing.lg,
+  heroLocation: {
+    flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 4,
   },
+  heroCity: {
+    fontSize: fontSize.sm, color: 'rgba(255,255,255,0.85)',
+    textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  content: { padding: spacing.lg },
+  levelBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
+    borderRadius: borderRadius.full, borderWidth: 1,
+    marginBottom: spacing.md,
+  },
+  levelText: { fontSize: fontSize.sm, fontWeight: '700' },
+  section: { marginBottom: spacing.lg },
   sectionTitle: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.secondaryText,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: spacing.sm,
+    fontSize: fontSize.xs, fontWeight: '700', color: colors.dark.secondaryText,
+    textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: spacing.sm,
   },
-  bio: {
-    fontSize: fontSize.md,
-    color: colors.text,
-    lineHeight: 24,
-  },
-  value: {
-    fontSize: fontSize.md,
-    color: colors.text,
-  },
-  tags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
+  bio: { fontSize: fontSize.md, color: colors.dark.text, lineHeight: 24 },
+  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: {
-    backgroundColor: colors.primary + '15',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs + 2,
+    backgroundColor: colors.primary + '18',
+    paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.full,
-    marginRight: spacing.sm,
-    marginBottom: spacing.sm,
+    borderWidth: 1, borderColor: colors.primary + '30',
   },
-  tagText: {
-    fontSize: fontSize.sm,
-    color: colors.primary,
-    fontWeight: '500',
-  },
+  tagText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '600' },
 });

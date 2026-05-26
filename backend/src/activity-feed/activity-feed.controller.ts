@@ -42,6 +42,38 @@ export class ActivityFeedController {
     return this.service.like(id);
   }
 
+  @Delete(':id/like')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Descurtir post do feed' })
+  unlike(@Param('id') id: string) {
+    return this.service.unlike(id);
+  }
+
+  @Get(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Listar comentários do post' })
+  getComments(@Param('id') id: string, @Query('page') page?: string) {
+    return this.service.getComments(id, page ? parseInt(page, 10) : 1);
+  }
+
+  @Post(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Comentar em post' })
+  addComment(@CurrentUser() user: User, @Param('id') id: string, @Body() body: { text: string }) {
+    return this.service.addComment(id, user.id, body.text);
+  }
+
+  @Delete(':id/comments/:commentId')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deletar comentário próprio' })
+  deleteComment(@CurrentUser() user: User, @Param('id') id: string, @Param('commentId') commentId: string) {
+    return this.service.deleteComment(id, commentId, user.id);
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
