@@ -8,6 +8,7 @@ import {
   MessageBody,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
+import { Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
@@ -28,6 +29,8 @@ import { haversineMeters } from '../common/utils/haversine';
 export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer()
   server: Server;
+
+  private readonly logger = new Logger(ActivitiesGateway.name);
 
   // userId por socket após autenticação
   private socketUser: Map<string, string> = new Map();
@@ -181,8 +184,7 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
 
       return { ok: true };
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[ActivitiesGateway] erro em point:', err);
+      this.logger.error(`erro em point: ${(err as Error)?.message ?? err}`);
       return { ok: false };
     }
   }
@@ -234,8 +236,7 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
       );
       await this.pointRepository.save(rows);
     } catch (err) {
-      // eslint-disable-next-line no-console
-      console.error('[ActivitiesGateway] flush falhou:', err);
+      this.logger.error(`flush falhou: ${(err as Error)?.message ?? err}`);
     }
   }
 }
