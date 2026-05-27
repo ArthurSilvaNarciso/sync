@@ -115,7 +115,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('sendMessage')
   async handleSendMessage(
     @ConnectedSocket() client: Socket,
-    @MessageBody() data: { matchId: string; content: string },
+    @MessageBody() data: { matchId: string; content: string; type?: string; audioUrl?: string },
   ) {
     const senderId = this.socketToUser.get(client.id);
     if (!senderId) {
@@ -127,21 +127,49 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return;
     }
     try {
-      if (!data?.matchId || !data.content?.trim()) {
+      if (!data?.matchId) {
         client.emit('error', { message: 'Dados da mensagem inválidos' });
         return;
       }
-      if (data.content.trim().length > 1000) {
+      const msgType = data.type === 'audio' ? 'audio' : 'text';
+      const content = msgType === 'audio' ? (data.audioUrl || '') : (data.content?.trim() || '');
+      if (!content) {
+        client.emit('error', { message: 'Conteúdo da mensagem vazio' });
+        return;
+      }
+      if (msgType === 'text' && content.length > 1000) {
         client.emit('error', { message: 'Mensagem muito longa (máximo 1000 caracteres)' });
         return;
       }
       const message = await this.chatService.sendMessage(senderId, {
         matchId: data.matchId,
-        content: data.content.trim(),
+        content,
+        type: msgType,
       });
       this.server.to(`match:${data.matchId}`).emit('newMessage', message);
     } catch {
       client.emit('error', { message: 'Erro ao enviar mensagem' });
+    }
+  }
+
+  // Marcar mensagens como lidas — emite confirmação para o remetente original
+  @SubscribeMessage('markRead')
+  async handleMarkRead(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { matchId: string },
+  ) {
+    const userId = this.socketToUser.get(client.id);
+    if (!userId || !data?.matchId) return;
+    try {
+      await this.chatService.markAsRead(userId, data.matchId);
+      // Notifica o outro participante que suas mensagens foram lidas
+      client.to(`match:${data.matchId}`).emit('messagesRead', {
+        matchId: data.matchId,
+        readBy: userId,
+        readAt: new Date().toISOString(),
+      });
+    } catch {
+      // silencia — non-critical
     }
   }
 

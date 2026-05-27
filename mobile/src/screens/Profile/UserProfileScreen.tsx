@@ -190,7 +190,26 @@ export default function UserProfileScreen({ navigation, route }: Props) {
 
           {/* Name overlay */}
           <View style={styles.heroNameWrap}>
-            <Text style={styles.heroName} numberOfLines={1}>{user.name}</Text>
+            <View style={styles.heroNameRow}>
+              <Text style={styles.heroName} numberOfLines={1}>{user.name}</Text>
+              {user.isVerified && (
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark" size={11} color="#fff" />
+                </View>
+              )}
+              {user.subscriptionTier && user.subscriptionTier !== 'free' && (
+                <View style={[
+                  styles.tierBadge,
+                  user.subscriptionTier === 'atleta_pro' && styles.tierBadgePro,
+                ]}>
+                  <Ionicons
+                    name={user.subscriptionTier === 'atleta_pro' ? 'trophy' : 'star'}
+                    size={10}
+                    color="#fff"
+                  />
+                </View>
+              )}
+            </View>
             {user.city && (
               <View style={styles.heroLocation}>
                 <Ionicons name="location-outline" size={13} color="rgba(255,255,255,0.8)" />
@@ -203,15 +222,52 @@ export default function UserProfileScreen({ navigation, route }: Props) {
         {/* Content */}
         <View style={styles.content}>
 
-          {/* Level badge */}
-          {user.level && (
-            <View style={[styles.levelBadge, { borderColor: levelColor + '50', backgroundColor: levelColor + '12' }]}>
-              <Ionicons name="trophy-outline" size={14} color={levelColor} />
-              <Text style={[styles.levelText, { color: levelColor }]}>
-                {levelLabels[user.level] || user.level}
-              </Text>
-            </View>
-          )}
+          {/* Badges row */}
+          <View style={styles.badgesRow}>
+            {user.level && (
+              <View style={[styles.levelBadge, { borderColor: levelColor + '50', backgroundColor: levelColor + '12' }]}>
+                <Ionicons name="trophy-outline" size={14} color={levelColor} />
+                <Text style={[styles.levelText, { color: levelColor }]}>
+                  {levelLabels[user.level] || user.level}
+                </Text>
+              </View>
+            )}
+            {user.isVerified && (
+              <View style={styles.verifiedRowBadge}>
+                <Ionicons name="checkmark-circle" size={14} color="#3B82F6" />
+                <Text style={styles.verifiedRowText}>Verificado</Text>
+              </View>
+            )}
+            {user.subscriptionTier === 'premium' && (
+              <View style={styles.premiumRowBadge}>
+                <Ionicons name="star" size={13} color="#FCD34D" />
+                <Text style={styles.premiumRowText}>Premium</Text>
+              </View>
+            )}
+            {user.subscriptionTier === 'atleta_pro' && (
+              <View style={styles.proRowBadge}>
+                <Ionicons name="trophy" size={13} color="#A78BFA" />
+                <Text style={styles.proRowText}>Atleta Pro</Text>
+              </View>
+            )}
+          </View>
+
+          {/* Challenge button */}
+          <TouchableOpacity
+            style={styles.challengeBtn}
+            onPress={() => navigation.navigate('Challenges')}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['#FF6B35', '#FF4500']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.challengeBtnGradient}
+            >
+              <Ionicons name="flash" size={16} color="#fff" />
+              <Text style={styles.challengeBtnText}>Desafiar {user.name.split(' ')[0]}</Text>
+            </LinearGradient>
+          </TouchableOpacity>
 
           {/* Bio */}
           {user.bio && (
@@ -332,14 +388,55 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   content: { padding: spacing.lg },
+  heroNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  verifiedBadge: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  tierBadge: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#FF6B35',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  tierBadgePro: { backgroundColor: '#7C3AED' },
+
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: spacing.md },
   levelBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
     paddingHorizontal: spacing.md, paddingVertical: spacing.xs,
     borderRadius: borderRadius.full, borderWidth: 1,
-    marginBottom: spacing.md,
   },
   levelText: { fontSize: fontSize.sm, fontWeight: '700' },
+  verifiedRowBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: 'rgba(59,130,246,0.12)',
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(59,130,246,0.30)',
+  },
+  verifiedRowText: { fontSize: 11, fontWeight: '700', color: '#3B82F6' },
+  premiumRowBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: 'rgba(252,211,77,0.12)',
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(252,211,77,0.30)',
+  },
+  premiumRowText: { fontSize: 11, fontWeight: '700', color: '#FCD34D' },
+  proRowBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 4,
+    backgroundColor: 'rgba(167,139,250,0.12)',
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(167,139,250,0.30)',
+  },
+  proRowText: { fontSize: 11, fontWeight: '700', color: '#A78BFA' },
+
+  challengeBtn: { borderRadius: borderRadius.md, overflow: 'hidden', marginBottom: spacing.lg },
+  challengeBtnGradient: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 13,
+  },
+  challengeBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
   section: { marginBottom: spacing.lg },
   sectionTitle: {
     fontSize: fontSize.xs, fontWeight: '700', color: 'rgba(255,255,255,0.45)',

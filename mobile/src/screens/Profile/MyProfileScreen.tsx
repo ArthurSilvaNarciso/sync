@@ -309,7 +309,24 @@ export default function MyProfileScreen({ navigation }: Props) {
               <Ionicons name="camera" size={14} color={colors.white} />
             </TouchableOpacity>
           </View>
-          <Text style={styles.name}>{user.name}</Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.name}>{user.name}</Text>
+            {(user as any).isVerified && (
+              <View style={styles.verifiedBadge}>
+                <Ionicons name="checkmark" size={11} color="#fff" />
+              </View>
+            )}
+            {(user as any).subscriptionTier === 'atleta_pro' && (
+              <View style={[styles.tierBadge, { backgroundColor: '#7C3AED' }]}>
+                <Ionicons name="trophy" size={10} color="#fff" />
+              </View>
+            )}
+            {(user as any).subscriptionTier === 'premium' && (
+              <View style={[styles.tierBadge, { backgroundColor: '#FF6B35' }]}>
+                <Ionicons name="star" size={10} color="#fff" />
+              </View>
+            )}
+          </View>
           {user.city && (
             <View style={styles.locationRow}>
               <Ionicons name="location-outline" size={14} color="rgba(255,255,255,0.8)" />
@@ -529,11 +546,25 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: colors.white,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: spacing.md,
+  },
   name: {
     fontSize: fontSize.xl,
     fontWeight: '700',
     color: colors.white,
-    marginTop: spacing.md,
+  },
+  verifiedBadge: {
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#3B82F6',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  tierBadge: {
+    width: 18, height: 18, borderRadius: 9,
+    justifyContent: 'center', alignItems: 'center',
   },
   locationRow: {
     flexDirection: 'row',

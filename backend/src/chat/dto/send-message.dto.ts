@@ -1,5 +1,5 @@
-import { IsString, IsUUID, IsNotEmpty, MaxLength } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsUUID, IsNotEmpty, MaxLength, IsOptional, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendMessageDto {
   @ApiProperty({ description: 'ID do match (conversa)' })
@@ -9,6 +9,11 @@ export class SendMessageDto {
   @ApiProperty({ description: 'Conteúdo da mensagem (máx 1000 caracteres)' })
   @IsString()
   @IsNotEmpty()
-  @MaxLength(1000)
+  @MaxLength(2_000_000) // base64 audio can be larger
   content: string;
+
+  @ApiPropertyOptional({ enum: ['text', 'audio'], default: 'text' })
+  @IsOptional()
+  @IsIn(['text', 'audio'])
+  type?: string;
 }

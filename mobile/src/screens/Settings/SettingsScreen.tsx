@@ -243,6 +243,19 @@ export default function SettingsScreen({ navigation }: any) {
           label={plan?.plan?.name || 'Free'}
           value={plan?.plan?.price === 0 ? 'Grátis' : `R$ ${plan?.plan?.price}/mês`}
           color="#FCD34D"
+          onPress={() => navigation?.navigate?.('Premium')}
+        />
+        <Row
+          icon="flash"
+          label="Desafios"
+          onPress={() => navigation?.navigate?.('Challenges')}
+          color="#FF6B35"
+        />
+        <Row
+          icon="shield-outline"
+          label="Usuários bloqueados"
+          onPress={() => navigation?.navigate?.('BlockedUsers')}
+          color="#6B7280"
         />
       </View>
 

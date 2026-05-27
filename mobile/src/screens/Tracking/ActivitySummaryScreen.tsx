@@ -51,14 +51,22 @@ const SPORT_LABELS: Record<string, string> = {
   gym: 'Academia',
 };
 
+interface PRResult {
+  type: 'distance' | 'pace';
+  label: string;
+  value: string;
+}
+
 export default function ActivitySummaryScreen({ navigation, route }: Props) {
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
+  const [newPRs, setNewPRs] = useState<PRResult[]>([]);
   // Start hidden — show only after the user has seen the summary (2.5s delay)
   const [ratingModal, setRatingModal] = useState(false);
   const ratingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const prBannerAnim = useRef(new Animated.Value(0)).current;
 
   // Celebration animation
   const checkScale = useRef(new Animated.Value(0)).current;
@@ -93,8 +101,10 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
   }, [loading, activity]);
 
   const loadActivity = async () => {
+    let loaded: Activity | null = null;
     try {
       const { data } = await api.get(`/activities/${route.params.activityId}`);
+      loaded = data;
       setActivity(data);
       setLoading(false);
     } catch (error) {
@@ -103,6 +113,7 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
       try {
         await new Promise<void>((res) => setTimeout(res, 1500));
         const { data } = await api.get(`/activities/${route.params.activityId}`);
+        loaded = data;
         setActivity(data);
       } catch (retryErr) {
         console.log('Error loading activity (attempt 2):', retryErr);
@@ -110,6 +121,44 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
         setLoading(false);
       }
     }
+    // PR detection — compare against history
+    if (loaded) {
+      detectPRs(loaded).catch(() => {});
+    }
+  };
+
+  const detectPRs = async (current: Activity) => {
+    try {
+      const { data } = await api.get(`/activities?limit=100&sport=${current.sport}`);
+      const history: Activity[] = (data.activities || data || []).filter(
+        (a: Activity) => a.id !== current.id && a.isCompleted,
+      );
+      if (history.length === 0) return; // first activity of this sport — no PR to compare
+
+      const prs: PRResult[] = [];
+      const maxDist = Math.max(...history.map((a) => a.distance ?? 0));
+      const bestPace = Math.min(...history.filter((a) => a.avgPace).map((a) => a.avgPace!));
+
+      if ((current.distance ?? 0) > maxDist) {
+        prs.push({
+          type: 'distance',
+          label: '🏅 Novo recorde de distância!',
+          value: `${((current.distance ?? 0) / 1000).toFixed(2)} km`,
+        });
+      }
+      if (current.avgPace && bestPace && current.avgPace < bestPace) {
+        prs.push({
+          type: 'pace',
+          label: '⚡ Novo recorde de pace!',
+          value: `${current.avgPace.toFixed(1)} min/km`,
+        });
+      }
+
+      if (prs.length > 0) {
+        setNewPRs(prs);
+        Animated.spring(prBannerAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }).start();
+      }
+    } catch { /* non-critical */ }
   };
 
   const handleShare = async () => {
@@ -340,6 +389,30 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
             })}
           </Text>
         </Animated.View>
+
+        {/* ── PR Banner ── */}
+        {newPRs.length > 0 && (
+          <Animated.View style={[
+            styles.prBanner,
+            { opacity: prBannerAnim, transform: [{ scale: prBannerAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) }] },
+          ]}>
+            <LinearGradient
+              colors={['rgba(252,211,77,0.15)', 'rgba(252,211,77,0.05)']}
+              style={styles.prBannerInner}
+            >
+              <View style={styles.prBannerTop}>
+                <Ionicons name="trophy" size={24} color="#FCD34D" />
+                <Text style={styles.prBannerTitle}>Novos Recordes Pessoais!</Text>
+              </View>
+              {newPRs.map((pr, i) => (
+                <View key={i} style={styles.prRow}>
+                  <Text style={styles.prLabel}>{pr.label}</Text>
+                  <Text style={styles.prValue}>{pr.value}</Text>
+                </View>
+              ))}
+            </LinearGradient>
+          </Animated.View>
+        )}
 
         {/* ── Actions ── */}
         <Animated.View style={[styles.actions, { opacity: headerFade }]}>
@@ -728,4 +801,24 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     fontWeight: '600',
   },
+
+  // ── PR Banner ──────────────────────────────────────────────────────────────
+  prBanner: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    borderRadius: borderRadius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(252,211,77,0.30)',
+  },
+  prBannerInner: { padding: spacing.lg, gap: spacing.sm },
+  prBannerTop: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: 4,
+  },
+  prBannerTitle: { fontSize: 16, fontWeight: '800', color: '#FCD34D' },
+  prRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  prLabel: { fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+  prValue: { fontSize: 13, color: '#FCD34D', fontWeight: '800' },
 });

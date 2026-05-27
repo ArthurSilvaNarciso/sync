@@ -74,6 +74,10 @@ export type ProfileStackParamList = {
   Privacy: undefined;
   Terms: undefined;
   Help: undefined;
+  // New screens
+  Premium: undefined;
+  BlockedUsers: undefined;
+  Challenges: undefined;
 };
 
 // Root navigator

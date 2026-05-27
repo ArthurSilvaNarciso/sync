@@ -27,6 +27,7 @@ import { FeedbackModule } from './feedback/feedback.module';
 import { FollowsModule } from './follows/follows.module';
 import { SegmentsModule } from './segments/segments.module';
 import { CoachModule } from './coach/coach.module';
+import { ChallengesModule } from './challenges/challenges.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -71,6 +72,7 @@ import { HealthController } from './health.controller';
     FollowsModule,
     SegmentsModule,
     CoachModule,
+    ChallengesModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

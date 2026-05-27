@@ -1,4 +1,5 @@
 // Story viewer fullscreen com timer auto-avance, pause on press, swipe pra fechar.
+// Suporta imagens e vídeos (expo-av).
 import React, { useEffect, useRef, useState } from 'react';
 import {
   View, Text, StyleSheet, Image, Pressable, Animated, Dimensions,
@@ -6,6 +7,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Video, ResizeMode } from 'expo-av';
 import { Story, storiesService } from '../../services/stories.service';
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -70,8 +72,19 @@ export default function StoryViewerScreen({ initialStories, initialIndex = 0, on
 
   return (
     <View style={styles.container}>
-      {/* Mídia */}
-      <Image source={{ uri: story.mediaUrl }} style={styles.media} resizeMode="contain" />
+      {/* Mídia — imagem ou vídeo */}
+      {story.mediaType === 'video' ? (
+        <Video
+          source={{ uri: story.mediaUrl }}
+          style={styles.media}
+          resizeMode={ResizeMode.CONTAIN}
+          shouldPlay={!paused}
+          isLooping
+          isMuted={false}
+        />
+      ) : (
+        <Image source={{ uri: story.mediaUrl }} style={styles.media} resizeMode="contain" />
+      )}
 
       {/* Progress bars no topo */}
       <View style={styles.progressContainer}>

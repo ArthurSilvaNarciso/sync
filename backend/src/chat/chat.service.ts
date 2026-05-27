@@ -40,10 +40,15 @@ export class ChatService {
   async sendMessage(userId: string, dto: SendMessageDto): Promise<Message> {
     await this.verifyMatchAccess(dto.matchId, userId);
 
+    const msgType = dto.type === 'audio' ? 'audio' : 'text';
+    // Audio messages store base64 data URL as-is; text messages are sanitized
+    const content = msgType === 'audio' ? dto.content : sanitizeText(dto.content, 1000);
+
     const message = this.messageRepository.create({
       match_id: dto.matchId,
       sender_id: userId,
-      content: sanitizeText(dto.content, 1000),
+      content,
+      type: msgType,
     });
 
     return this.messageRepository.save(message);

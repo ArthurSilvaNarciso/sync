@@ -12,6 +12,7 @@ import {
   FlatList,
   TextInput,
 } from 'react-native';
+import * as Calendar from 'expo-calendar';
 import MapView, { Marker } from '../../components/map/SyncMap';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -159,6 +160,45 @@ export default function EventDetailScreen({ navigation, route }: Props) {
     }
   };
 
+  const handleAddToCalendar = async () => {
+    if (!event) return;
+    try {
+      const { status } = await Calendar.requestCalendarPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permissão necessária', 'Autorize o acesso ao calendário para adicionar o evento.');
+        return;
+      }
+
+      const calendars = await Calendar.getCalendarsAsync(Calendar.EntityTypes.EVENT);
+      // Prefer a local writable calendar
+      const defaultCal =
+        calendars.find((c) => c.allowsModifications && c.source?.isLocalAccount) ||
+        calendars.find((c) => c.allowsModifications) ||
+        calendars[0];
+
+      if (!defaultCal) {
+        Alert.alert('Calendário', 'Nenhum calendário disponível.');
+        return;
+      }
+
+      const startDate = new Date(event.date);
+      const endDate = new Date(startDate.getTime() + 2 * 60 * 60 * 1000); // +2h default
+
+      await Calendar.createEventAsync(defaultCal.id, {
+        title: event.title,
+        startDate,
+        endDate,
+        notes: event.description || '',
+        location: event.address || '',
+        alarms: [{ relativeOffset: -60 }, { relativeOffset: -15 }], // 1h and 15min before
+      });
+
+      Alert.alert('✅ Adicionado!', `"${event.title}" foi salvo no seu calendário.`);
+    } catch (err: any) {
+      Alert.alert('Erro', err?.message || 'Não foi possível adicionar ao calendário.');
+    }
+  };
+
   const handleAddComment = async () => {
     if (!comment.trim() || sendingComment) return;
     const commentText = comment.trim();
@@ -234,9 +274,14 @@ export default function EventDetailScreen({ navigation, route }: Props) {
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-          <Ionicons name="share-outline" size={22} color="#fff" />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
+            <Ionicons name="share-outline" size={20} color="#fff" />
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.calendarBtn} onPress={handleAddToCalendar}>
+            <Ionicons name="calendar-outline" size={20} color="#3B82F6" />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView
@@ -476,16 +521,35 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.5,
     shadowRadius: 6,
   },
-  shareBtn: {
+  headerActions: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 50 : 36,
     right: spacing.md,
+    flexDirection: 'row',
+    gap: 8,
+  },
+  shareBtn: {
     width: 40,
     height: 40,
     borderRadius: 12,
     backgroundColor: 'rgba(10,10,15,0.75)',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
+  },
+  calendarBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10,10,15,0.75)',
+    borderWidth: 1,
+    borderColor: 'rgba(59,130,246,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 5,

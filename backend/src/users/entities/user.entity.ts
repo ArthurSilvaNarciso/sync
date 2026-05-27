@@ -124,6 +124,10 @@ export class User {
   @Column({ type: process.env.NODE_ENV === 'production' ? 'timestamp' : 'datetime', nullable: true })
   subscriptionExpiresAt: Date | null;
 
+  // Verified badge — set by admins for known athletes / coaches / gyms
+  @Column({ default: false })
+  isVerified: boolean;
+
   // Cron timestamps
   @Column({ default: 0 })
   totalXP: number;

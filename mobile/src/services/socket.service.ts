@@ -125,6 +125,22 @@ class SocketService {
     this.socket?.emit('leaveChat', { matchId });
   }
 
+  /** Notify server that all messages in a match have been read */
+  markRead(matchId: string) {
+    this.socket?.emit('markRead', { matchId });
+  }
+
+  /** Listen for read receipts from the other participant */
+  onMessagesRead(callback: (data: { matchId: string; readBy: string; readAt: string }) => void) {
+    this.socket?.off('messagesRead');
+    this.socket?.on('messagesRead', callback);
+  }
+
+  /** Send a voice message as base64 audio content */
+  sendAudioMessage(matchId: string, audioBase64: string) {
+    this.socket?.emit('sendMessage', { matchId, content: audioBase64, type: 'audio' });
+  }
+
   /** @deprecated use emitTyping(matchId) — userId comes from the server JWT */
   sendTyping(matchId: string) {
     this.emitTyping(matchId);
