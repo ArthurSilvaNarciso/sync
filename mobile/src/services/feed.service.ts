@@ -42,6 +42,9 @@ export const feedApi = {
   }) => api.post<FeedPost>('/feed', body).then((r) => r.data),
   like: (postId: string) => api.post(`/feed/${postId}/like`).then((r) => r.data),
   unlike: (postId: string) => api.delete(`/feed/${postId}/like`).then((r) => r.data),
+  /** Retorna os IDs de posts curtidos pelo usuário atual (para sincronizar estado do feed) */
+  getLikedIds: (postIds: string[]) =>
+    api.post<string[]>('/feed/liked-ids', { postIds }).then((r) => r.data),
   remove: (postId: string) => api.delete(`/feed/${postId}`).then((r) => r.data),
   getComments: (postId: string, page = 1) =>
     api.get<FeedComment[]>(`/feed/${postId}/comments`, { params: { page } }).then((r) => r.data),

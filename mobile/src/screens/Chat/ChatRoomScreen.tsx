@@ -89,7 +89,8 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const setupSocket = async () => {
     if (!user) return;
     try {
-      await socketService.connect(user.id);
+      // JWT is read from SecureStore inside connect() — no userId arg needed
+      await socketService.connect();
       socketService.joinChat(matchId);
       socketService.onNewMessage((message: Message) => {
         setMessages((prev) => [...prev, message]);
@@ -117,7 +118,8 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       createdAt: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, newMessage]);
-    socketService.sendMessage(matchId, user.id, text.trim());
+    // senderId is derived server-side from the JWT — only pass matchId + content
+    socketService.sendMessage(matchId, text.trim());
     setText('');
     setIsTyping(false);
   };
@@ -126,7 +128,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     setText(value);
     if (!isTyping && value.length > 0) {
       setIsTyping(true);
-      socketService.sendTyping?.(matchId, user?.id || '');
+      socketService.emitTyping(matchId);
     }
     if (value.length === 0) {
       setIsTyping(false);

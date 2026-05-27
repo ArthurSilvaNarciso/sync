@@ -1,28 +1,36 @@
 import { io, Socket } from 'socket.io-client';
+import { secureStorage } from './secure-storage';
+import { API_HOST } from './api';
 
-const SOCKET_URL = __DEV__
-  ? 'http://localhost:3000/chat'
-  : 'https://api.sync-app.com/chat';
+// Deriva o namespace do host da API (mesmo servidor, porta 3000)
+const SOCKET_URL = `${API_HOST}/chat`;
 
 const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 1000;
 
 class SocketService {
   private socket: Socket | null = null;
-  private userId: string | null = null;
+  private jwtToken: string | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
-  async connect(userId: string): Promise<Socket> {
+  /**
+   * Conecta ao gateway de chat autenticando via JWT.
+   * O userId é extraído do token pelo servidor — não é enviado pelo cliente.
+   */
+  async connect(): Promise<Socket> {
     if (this.socket?.connected) return this.socket;
 
-    this.userId = userId;
+    const token = await secureStorage.getItem('@sync:token');
+    if (!token) throw new Error('Não autenticado — faça login antes de conectar ao chat');
+
+    this.jwtToken = token;
     this.reconnectAttempts = 0;
 
-    return this.createConnection(userId);
+    return this.createConnection(token);
   }
 
-  private createConnection(userId: string): Promise<Socket> {
+  private createConnection(token: string): Promise<Socket> {
     return new Promise((resolve, reject) => {
       if (this.socket) {
         this.socket.removeAllListeners();
@@ -30,7 +38,8 @@ class SocketService {
       }
 
       this.socket = io(SOCKET_URL, {
-        query: { userId },
+        // SECURITY: JWT no handshake.auth, nunca em query params (evita logging em proxies)
+        auth: { token },
         transports: ['websocket'],
         reconnection: false, // gerenciamos manualmente com backoff exponencial
         timeout: 10000,
@@ -51,20 +60,29 @@ class SocketService {
       this.socket.on('disconnect', () => {
         this.scheduleReconnect();
       });
+
+      // Servidor nos expulsa se o token expirar
+      this.socket.on('auth_error', () => {
+        this.jwtToken = null;
+        this.disconnect();
+      });
     });
   }
 
   private scheduleReconnect() {
-    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS || !this.userId) return;
+    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS || !this.jwtToken) return;
     if (this.reconnectTimer) return;
 
     const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts);
     this.reconnectAttempts++;
 
-    this.reconnectTimer = setTimeout(() => {
+    this.reconnectTimer = setTimeout(async () => {
       this.reconnectTimer = null;
-      if (this.userId) {
-        this.createConnection(this.userId).catch(() => {});
+      // Re-read token in case it was refreshed
+      const token = await secureStorage.getItem('@sync:token').catch(() => null);
+      if (token) {
+        this.jwtToken = token;
+        this.createConnection(token).catch(() => {});
       }
     }, delay);
   }
@@ -73,8 +91,9 @@ class SocketService {
     this.socket?.emit('joinChat', { matchId });
   }
 
-  sendMessage(matchId: string, senderId: string, content: string) {
-    this.socket?.emit('sendMessage', { matchId, senderId, content });
+  /** senderId is derived server-side from the JWT — do not pass it */
+  sendMessage(matchId: string, content: string) {
+    this.socket?.emit('sendMessage', { matchId, content });
   }
 
   onNewMessage(callback: (message: any) => void) {
@@ -87,8 +106,9 @@ class SocketService {
     this.socket?.on('userTyping', callback);
   }
 
-  emitTyping(matchId: string, userId: string) {
-    this.socket?.emit('typing', { matchId, userId });
+  /** userId is derived server-side from the JWT — do not pass it */
+  emitTyping(matchId: string) {
+    this.socket?.emit('typing', { matchId });
   }
 
   onUserOnline(callback: (data: { userId: string }) => void) {
@@ -105,8 +125,9 @@ class SocketService {
     this.socket?.emit('leaveChat', { matchId });
   }
 
-  sendTyping(matchId: string, userId: string) {
-    this.socket?.emit('typing', { matchId, userId });
+  /** @deprecated use emitTyping(matchId) — userId comes from the server JWT */
+  sendTyping(matchId: string) {
+    this.emitTyping(matchId);
   }
 
   disconnect() {
@@ -117,7 +138,7 @@ class SocketService {
     this.socket?.removeAllListeners();
     this.socket?.disconnect();
     this.socket = null;
-    this.userId = null;
+    this.jwtToken = null;
     this.reconnectAttempts = 0;
   }
 }

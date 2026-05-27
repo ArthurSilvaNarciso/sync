@@ -218,12 +218,30 @@ export default function FeedScreen() {
           const ids = new Set(prev.map((p) => p.id));
           return [...prev, ...newPosts.filter((p) => !ids.has(p.id))];
         });
+        // Sync liked state for the new batch
+        if (newPosts.length > 0) {
+          const ids = newPosts.map((p) => p.id);
+          const liked = await feedApi.getLikedIds(ids).catch(() => [] as string[]);
+          setLikedMap((prev) => {
+            const next = { ...prev };
+            ids.forEach((id) => { next[id] = liked.includes(id); });
+            return next;
+          });
+        }
       } else {
         setPosts(newPosts);
         // Initialize like counts from API data
         const newCounts: Record<string, number> = {};
         newPosts.forEach((p) => { newCounts[p.id] = p.likesCount || 0; });
-        setCountMap((prev) => ({ ...newCounts, ...prev }));
+        setCountMap(newCounts);
+        // Sync liked state from server (persistent across sessions)
+        if (newPosts.length > 0) {
+          const ids = newPosts.map((p) => p.id);
+          const liked = await feedApi.getLikedIds(ids).catch(() => [] as string[]);
+          const newLiked: Record<string, boolean> = {};
+          ids.forEach((id) => { newLiked[id] = liked.includes(id); });
+          setLikedMap(newLiked);
+        }
       }
       setHasMore(newPosts.length === PAGE_SIZE);
       setPage(pg);
@@ -240,7 +258,6 @@ export default function FeedScreen() {
 
   const onRefresh = async () => {
     setRefreshing(true);
-    setLikedMap({});
     await load(1, false);
     setRefreshing(false);
   };
