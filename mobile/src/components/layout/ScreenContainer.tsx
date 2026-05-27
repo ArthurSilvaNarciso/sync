@@ -37,7 +37,7 @@ export default function ScreenContainer({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0A0A0F',
   },
   centeringWrap: {
     flex: 1,

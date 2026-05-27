@@ -9,6 +9,7 @@ import {
   Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { ProfileStackParamList } from '../../navigation/types';
 import { UserStats } from '../../types';
 import { statsService } from '../../services/stats.service';
@@ -80,13 +81,18 @@ export default function StatsScreen({ navigation }: Props) {
   if (!stats) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
+        <LinearGradient
+          colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}
+        >
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
             <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Estatisticas</Text>
-          <View style={{ width: 36 }} />
-        </View>
+          <Text style={styles.headerTitle}>Estatísticas</Text>
+          <View style={{ width: 38 }} />
+        </LinearGradient>
         <View style={styles.center}>
           <Ionicons name="bar-chart-outline" size={48} color={colors.dark.border} />
           <Text style={styles.emptyText}>Nenhuma atividade registrada ainda</Text>
@@ -102,13 +108,18 @@ export default function StatsScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Estatisticas</Text>
-        <View style={{ width: 36 }} />
-      </View>
+        <Text style={styles.headerTitle}>Estatísticas</Text>
+        <View style={{ width: 38 }} />
+      </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {/* Top metrics */}
@@ -261,7 +272,7 @@ export default function StatsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark.background,
+    backgroundColor: '#0A0A0F',
   },
   center: {
     flex: 1,
@@ -280,19 +291,24 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.dark.surface,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.dark.text,
+    letterSpacing: 0.3,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -307,13 +323,17 @@ const styles = StyleSheet.create({
   metricCard: {
     width: '48%',
     flexGrow: 1,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     alignItems: 'center',
     gap: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   metricValue: {
     fontSize: fontSize.xl,
@@ -328,12 +348,16 @@ const styles = StyleSheet.create({
   },
   streakCard: {
     flexDirection: 'row',
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     padding: spacing.lg,
     marginBottom: spacing.lg,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,107,53,0.20)',
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 3,
   },
   streakItem: {
     flex: 1,
@@ -381,14 +405,18 @@ const styles = StyleSheet.create({
   weeklyChart: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.045)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     paddingBottom: spacing.sm,
     gap: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,255,255,0.09)',
     height: 140,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   weeklyBar: {
     flex: 1,
@@ -460,13 +488,17 @@ const styles = StyleSheet.create({
   },
   socialCard: {
     flex: 1,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     alignItems: 'center',
     gap: spacing.xs,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   socialValue: {
     fontSize: fontSize.xl,

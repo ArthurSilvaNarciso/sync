@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, spacing, fontSize, borderRadius } from '../../theme';
 import { matchingApi, LikeReceivedItem } from '../../services/matching.service';
 import EmptyState from '../../components/ui/EmptyState';
@@ -88,16 +89,30 @@ export default function LikesReceivedScreen() {
     [actioning, haptic, navigation],
   );
 
+  const HeaderBar = () => (
+    <LinearGradient
+      colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
+      style={styles.header}
+    >
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={10}>
+        <Ionicons name="arrow-back" size={22} color="#fff" />
+      </TouchableOpacity>
+      <View style={{ flex: 1, alignItems: 'center' }}>
+        <Text style={styles.title}>Quem te curtiu</Text>
+        {items.length > 0 && (
+          <Text style={styles.subtitle}>{items.length} {items.length === 1 ? 'curtida' : 'curtidas'} pendentes</Text>
+        )}
+      </View>
+      <View style={{ width: 38 }} />
+    </LinearGradient>
+  );
+
   if (loading) {
     return (
       <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10}>
-            <Ionicons name="arrow-back" size={24} color={colors.text} />
-          </TouchableOpacity>
-          <Text style={styles.title}>Quem te curtiu</Text>
-          <View style={{ width: 24 }} />
-        </View>
+        <HeaderBar />
         <View style={{ padding: spacing.md, gap: spacing.md }}>
           {[0, 1, 2].map((i) => (
             <Skeleton key={i} height={88} borderRadius={16} />
@@ -109,18 +124,7 @@ export default function LikesReceivedScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} hitSlop={10}>
-          <Ionicons name="arrow-back" size={24} color={colors.text} />
-        </TouchableOpacity>
-        <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={styles.title}>Quem te curtiu</Text>
-          {items.length > 0 && (
-            <Text style={styles.subtitle}>{items.length} {items.length === 1 ? 'curtida' : 'curtidas'} pendentes</Text>
-          )}
-        </View>
-        <View style={{ width: 24 }} />
-      </View>
+      <HeaderBar />
 
       {items.length === 0 ? (
         <View style={{ flex: 1, justifyContent: 'center' }}>
@@ -210,7 +214,7 @@ export default function LikesReceivedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark?.background || '#0A0A0F' },
+  container: { flex: 1, backgroundColor: '#0A0A0F' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -220,18 +224,34 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  title: { fontSize: fontSize.lg, fontWeight: '800', color: colors.text },
-  subtitle: { fontSize: 11, color: '#8E8EA0', marginTop: 2 },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  title: { fontSize: fontSize.lg, fontWeight: '800', color: '#fff' },
+  subtitle: { fontSize: 11, color: '#FF6B35', fontWeight: '600', marginTop: 2 },
 
   card: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: 18,
     padding: spacing.md,
     marginBottom: spacing.sm,
     position: 'relative',
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.09)',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   avatar: {
     width: 56,

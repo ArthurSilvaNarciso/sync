@@ -140,7 +140,7 @@ export default function EditProfileScreen({ navigation }: Props) {
         <View style={styles.centered}>
           <View style={styles.header}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-              <Ionicons name="arrow-back" size={22} color={colors.text} />
+              <Ionicons name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
             <Text style={styles.title}>Editar perfil</Text>
             <View style={{ width: 40 }} />
@@ -226,13 +226,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
-  title: { fontSize: fontSize.lg, fontWeight: '700', color: colors.text },
+  title: { fontSize: fontSize.lg, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
   avatarSection: {
     alignItems: 'center',
     marginVertical: spacing.lg,

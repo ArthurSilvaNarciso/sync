@@ -98,18 +98,23 @@ export default function AchievementsScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Conquistas</Text>
-        <View style={{ width: 36 }} />
-      </View>
+        <View style={{ width: 38 }} />
+      </LinearGradient>
 
       {/* XP Banner */}
       {xpData && (
         <LinearGradient
-          colors={[colors.dark.surface, '#252540']}
+          colors={['#1A1A35', '#12122A']}
           style={styles.xpBanner}
         >
           <View style={styles.xpLeft}>
@@ -158,13 +163,13 @@ export default function AchievementsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.dark.background,
+    backgroundColor: '#0A0A0F',
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.dark.background,
+    backgroundColor: '#0A0A0F',
   },
   header: {
     flexDirection: 'row',
@@ -173,19 +178,24 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.dark.surface,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
+    fontWeight: '800',
     color: colors.dark.text,
+    letterSpacing: 0.3,
   },
   xpBanner: {
     flexDirection: 'row',
@@ -195,7 +205,11 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     marginBottom: spacing.md,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,107,53,0.20)',
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 4,
   },
   xpLeft: {
     alignItems: 'center',
@@ -268,13 +282,17 @@ const styles = StyleSheet.create({
   achievementCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     gap: spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   achievementCardLocked: {
     opacity: 0.5,

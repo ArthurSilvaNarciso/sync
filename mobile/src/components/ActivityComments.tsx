@@ -191,10 +191,10 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   input: {
-    flex: 1, backgroundColor: colors.surface,
+    flex: 1, backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 20, paddingHorizontal: 14, paddingVertical: 10,
-    color: '#fff', fontSize: 14, maxHeight: 80,
-    borderWidth: 1, borderColor: colors.border,
+    color: '#F0F0FF', fontSize: 14, maxHeight: 80,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.10)',
   },
   sendBtn: {
     width: 38, height: 38, borderRadius: 19,

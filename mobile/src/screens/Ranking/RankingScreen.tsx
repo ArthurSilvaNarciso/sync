@@ -139,16 +139,21 @@ export default function RankingScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Ranking {scopeLabel}</Text>
         <View style={{ width: 40 }} />
-      </View>
+      </LinearGradient>
 
       {/* Scope tabs */}
       <View style={styles.tabs}>
@@ -211,17 +216,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.dark.surface,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.dark.text,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
   tabs: {
     flexDirection: 'row',
@@ -326,11 +334,16 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     marginHorizontal: spacing.lg,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     marginBottom: spacing.sm,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   listPosition: {
     width: 28,

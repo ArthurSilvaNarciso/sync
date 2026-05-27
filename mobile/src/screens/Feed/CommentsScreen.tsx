@@ -6,6 +6,7 @@ import {
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { feedApi, FeedComment } from '../../services/feed.service';
 import { useAuthStore } from '../../store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
@@ -139,7 +140,12 @@ export default function CommentsScreen({ navigation, route }: Props) {
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
@@ -147,7 +153,7 @@ export default function CommentsScreen({ navigation, route }: Props) {
           <Text style={styles.headerTitle}>Comentários</Text>
           <Text style={styles.headerSub}>post de {postAuthorName}</Text>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Comments list */}
       {loading ? (
@@ -221,8 +227,10 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center', alignItems: 'center',
   },
   headerTitle: { fontSize: fontSize.lg, fontWeight: '700', color: colors.dark.text },
@@ -254,7 +262,7 @@ const styles = StyleSheet.create({
     padding: spacing.md,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: colors.dark.background,
+    backgroundColor: '#0D0D1A',
     gap: spacing.sm,
   },
   inputAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.dark.surface },

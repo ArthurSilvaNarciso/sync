@@ -21,6 +21,7 @@ import { useAuthStore } from '../../store/authStore';
 import { socketService } from '../../services/socket.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 
 type Props = {
@@ -248,13 +249,18 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Premium gradient header */}
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <TouchableOpacity style={styles.headerInfo} activeOpacity={0.7}>
           <View style={styles.headerAvatar}>
@@ -266,15 +272,15 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
           </View>
           <View>
             <Text style={styles.headerTitle}>{userName}</Text>
-            <Text style={styles.headerSubtitle}>Online</Text>
+            <Text style={styles.headerSubtitle}>Online agora</Text>
           </View>
         </TouchableOpacity>
         <View style={styles.headerActions}>
           <TouchableOpacity style={styles.headerAction} onPress={handleMoreOptions}>
-            <Ionicons name="ellipsis-vertical" size={20} color={colors.dark.text} />
+            <Ionicons name="ellipsis-vertical" size={20} color="rgba(255,255,255,0.8)" />
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Messages */}
       <FlatList
@@ -367,14 +373,14 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 50 : 38,
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
-    backgroundColor: colors.dark.surface,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.dark.border,
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -389,10 +395,12 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   headerAvatarImg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: colors.dark.border,
+    borderWidth: 2,
+    borderColor: 'rgba(255,107,53,0.4)',
   },
   headerOnlineDot: {
     position: 'absolute',
@@ -471,7 +479,9 @@ const styles = StyleSheet.create({
   },
   theirMessage: {
     alignSelf: 'flex-start',
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderBottomLeftRadius: 6,
   },
   messageText: {
@@ -523,9 +533,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
     paddingVertical: spacing.sm,
     paddingBottom: Platform.OS === 'ios' ? spacing.lg : spacing.md,
-    backgroundColor: colors.dark.surface,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.dark.border,
+    backgroundColor: '#0D0D1A',
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.07)',
     gap: spacing.xs,
   },
   attachBtn: {
@@ -547,7 +557,9 @@ const styles = StyleSheet.create({
   },
   inputWrap: {
     flex: 1,
-    backgroundColor: colors.dark.surfaceLight,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: 20,
     paddingHorizontal: spacing.md,
     maxHeight: 100,
@@ -559,13 +571,18 @@ const styles = StyleSheet.create({
     minHeight: 36,
   },
   sendBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: colors.primary,
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#FF6B35',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 2,
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 8,
   },
   micBtn: {
     width: 36,

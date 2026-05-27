@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 
@@ -82,7 +83,12 @@ export default function UserSearchScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
@@ -105,7 +111,7 @@ export default function UserSearchScreen({ navigation }: Props) {
             </TouchableOpacity>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       {loading ? (
         <View style={styles.center}>
@@ -153,8 +159,10 @@ const styles = StyleSheet.create({
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center', alignItems: 'center',
   },
   searchBar: {
@@ -162,12 +170,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: borderRadius.md,
     paddingHorizontal: spacing.md,
     paddingVertical: Platform.OS === 'ios' ? 10 : 6,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,107,53,0.20)',
   },
   searchInput: {
     flex: 1,

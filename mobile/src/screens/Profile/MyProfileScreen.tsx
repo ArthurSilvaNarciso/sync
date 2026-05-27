@@ -224,13 +224,6 @@ export default function MyProfileScreen({ navigation }: Props) {
       color: '#10B981',
     },
     {
-      icon: 'newspaper-outline' as const,
-      label: 'Feed da comunidade',
-      subtitle: 'Atividades de outros atletas',
-      onPress: () => (navigation as any).getParent()?.navigate('FeedTab'),
-      color: '#EC4899',
-    },
-    {
       icon: 'trophy-outline' as const,
       label: 'Ranking mensal',
       subtitle: 'Veja sua posicao no ranking',
@@ -291,7 +284,7 @@ export default function MyProfileScreen({ navigation }: Props) {
         resizeMode="cover"
       >
         <LinearGradient
-          colors={['rgba(10,10,15,0.1)', 'rgba(10,10,15,0.55)', 'rgba(10,10,15,0.92)']}
+          colors={['rgba(10,10,15,0.15)', 'rgba(10,10,15,0.65)', 'rgba(10,10,15,0.97)']}
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
         />
@@ -380,40 +373,6 @@ export default function MyProfileScreen({ navigation }: Props) {
           <Text style={styles.statLabel}>Eventos</Text>
         </View>
       </View>
-
-      {/* Weather card */}
-      {weather && recommendation && (
-        <View style={styles.weatherCard}>
-          <View style={styles.weatherCardHeader}>
-            <Ionicons name={weather.weatherIcon as any} size={24} color={recommendation.color} />
-            <View style={styles.weatherCardInfo}>
-              <Text style={styles.weatherCardTemp}>{weather.temperature}° - {weather.weatherDescription}</Text>
-              <Text style={[styles.weatherCardRec, { color: recommendation.color }]}>
-                {recommendation.level.charAt(0).toUpperCase() + recommendation.level.slice(1)} para treinar
-              </Text>
-            </View>
-            <View style={[styles.weatherScore, { backgroundColor: recommendation.color + '20' }]}>
-              <Text style={[styles.weatherScoreText, { color: recommendation.color }]}>
-                {recommendation.score}
-              </Text>
-            </View>
-          </View>
-        </View>
-      )}
-
-      {/* Motivational quote */}
-      {quote && (
-        <View style={styles.quoteCard}>
-          <Ionicons name="chatbox-ellipses" size={20} color={colors.primary + '40'} />
-          <View style={styles.quoteContent}>
-            <Text style={styles.quoteText}>"{quote.text}"</Text>
-            <Text style={styles.quoteAuthor}>- {quote.author}</Text>
-          </View>
-          <TouchableOpacity onPress={() => setQuote(getRandomQuote())}>
-            <Ionicons name="refresh" size={18} color={colors.secondaryText} />
-          </TouchableOpacity>
-        </View>
-      )}
 
       {/* Bio */}
       {user.bio && (
@@ -550,7 +509,12 @@ const styles = StyleSheet.create({
     height: 96,
     borderRadius: 48,
     borderWidth: 3,
-    borderColor: 'rgba(255,255,255,0.4)',
+    borderColor: '#FF6B35',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
+    elevation: 8,
   },
   editAvatarBtn: {
     position: 'absolute',
@@ -604,14 +568,18 @@ const styles = StyleSheet.create({
   },
   statCard: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255,255,255,0.065)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)',
+    borderColor: 'rgba(255,255,255,0.12)',
     borderRadius: borderRadius.md,
     paddingVertical: spacing.md,
     alignItems: 'center',
     gap: 4,
-    // Glass effect (web only no Expo; mobile usa fallback semi-transparent)
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
     ...(Platform.OS === 'web' ? ({ backdropFilter: 'blur(20px)' } as any) : {}),
   },
   statValue: {
@@ -627,11 +595,16 @@ const styles = StyleSheet.create({
   weatherCard: {
     marginHorizontal: spacing.lg,
     marginTop: spacing.md,
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   weatherCardHeader: {
     flexDirection: 'row',
@@ -728,11 +701,16 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   challengesCard: {
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: borderRadius.md,
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   challengeItem: {
     flexDirection: 'row',
@@ -742,7 +720,7 @@ const styles = StyleSheet.create({
   },
   challengeDivider: {
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.07)',
   },
   challengeIcon: {
     width: 36,
@@ -773,7 +751,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.10)',
     overflow: 'hidden',
   },
   challengeBarFill: {
@@ -789,11 +767,16 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.09)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 2,
   },
   menuIconWrap: {
     width: 40,

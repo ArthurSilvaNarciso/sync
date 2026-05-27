@@ -122,9 +122,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: spacing.lg,
     borderRadius: borderRadius.md,
-    backgroundColor: colors.surface,
-    borderWidth: 2,
-    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.10)',
     marginBottom: spacing.md,
   },
   cardSelected: {

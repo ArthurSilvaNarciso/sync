@@ -9,11 +9,13 @@ import {
   Platform,
   Switch,
   Alert,
+  Image,
   Linking,
   Share,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
@@ -124,7 +126,7 @@ export default function SettingsScreen({ navigation }: any) {
 
   const Row = ({ icon, label, value, onPress, danger, color = '#FF6B35', right }: any) => (
     <TouchableOpacity style={styles.row} onPress={onPress} disabled={!onPress} activeOpacity={onPress ? 0.6 : 1}>
-      <View style={[styles.rowIcon, { backgroundColor: color + '22' }]}>
+      <View style={[styles.rowIcon, { backgroundColor: color + '20' }]}>
         <Ionicons name={icon} size={18} color={color} />
       </View>
       <Text style={[styles.rowLabel, danger && { color: '#F87171' }]}>{label}</Text>
@@ -137,17 +139,96 @@ export default function SettingsScreen({ navigation }: any) {
     </TouchableOpacity>
   );
 
+  const SectionTitle = ({ label }: { label: string }) => (
+    <View style={styles.sectionTitleWrap}>
+      <View style={styles.sectionTitleAccent} />
+      <Text style={styles.sectionTitle}>{label}</Text>
+    </View>
+  );
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+      {/* Premium gradient header */}
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Configurações</Text>
-        <View style={{ width: 24 }} />
-      </View>
+        <View style={{ width: 36 }} />
+      </LinearGradient>
 
-      <Text style={styles.sectionTitle}>CONTA</Text>
+      {/* Profile card */}
+      {user && (
+        <View style={styles.profileCard}>
+          <View style={styles.profileCardLeft}>
+            <Image
+              source={
+                user.avatarUrl
+                  ? { uri: user.avatarUrl }
+                  : require('../../assets/images/default-avatar.png')
+              }
+              style={styles.profileAvatar}
+            />
+            <View style={styles.profileInfo}>
+              <Text style={styles.profileName}>{user.name}</Text>
+              <Text style={styles.profileEmail}>{user.email}</Text>
+              {plan && (
+                <View style={styles.planBadge}>
+                  <Ionicons
+                    name={plan.currentTier === 'premium' ? 'star' : 'star-outline'}
+                    size={11}
+                    color={plan.currentTier === 'premium' ? '#FCD34D' : colors.secondaryText}
+                  />
+                  <Text style={[
+                    styles.planBadgeText,
+                    plan.currentTier === 'premium' && { color: '#FCD34D' },
+                  ]}>
+                    {plan.plan?.name || 'Free'}
+                  </Text>
+                </View>
+              )}
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.editProfileBtn}
+            onPress={() => navigation?.navigate?.('EditProfile')}
+          >
+            <Ionicons name="create-outline" size={16} color={colors.primary} />
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Upgrade card */}
+      {plan?.currentTier === 'free' && (
+        <TouchableOpacity
+          style={styles.upgradeCard}
+          onPress={handleUpgrade}
+          activeOpacity={0.85}
+        >
+          <LinearGradient
+            colors={['#FF6B35', '#FF4500']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.upgradeCardInner}
+          >
+            <View style={styles.upgradeCardLeft}>
+              <Ionicons name="star" size={22} color="#fff" />
+              <View>
+                <Text style={styles.upgradeCardTitle}>Upgrade para Premium</Text>
+                <Text style={styles.upgradeCardSub}>R$ 19/mês · Sem anúncios · Ilimitado</Text>
+              </View>
+            </View>
+            <Ionicons name="arrow-forward" size={20} color="#fff" />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
+      <SectionTitle label="CONTA" />
       <View style={styles.section}>
         <Row icon="person-outline" label="Nome" value={user?.name} />
         <Row icon="mail-outline" label="Email" value={user?.email} />
@@ -155,7 +236,7 @@ export default function SettingsScreen({ navigation }: any) {
         <Row icon="lock-closed-outline" label="Alterar senha" onPress={() => setShowChangePwd(true)} />
       </View>
 
-      <Text style={styles.sectionTitle}>PLANO</Text>
+      <SectionTitle label="PLANO" />
       <View style={styles.section}>
         <Row
           icon="star"
@@ -163,14 +244,9 @@ export default function SettingsScreen({ navigation }: any) {
           value={plan?.plan?.price === 0 ? 'Grátis' : `R$ ${plan?.plan?.price}/mês`}
           color="#FCD34D"
         />
-        {plan?.currentTier === 'free' && (
-          <TouchableOpacity style={styles.upgradeBtn} onPress={handleUpgrade}>
-            <Text style={styles.upgradeBtnText}>⭐ Upgrade pra Premium (R$ 19/mês)</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
-      <Text style={styles.sectionTitle}>NOTIFICAÇÕES</Text>
+      <SectionTitle label="NOTIFICAÇÕES" />
       <View style={styles.section}>
         <Row
           icon="notifications"
@@ -205,14 +281,14 @@ export default function SettingsScreen({ navigation }: any) {
         />
       </View>
 
-      <Text style={styles.sectionTitle}>SESSÕES ATIVAS</Text>
+      <SectionTitle label="SESSÕES ATIVAS" />
       <View style={styles.section}>
         {sessions.length === 0 ? (
           <Text style={styles.emptyText}>Apenas esta sessão ativa.</Text>
         ) : (
           sessions.map((s) => (
             <View key={s.familyId} style={styles.row}>
-              <View style={[styles.rowIcon, { backgroundColor: 'rgba(168,139,250,0.22)' }]}>
+              <View style={[styles.rowIcon, { backgroundColor: 'rgba(168,139,250,0.20)' }]}>
                 <Ionicons name="phone-portrait" size={18} color="#A78BFA" />
               </View>
               <View style={{ flex: 1 }}>
@@ -231,14 +307,14 @@ export default function SettingsScreen({ navigation }: any) {
         )}
       </View>
 
-      <Text style={styles.sectionTitle}>PRIVACIDADE & LGPD</Text>
+      <SectionTitle label="PRIVACIDADE & LGPD" />
       <View style={styles.section}>
         <Row icon="download-outline" label="Exportar meus dados" onPress={handleExportData} color="#10B981" />
         <Row icon="document-text-outline" label="Política de privacidade" onPress={() => navigation?.navigate?.('Privacy')} color="#10B981" />
         <Row icon="document-outline" label="Termos de uso" onPress={() => navigation?.navigate?.('Terms')} color="#10B981" />
       </View>
 
-      <Text style={styles.sectionTitle}>SUPORTE</Text>
+      <SectionTitle label="SUPORTE" />
       <View style={styles.section}>
         <Row icon="help-circle-outline" label="Central de ajuda" onPress={() => navigation?.navigate?.('Help')} />
         <Row icon="bug-outline" label="Reportar problema" onPress={() => setFeedbackType('bug')} color="#F87171" />
@@ -247,7 +323,7 @@ export default function SettingsScreen({ navigation }: any) {
         <Row icon="star-outline" label="Avaliar o app" onPress={() => setFeedbackType('rating')} color="#FF6B35" />
       </View>
 
-      <Text style={styles.sectionTitle}>AÇÕES</Text>
+      <SectionTitle label="CONTA" />
       <View style={styles.section}>
         <Row
           icon="log-out-outline"
@@ -264,7 +340,7 @@ export default function SettingsScreen({ navigation }: any) {
         <Row icon="trash-outline" label="Apagar minha conta" onPress={handleDeleteAccount} color="#F87171" danger />
       </View>
 
-      <Text style={styles.version}>Sync v1.0.0</Text>
+      <Text style={styles.version}>Sync v1.0.0 · Feito com ❤️ para atletas</Text>
 
       <ChangePasswordModal visible={showChangePwd} onClose={() => setShowChangePwd(false)} />
       {feedbackType && (
@@ -279,51 +355,184 @@ export default function SettingsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark.background },
+  container: { flex: 1, backgroundColor: '#0A0A0F' },
+
+  // ── Header ────────────────────────────────────────────────────────────────
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
-    paddingBottom: spacing.md,
+    paddingBottom: spacing.lg,
   },
-  title: { fontSize: fontSize.xl, fontWeight: '800', color: colors.dark.text },
+  backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: {
+    fontSize: fontSize.xl,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: -0.3,
+  },
+
+  // ── Profile card ──────────────────────────────────────────────────────────
+  profileCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    marginBottom: spacing.xs,
+    backgroundColor: 'rgba(255,255,255,0.055)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: borderRadius.md,
+    padding: spacing.md,
+  },
+  profileCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  profileAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 2,
+    borderColor: 'rgba(255,107,53,0.4)',
+  },
+  profileInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  profileName: {
+    fontSize: fontSize.md,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  profileEmail: {
+    fontSize: fontSize.xs,
+    color: colors.secondaryText,
+  },
+  planBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+  },
+  planBadgeText: {
+    fontSize: fontSize.xs,
+    color: colors.secondaryText,
+    fontWeight: '600',
+  },
+  editProfileBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,107,53,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+
+  // ── Upgrade card ──────────────────────────────────────────────────────────
+  upgradeCard: {
+    marginHorizontal: spacing.md,
+    marginTop: spacing.sm,
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    shadowColor: '#FF6B35',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4,
+    shadowRadius: 16,
+    elevation: 10,
+  },
+  upgradeCardInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: spacing.md,
+    paddingHorizontal: spacing.lg,
+  },
+  upgradeCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    flex: 1,
+  },
+  upgradeCardTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  upgradeCardSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: 2,
+  },
+
+  // ── Section header ────────────────────────────────────────────────────────
+  sectionTitleWrap: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.lg,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.sm,
+  },
+  sectionTitleAccent: {
+    width: 3,
+    height: 12,
+    borderRadius: 2,
+    backgroundColor: '#FF6B35',
+  },
   sectionTitle: {
     color: colors.dark.secondaryText,
     fontSize: 11,
     fontWeight: '800',
     letterSpacing: 1.5,
-    marginTop: spacing.lg,
-    marginHorizontal: spacing.lg,
-    marginBottom: spacing.sm,
+    textTransform: 'uppercase',
   },
+
+  // ── Section container ─────────────────────────────────────────────────────
   section: {
     marginHorizontal: spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.045)',
     borderRadius: borderRadius.md,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(255,255,255,0.08)',
   },
+
+  // ── Row ───────────────────────────────────────────────────────────────────
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.04)',
+    borderBottomColor: 'rgba(255,255,255,0.05)',
     gap: spacing.sm,
     minHeight: 56,
   },
   rowIcon: {
-    width: 34,
-    height: 34,
+    width: 36,
+    height: 36,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowLabel: { color: colors.dark.text, fontSize: 14, fontWeight: '600', flex: 1 },
+  rowLabel: { color: '#fff', fontSize: 14, fontWeight: '600', flex: 1 },
   rowValue: { color: colors.dark.secondaryText, fontSize: 13, maxWidth: 180 },
   rowSub: { color: colors.dark.secondaryText, fontSize: 11, marginTop: 2 },
   revokeText: { color: '#F87171', fontSize: 12, fontWeight: '700' },
@@ -333,18 +542,11 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontStyle: 'italic',
   },
-  upgradeBtn: {
-    backgroundColor: '#FF6B35',
-    margin: spacing.md,
-    padding: spacing.md,
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-  },
-  upgradeBtnText: { color: '#fff', fontWeight: '800', fontSize: 14 },
   version: {
     textAlign: 'center',
     color: colors.dark.secondaryText,
     fontSize: 11,
     marginTop: spacing.xl,
+    opacity: 0.6,
   },
 });

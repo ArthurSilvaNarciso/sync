@@ -214,7 +214,8 @@ const styles = StyleSheet.create({
   title: { fontSize: 20, fontWeight: '800', color: '#fff' },
   closeBtn: {
     width: 40, height: 40, borderRadius: 12,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center', justifyContent: 'center',
   },
   mediaArea: { marginBottom: spacing.lg },
@@ -240,11 +241,11 @@ const styles = StyleSheet.create({
   },
   label: { fontSize: 12, color: 'rgba(255,255,255,0.6)', fontWeight: '700', letterSpacing: 0.5, marginBottom: 8 },
   captionInput: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: borderRadius.md,
-    padding: 12, color: '#fff', fontSize: 15,
+    padding: 12, color: '#F0F0FF', fontSize: 15,
     minHeight: 80, textAlignVertical: 'top',
-    borderWidth: 1, borderColor: colors.border,
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.10)',
   },
   counter: {
     fontSize: 10, color: 'rgba(255,255,255,0.4)', textAlign: 'right',
@@ -253,8 +254,8 @@ const styles = StyleSheet.create({
   sportRow: { gap: 8, paddingBottom: spacing.md },
   sportChip: {
     paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 999, borderWidth: 1, borderColor: colors.border,
-    backgroundColor: colors.surface,
+    borderRadius: 999, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
   sportChipActive: { borderColor: ACCENT, backgroundColor: ACCENT + '20' },
   sportChipText: { fontSize: 13, color: colors.text, fontWeight: '600' },

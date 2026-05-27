@@ -2,18 +2,24 @@
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing } from '../../theme';
 
 export default function TermsScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Termos de Uso</Text>
-        <View style={{ width: 24 }} />
-      </View>
+        <View style={{ width: 38 }} />
+      </LinearGradient>
       <ScrollView contentContainerStyle={styles.content}>
         <Text style={styles.date}>Última atualização: 23/05/2026</Text>
 
@@ -83,9 +89,15 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  title: { fontSize: fontSize.lg, fontWeight: '800', color: colors.dark.text },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  title: { fontSize: fontSize.lg, fontWeight: '800', color: colors.dark.text, letterSpacing: 0.3 },
   content: { padding: spacing.lg },
   date: { color: colors.dark.secondaryText, fontSize: 12, marginBottom: spacing.lg, fontStyle: 'italic' },
   h2: {

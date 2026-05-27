@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { HomeStackParamList } from '../../navigation/types';
 import { User, SPORTS, OBJECTIVES, AVAILABILITY, SportLevel } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
@@ -163,7 +164,12 @@ export default function UserProfileScreen({ navigation, route }: Props) {
             resizeMode="cover"
           />
           {/* Gradient overlay */}
-          <View style={styles.heroOverlay} />
+          <LinearGradient
+            colors={['rgba(0,0,0,0.10)', 'rgba(0,0,0,0.35)', 'rgba(10,10,15,0.85)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.heroOverlay}
+          />
 
           {/* Back button */}
           <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
@@ -275,10 +281,10 @@ export default function UserProfileScreen({ navigation, route }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark.background },
+  container: { flex: 1, backgroundColor: '#0A0A0F' },
   center: {
     flex: 1, justifyContent: 'center', alignItems: 'center', gap: spacing.md,
-    backgroundColor: colors.dark.background,
+    backgroundColor: '#0A0A0F',
   },
   errorText: { color: colors.dark.secondaryText, fontSize: fontSize.md },
   backBtnFallback: {
@@ -290,22 +296,25 @@ const styles = StyleSheet.create({
   heroImage: { width: '100%', height: '100%' },
   heroOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.35)',
   },
   backBtn: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 54 : 40,
     left: spacing.lg,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(10,10,15,0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center', alignItems: 'center',
   },
   moreBtn: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 54 : 40,
     right: spacing.lg,
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    width: 40, height: 40, borderRadius: 12,
+    backgroundColor: 'rgba(10,10,15,0.65)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     justifyContent: 'center', alignItems: 'center',
   },
   heroNameWrap: {
@@ -333,16 +342,16 @@ const styles = StyleSheet.create({
   levelText: { fontSize: fontSize.sm, fontWeight: '700' },
   section: { marginBottom: spacing.lg },
   sectionTitle: {
-    fontSize: fontSize.xs, fontWeight: '700', color: colors.dark.secondaryText,
+    fontSize: fontSize.xs, fontWeight: '700', color: 'rgba(255,255,255,0.45)',
     textTransform: 'uppercase', letterSpacing: 1.2, marginBottom: spacing.sm,
   },
-  bio: { fontSize: fontSize.md, color: colors.dark.text, lineHeight: 24 },
+  bio: { fontSize: fontSize.md, color: 'rgba(255,255,255,0.80)', lineHeight: 24 },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tag: {
-    backgroundColor: colors.primary + '18',
+    backgroundColor: 'rgba(255,107,53,0.14)',
     paddingHorizontal: spacing.md, paddingVertical: spacing.xs + 2,
     borderRadius: borderRadius.full,
-    borderWidth: 1, borderColor: colors.primary + '30',
+    borderWidth: 1, borderColor: 'rgba(255,107,53,0.30)',
   },
-  tagText: { fontSize: fontSize.sm, color: colors.primary, fontWeight: '600' },
+  tagText: { fontSize: fontSize.sm, color: '#FF9A5C', fontWeight: '600' },
 });

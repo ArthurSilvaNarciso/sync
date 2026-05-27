@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { LinearGradient } from 'expo-linear-gradient';
 import { MapStackParamList } from '../../navigation/types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
@@ -100,16 +101,21 @@ export default function CreateEventScreen({ navigation }: Props) {
         style={{ flex: 1 }}
       >
         {/* Header */}
-        <View style={styles.header}>
+        <LinearGradient
+          colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}
+        >
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Ionicons name="close" size={24} color={colors.text} />
+            <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Novo evento</Text>
           <View style={{ width: 40 }} />
-        </View>
+        </LinearGradient>
 
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -234,7 +240,7 @@ export default function CreateEventScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0A0A0F',
   },
   header: {
     flexDirection: 'row',
@@ -244,22 +250,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
   content: {
     paddingHorizontal: spacing.lg,
@@ -267,8 +274,8 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSize.sm,
-    fontWeight: '500',
-    color: colors.text,
+    fontWeight: '600',
+    color: '#fff',
     marginBottom: spacing.sm,
     marginTop: spacing.sm,
   },
@@ -293,7 +300,7 @@ const styles = StyleSheet.create({
   },
   locationToggleText: {
     fontSize: fontSize.sm,
-    color: colors.text,
+    color: 'rgba(255,255,255,0.75)',
   },
   createBtn: {
     marginTop: spacing.lg,

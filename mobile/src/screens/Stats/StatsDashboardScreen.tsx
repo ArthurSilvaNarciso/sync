@@ -118,13 +118,18 @@ export default function StatsDashboardScreen({ navigation }: any) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.goBack?.()}>
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Estatísticas</Text>
-        <View style={{ width: 24 }} />
-      </View>
+        <View style={{ width: 38 }} />
+      </LinearGradient>
 
       {/* Period selector */}
       <View style={styles.periodRow}>
@@ -246,7 +251,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },
-  title: { fontSize: fontSize.xl, fontWeight: '800', color: colors.dark.text },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  title: { fontSize: fontSize.xl, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
   periodRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,

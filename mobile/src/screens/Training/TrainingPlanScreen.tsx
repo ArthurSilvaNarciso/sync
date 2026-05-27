@@ -54,15 +54,20 @@ export default function TrainingPlanScreen({ navigation }: any) {
     const weekIndex = currentWeek.weekNumber;
     return (
       <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 100 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-            <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+        <LinearGradient
+          colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.header}
+        >
+          <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
           </TouchableOpacity>
           <Text style={styles.title}>{selectedPlan.name}</Text>
-          <TouchableOpacity onPress={stopPlan}>
+          <TouchableOpacity onPress={stopPlan} style={styles.backBtn}>
             <Ionicons name="close-circle-outline" size={22} color={colors.dark.secondaryText} />
           </TouchableOpacity>
-        </View>
+        </LinearGradient>
 
         <LinearGradient
           colors={['#FF6B35', '#FF4500']}
@@ -112,13 +117,18 @@ export default function TrainingPlanScreen({ navigation }: any) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={{ paddingBottom: 60 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Treinos programados</Text>
-        <View style={{ width: 24 }} />
-      </View>
+        <View style={{ width: 38 }} />
+      </LinearGradient>
       <Text style={styles.subtitle}>Escolha sua meta. 100% grátis, baseado em ciência.</Text>
 
       {PLANS.map((plan) => (
@@ -147,18 +157,28 @@ export default function TrainingPlanScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark.background },
+  container: { flex: 1, backgroundColor: '#0A0A0F' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingTop: Platform.OS === 'ios' ? 56 : 44, paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  backBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center', justifyContent: 'center',
   },
   title: { fontSize: fontSize.xl, fontWeight: '800', color: colors.dark.text },
-  subtitle: { color: colors.dark.secondaryText, paddingHorizontal: spacing.lg, marginBottom: spacing.md },
+  subtitle: { color: colors.dark.secondaryText, paddingHorizontal: spacing.lg, marginBottom: spacing.md, marginTop: spacing.sm },
   planCard: {
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: spacing.lg, marginBottom: spacing.md, padding: spacing.md,
-    backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: borderRadius.md,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.055)', borderRadius: borderRadius.md,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 6, elevation: 3,
   },
   planBadge: {
     width: 64, height: 64, borderRadius: 16,
@@ -185,8 +205,9 @@ const styles = StyleSheet.create({
   workout: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     marginHorizontal: spacing.lg, marginBottom: spacing.sm,
-    padding: spacing.md, backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: borderRadius.md, borderWidth: 1, borderColor: 'rgba(255,107,53,0.15)',
+    padding: spacing.md, backgroundColor: 'rgba(255,255,255,0.055)',
+    borderRadius: borderRadius.md, borderWidth: 1, borderColor: 'rgba(255,107,53,0.20)',
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 4, elevation: 2,
   },
   workoutIcon: {
     width: 38, height: 38, borderRadius: 19,

@@ -13,6 +13,7 @@ import { TrackingStackParamList } from '../../navigation/types';
 import { Activity } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 
 type Props = {
@@ -132,16 +133,21 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Historico</Text>
-        <View style={{ width: 40 }} />
-      </View>
+        <View style={{ width: 38 }} />
+      </LinearGradient>
 
       {/* Summary stats */}
       {!loading && activities.length > 0 && (
@@ -211,17 +217,20 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.md,
   },
   backBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.dark.surface,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   title: {
     fontSize: fontSize.xl,
-    fontWeight: '700',
-    color: colors.dark.text,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
   summaryRow: {
     flexDirection: 'row',
@@ -229,9 +238,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginHorizontal: spacing.lg,
     paddingVertical: spacing.md,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   summaryItem: {
     flex: 1,
@@ -257,10 +273,17 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxl,
   },
   card: {
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 2,
   },
   cardHeader: {
     flexDirection: 'row',

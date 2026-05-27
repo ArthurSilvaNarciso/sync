@@ -67,21 +67,22 @@ const styles = StyleSheet.create({
   },
   label: {
     fontSize: fontSize.sm,
-    color: colors.text,
-    fontWeight: '500',
+    color: 'rgba(255,255,255,0.75)',
+    fontWeight: '600',
     marginBottom: spacing.xs,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: borderRadius.md,
     borderWidth: 1.5,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     paddingHorizontal: spacing.md,
   },
   focused: {
     borderColor: colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   errorBorder: {
     borderColor: colors.error,
@@ -90,7 +91,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: 52,
     fontSize: fontSize.md,
-    color: colors.text,
+    color: '#F0F0FF',
   },
   eyeIcon: {
     padding: spacing.xs,

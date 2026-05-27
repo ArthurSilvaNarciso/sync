@@ -123,15 +123,20 @@ export default function GroupsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#fff" />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Grupos</Text>
         <TouchableOpacity style={styles.createBtn} onPress={() => setShowCreate(true)}>
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       <View style={styles.tabs}>
         {([
@@ -245,7 +250,7 @@ export default function GroupsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark.background },
+  container: { flex: 1, backgroundColor: '#0A0A0F' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -253,8 +258,20 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
-  backBtn: { padding: 4, marginRight: spacing.sm },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: spacing.sm,
+  },
   title: { flex: 1, fontSize: fontSize.xxl, fontWeight: '800', color: colors.dark.text },
   createBtn: {
     backgroundColor: '#FF6B35',
@@ -275,9 +292,13 @@ const styles = StyleSheet.create({
   tabTextActive: { color: '#fff', fontWeight: '800' },
   card: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: 'rgba(255,255,255,0.055)',
     padding: spacing.md, borderRadius: borderRadius.md, marginBottom: spacing.sm,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   positionBadge: {
     position: 'absolute', top: 6, right: 6,

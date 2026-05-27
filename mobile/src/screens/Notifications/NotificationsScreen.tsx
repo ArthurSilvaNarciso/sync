@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing } from '../../theme';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
@@ -113,9 +114,17 @@ export default function NotificationsScreen({ navigation }: any) {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation?.goBack?.()}>
-          <Ionicons name="arrow-back" size={24} color={colors.dark.text} />
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
+        <TouchableOpacity
+          onPress={() => navigation?.goBack?.()}
+          style={styles.backBtn}
+        >
+          <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <View style={{ flex: 1, marginLeft: spacing.md }}>
           <Text style={styles.title}>Notificações</Text>
@@ -124,11 +133,14 @@ export default function NotificationsScreen({ navigation }: any) {
           )}
         </View>
         {unreadCount > 0 && (
-          <TouchableOpacity onPress={markAllAsRead}>
+          <TouchableOpacity
+            onPress={markAllAsRead}
+            style={styles.markAllBtn}
+          >
             <Text style={styles.markAll}>Marcar todas</Text>
           </TouchableOpacity>
         )}
-      </View>
+      </LinearGradient>
 
       <FlatList
         data={list}
@@ -155,7 +167,7 @@ export default function NotificationsScreen({ navigation }: any) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: colors.dark.background },
+  container: { flex: 1, backgroundColor: '#0A0A0F' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -163,31 +175,65 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)',
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+  },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   title: { fontSize: fontSize.xl, fontWeight: '800', color: colors.dark.text },
   subtitle: { fontSize: 12, color: '#FF6B35', fontWeight: '700', marginTop: 2 },
-  markAll: { color: '#FF6B35', fontSize: 13, fontWeight: '700' },
+  markAllBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 10,
+    backgroundColor: 'rgba(255,107,53,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.25)',
+  },
+  markAll: { color: '#FF6B35', fontSize: 12, fontWeight: '700' },
   notification: {
     flexDirection: 'row',
     padding: spacing.md,
     gap: spacing.sm,
-    backgroundColor: colors.dark.background,
+    backgroundColor: 'transparent',
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.04)',
   },
-  unread: { backgroundColor: 'rgba(255,107,53,0.04)' },
+  unread: {
+    backgroundColor: 'rgba(255,107,53,0.04)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#FF6B35',
+  },
   iconCircle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 46,
+    height: 46,
+    borderRadius: 23,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.06)',
   },
   notifTitle: { color: colors.dark.text, fontSize: 14, fontWeight: '700', marginBottom: 2 },
   notifContent: { color: colors.dark.secondaryText, fontSize: 13, lineHeight: 18 },
   notifTime: { color: colors.dark.secondaryText, fontSize: 11, marginTop: 4 },
-  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#FF6B35', marginTop: 8 },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF6B35',
+    marginTop: 8,
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
+  },
   empty: { alignItems: 'center', marginTop: 100, paddingHorizontal: spacing.xl },
   emptyTitle: { color: colors.dark.text, fontSize: 18, fontWeight: '700', marginTop: spacing.md },
   emptyText: {

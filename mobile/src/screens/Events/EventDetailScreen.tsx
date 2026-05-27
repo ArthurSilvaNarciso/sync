@@ -231,11 +231,11 @@ export default function EventDetailScreen({ navigation, route }: Props) {
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
         >
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.shareBtn} onPress={handleShare}>
-          <Ionicons name="share-outline" size={22} color={colors.text} />
+          <Ionicons name="share-outline" size={22} color="#fff" />
         </TouchableOpacity>
       </View>
 
@@ -434,12 +434,13 @@ export default function EventDetailScreen({ navigation, route }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0A0A0F',
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#0A0A0F',
   },
   mapContainer: {
     height: 200,
@@ -455,7 +456,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 3,
-    borderColor: colors.dark.background,
+    borderColor: '#0A0A0F',
   },
   backBtn: {
     position: 'absolute',
@@ -463,17 +464,17 @@ const styles = StyleSheet.create({
     left: spacing.md,
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10,10,15,0.75)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
   },
   shareBtn: {
     position: 'absolute',
@@ -481,17 +482,17 @@ const styles = StyleSheet.create({
     right: spacing.md,
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.surface,
+    borderRadius: 12,
+    backgroundColor: 'rgba(10,10,15,0.75)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    elevation: 3,
+    elevation: 5,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.4,
-    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 6,
   },
   content: {
     padding: spacing.lg,
@@ -512,18 +513,23 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: fontSize.xxl,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '800',
+    color: '#fff',
     marginTop: spacing.sm,
+    letterSpacing: 0.2,
   },
   infoCard: {
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginTop: spacing.lg,
     gap: spacing.md,
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   infoRow: {
     flexDirection: 'row',
@@ -540,20 +546,20 @@ const styles = StyleSheet.create({
   },
   infoLabel: {
     fontSize: fontSize.xs,
-    color: colors.secondaryText,
+    color: 'rgba(255,255,255,0.4)',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   infoValue: {
     fontSize: fontSize.md,
-    color: colors.text,
+    color: '#fff',
     marginTop: 2,
     textTransform: 'capitalize',
   },
   participantBar: {
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     marginTop: 8,
     overflow: 'hidden',
   },
@@ -565,14 +571,14 @@ const styles = StyleSheet.create({
   weatherCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.045)',
     borderRadius: borderRadius.md,
     padding: spacing.md,
     marginTop: spacing.md,
     gap: spacing.md,
     borderLeftWidth: 4,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   weatherCardContent: {
     flex: 1,
@@ -580,7 +586,7 @@ const styles = StyleSheet.create({
   weatherCardTemp: {
     fontSize: fontSize.sm,
     fontWeight: '600',
-    color: colors.text,
+    color: '#fff',
   },
   weatherCardRec: {
     fontSize: fontSize.xs,
@@ -592,15 +598,15 @@ const styles = StyleSheet.create({
   },
   sectionTitle: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.secondaryText,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     letterSpacing: 1,
     marginBottom: spacing.sm,
   },
   description: {
     fontSize: fontSize.md,
-    color: colors.text,
+    color: 'rgba(255,255,255,0.8)',
     lineHeight: 24,
   },
   // Comments
@@ -612,14 +618,14 @@ const styles = StyleSheet.create({
   },
   commentInput: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: borderRadius.sm,
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     fontSize: fontSize.sm,
-    color: colors.text,
+    color: '#fff',
   },
   commentSendBtn: {
     width: 36,
@@ -630,7 +636,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   commentSendBtnDisabled: {
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.15)',
   },
   commentItem: {
     flexDirection: 'row',
@@ -641,15 +647,17 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   commentContent: {
     flex: 1,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     borderRadius: borderRadius.sm,
     padding: spacing.sm,
   },
@@ -660,21 +668,21 @@ const styles = StyleSheet.create({
   },
   commentUser: {
     fontSize: fontSize.sm,
-    fontWeight: '600',
-    color: colors.text,
+    fontWeight: '700',
+    color: '#fff',
   },
   commentTime: {
     fontSize: fontSize.xs,
-    color: colors.secondaryText,
+    color: 'rgba(255,255,255,0.4)',
   },
   commentText: {
     fontSize: fontSize.sm,
-    color: colors.text,
+    color: 'rgba(255,255,255,0.75)',
     lineHeight: 20,
   },
   noComments: {
     fontSize: fontSize.sm,
-    color: colors.secondaryText,
+    color: 'rgba(255,255,255,0.4)',
     textAlign: 'center',
     paddingVertical: spacing.md,
   },
@@ -682,9 +690,9 @@ const styles = StyleSheet.create({
   footer: {
     padding: spacing.lg,
     paddingBottom: Platform.OS === 'ios' ? spacing.xl : spacing.lg,
-    backgroundColor: colors.card,
+    backgroundColor: '#0D0D1A',
     borderTopWidth: 1,
-    borderTopColor: colors.border,
+    borderTopColor: 'rgba(255,255,255,0.07)',
   },
   joinBtn: {
     borderRadius: borderRadius.sm,

@@ -194,18 +194,23 @@ export default function MyEventsScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
+      <LinearGradient
+        colors={['#15152E', '#0E0E1E', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Ionicons name="arrow-back" size={22} color={colors.text} />
+          <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meus Eventos</Text>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => navigation.navigate('CreateEvent')}
         >
-          <Ionicons name="add" size={24} color={colors.primary} />
+          <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* Tabs */}
       <View style={styles.tabs}>
@@ -273,7 +278,7 @@ export default function MyEventsScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
+    backgroundColor: '#0A0A0F',
   },
   center: {
     flex: 1,
@@ -287,34 +292,43 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
-    backgroundColor: colors.card,
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   backBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   headerTitle: {
     fontSize: fontSize.lg,
-    fontWeight: '700',
-    color: colors.text,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.3,
   },
   addBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    backgroundColor: '#FF6B35',
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#FF6B35',
+    shadowOpacity: 0.5,
+    shadowOffset: { width: 0, height: 4 },
+    shadowRadius: 8,
+    elevation: 6,
   },
   tabs: {
     flexDirection: 'row',
-    backgroundColor: colors.card,
+    backgroundColor: '#0A0A0F',
     borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
   },
   tab: {
     flex: 1,
@@ -323,15 +337,15 @@ const styles = StyleSheet.create({
   },
   tabActive: {
     borderBottomWidth: 2,
-    borderBottomColor: colors.primary,
+    borderBottomColor: '#FF6B35',
   },
   tabText: {
     fontSize: fontSize.sm,
     fontWeight: '500',
-    color: colors.secondaryText,
+    color: 'rgba(255,255,255,0.4)',
   },
   tabTextActive: {
-    color: colors.primary,
+    color: '#FF6B35',
     fontWeight: '700',
   },
   list: {
@@ -341,14 +355,18 @@ const styles = StyleSheet.create({
   eventCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.card,
+    backgroundColor: 'rgba(255,255,255,0.055)',
     borderRadius: borderRadius.md,
     padding: 10,
     marginBottom: spacing.sm,
     gap: spacing.md,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.10)',
     overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 3,
   },
   eventCardPast: {
     opacity: 0.6,
@@ -382,18 +400,18 @@ const styles = StyleSheet.create({
   eventTitle: {
     fontSize: fontSize.md,
     fontWeight: '700',
-    color: colors.text,
+    color: '#fff',
   },
   eventDate: {
     fontSize: fontSize.xs,
-    color: colors.primary,
-    fontWeight: '500',
+    color: '#FF6B35',
+    fontWeight: '600',
     marginTop: 2,
     textTransform: 'capitalize',
   },
   eventAddress: {
     fontSize: fontSize.xs,
-    color: colors.secondaryText,
+    color: 'rgba(255,255,255,0.45)',
     marginTop: 2,
   },
   actionBtn: {

@@ -385,8 +385,13 @@ export default function DiscoveryScreen({ navigation }: Props) {
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
+      {/* Premium gradient header */}
+      <LinearGradient
+        colors={['#14142A', '#0F0F1A']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.header}
+      >
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Descobrir</Text>
           {/* Profile completion indicator */}
@@ -443,7 +448,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
             <Ionicons name="options-outline" size={22} color={colors.text} />
           </TouchableOpacity>
         </View>
-      </View>
+      </LinearGradient>
 
       {/* Cards */}
       {/* Stories Bar */}
@@ -529,7 +534,12 @@ export default function DiscoveryScreen({ navigation }: Props) {
       </View>
 
       {/* Action buttons */}
-      <View style={styles.actions}>
+      <LinearGradient
+        colors={['rgba(15,15,26,0)', '#0F0F1A', '#0A0A0F']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.actions}
+      >
         <Animated.View style={{ opacity: undoOpacity }}>
           <TouchableOpacity
             style={[styles.actionBtn, styles.undoBtn]}
@@ -579,7 +589,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
         >
           <Ionicons name="person-outline" size={20} color={colors.primary} />
         </TouchableOpacity>
-      </View>
+      </LinearGradient>
 
       {/* Filter Modal */}
       <Modal visible={showFilters} animationType="slide" transparent>
@@ -685,13 +695,13 @@ export default function DiscoveryScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0F0F1A',
+    backgroundColor: '#0A0A0F',
   },
   center: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#0F0F1A',
+    backgroundColor: '#0A0A0F',
     paddingHorizontal: spacing.xl,
   },
   loadingText: {
@@ -706,7 +716,6 @@ const styles = StyleSheet.create({
     paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
-    backgroundColor: '#0F0F1A',
   },
   headerLeft: {
     flexDirection: 'row',
@@ -727,7 +736,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
     paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: borderRadius.full,
@@ -741,7 +752,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.dark.border,
+    backgroundColor: 'rgba(255,255,255,0.10)',
     overflow: 'hidden',
   },
   completionBarFill: {
@@ -758,12 +769,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
     paddingHorizontal: 8,
     paddingVertical: 6,
     borderRadius: borderRadius.full,
     borderWidth: 1,
-    borderColor: colors.dark.border,
+    borderColor: 'rgba(255,255,255,0.12)',
   },
   weatherMiniTemp: {
     fontSize: 11,
@@ -773,8 +784,10 @@ const styles = StyleSheet.create({
   matchBadgeBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.dark.surface,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,
@@ -805,8 +818,10 @@ const styles = StyleSheet.create({
   filterBtn: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    backgroundColor: colors.dark.surface,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 2,
@@ -860,9 +875,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingBottom: Platform.OS === 'ios' ? 104 : 88,
-    paddingTop: spacing.sm,
+    paddingTop: spacing.md,
     gap: spacing.md,
-    backgroundColor: '#0F0F1A',
   },
   actionBtn: {
     width: 56,
@@ -870,7 +884,9 @@ const styles = StyleSheet.create({
     borderRadius: 28,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
     elevation: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -939,9 +955,9 @@ const styles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 44,
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -1009,11 +1025,11 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: colors.surface,
+    backgroundColor: '#0E0E1A',
     borderTopWidth: 1,
     borderLeftWidth: 1,
     borderRightWidth: 1,
-    borderColor: colors.border,
+    borderColor: 'rgba(255,255,255,0.12)',
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
     paddingHorizontal: spacing.lg,
@@ -1024,7 +1040,7 @@ const styles = StyleSheet.create({
     width: 40,
     height: 4,
     borderRadius: 2,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignSelf: 'center',
     marginBottom: spacing.md,
   },
@@ -1064,9 +1080,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
     paddingVertical: 10,
     borderRadius: borderRadius.full,
-    backgroundColor: colors.background,
-    borderWidth: 1,
-    borderColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.10)',
   },
   filterChipActive: {
     backgroundColor: colors.primary,
