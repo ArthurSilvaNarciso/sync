@@ -58,15 +58,18 @@ export class ChatService {
   ) {
     await this.verifyMatchAccess(matchId, userId);
 
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+
     const [messages, total] = await this.messageRepository.findAndCount({
       where: { match_id: matchId },
       relations: ['sender'],
       order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
     });
 
-    return { messages: messages.reverse(), total, page, limit };
+    return { messages: messages.reverse(), total, page: safePage, limit: safeLimit };
   }
 
   // Marcar mensagens como lidas
@@ -130,12 +133,13 @@ export class ChatService {
       }
     }
 
-    // Busca última mensagem por match (uma query)
+    // Busca última mensagem por match (uma query limitada)
     const lastMessages = matchIds.length > 0
       ? await this.messageRepository
           .createQueryBuilder('msg')
           .where('msg.match_id IN (:...matchIds)', { matchIds })
           .orderBy('msg.createdAt', 'DESC')
+          .take(matchIds.length * 5) // No máximo 5 msgs/match — suficiente para pegar a última
           .getMany()
       : [];
 
@@ -146,9 +150,19 @@ export class ChatService {
       }
     }
 
+    // Privacidade: expõe apenas campos públicos do parceiro de conversa (sem email, lat/long)
+    const safeUser = (u: any) => u ? {
+      id: u.id,
+      name: u.name,
+      avatarUrl: u.avatarUrl,
+      city: u.city,
+      sports: u.sports,
+      level: u.level,
+    } : null;
+
     return conversations.map((match) => ({
       matchId: match.id,
-      user: match.user1_id === userId ? match.user2 : match.user1,
+      user: safeUser(match.user1_id === userId ? match.user2 : match.user1),
       lastMessage: lastMessageMap[match.id] ?? null,
       unreadCount: unreadCounts[match.id] ?? 0,
     }));
