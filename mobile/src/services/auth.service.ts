@@ -32,8 +32,11 @@ const DEMO_USER: User = {
 };
 
 export const authService = {
-  async register(name: string, email: string, password: string, confirmPassword: string): Promise<AuthResponse> {
-    const { data } = await api.post('/auth/register', { name, email, password, confirmPassword });
+  async register(
+    name: string, email: string, password: string, confirmPassword: string,
+    extra?: { weightKg?: number; heightCm?: number; gender?: string },
+  ): Promise<AuthResponse> {
+    const { data } = await api.post('/auth/register', { name, email, password, confirmPassword, ...extra });
     await this.saveAuth(data);
     return data;
   },

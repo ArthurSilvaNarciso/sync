@@ -16,6 +16,7 @@ import { MainTabParamList } from './types';
 import { colors } from '../theme';
 
 import Logo from '../components/Logo';
+import FeedStack from './stacks/FeedStack';
 import HomeStack from './stacks/HomeStack';
 import MapStack from './stacks/MapStack';
 import TrackingStack, { TRACKING_FULLSCREEN_ROUTES } from './stacks/TrackingStack';
@@ -31,10 +32,11 @@ const TABS: Record<
   string,
   { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap; useLogo?: boolean }
 > = {
-  HomeTab: { label: 'Feed', icon: 'home-outline', iconActive: 'home' },
+  FeedTab: { label: 'Feed', icon: 'newspaper-outline', iconActive: 'newspaper' },
+  HomeTab: { label: 'Descobrir', icon: 'heart-outline', iconActive: 'heart' },
   MapTab: { label: 'Mapa', icon: 'map-outline', iconActive: 'map' },
   TrackingTab: { label: 'Treinar', icon: 'add', iconActive: 'add', useLogo: true },
-  ChatTab: { label: 'Grupos', icon: 'people-outline', iconActive: 'people' },
+  ChatTab: { label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   ProfileTab: { label: 'Perfil', icon: 'person-outline', iconActive: 'person' },
 };
 
@@ -203,6 +205,7 @@ export default function MainTabNavigator() {
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
+      <Tab.Screen name="FeedTab" component={FeedStack} />
       <Tab.Screen name="HomeTab" component={HomeStack} />
       <Tab.Screen name="MapTab" component={MapStack} />
       <Tab.Screen

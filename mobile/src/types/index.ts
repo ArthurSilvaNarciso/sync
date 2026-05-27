@@ -12,6 +12,7 @@ export interface User {
   email: string;
   bio?: string;
   avatarUrl?: string;
+  bannerUrl?: string;
   profilePhotos?: string[] | null;  // min 3 fotos de perfil (base64 data URLs)
   birthDate?: string;
   sports?: string[];
@@ -21,6 +22,9 @@ export interface User {
   latitude?: number;
   longitude?: number;
   city?: string;
+  weightKg?: number;
+  heightCm?: number;
+  gender?: 'male' | 'female' | 'other';
   isActive: boolean;
   onboardingCompleted: boolean;
   createdAt: string;

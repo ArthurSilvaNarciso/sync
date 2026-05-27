@@ -5,6 +5,7 @@ import {
   IsEnum,
   IsNumber,
   IsDateString,
+  IsIn,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { SportLevel } from '../entities/user.entity';
@@ -59,4 +60,19 @@ export class UpdateProfileDto {
   @IsString()
   @IsOptional()
   city?: string;
+
+  @ApiPropertyOptional({ example: 70 })
+  @IsNumber()
+  @IsOptional()
+  weightKg?: number;
+
+  @ApiPropertyOptional({ example: 175 })
+  @IsNumber()
+  @IsOptional()
+  heightCm?: number;
+
+  @ApiPropertyOptional({ example: 'male', enum: ['male', 'female', 'other'] })
+  @IsIn(['male', 'female', 'other'])
+  @IsOptional()
+  gender?: string;
 }

@@ -84,6 +84,11 @@ export class UsersService {
     return this.findById(userId);
   }
 
+  async updateBanner(userId: string, bannerUrl: string): Promise<User> {
+    await this.userRepository.update(userId, { bannerUrl });
+    return this.findById(userId);
+  }
+
   // Salvar fotos do perfil (array de data URLs base64, máx 5)
   async updateProfilePhotos(userId: string, photos: string[]): Promise<User> {
     if (!Array.isArray(photos) || photos.length < 1) {

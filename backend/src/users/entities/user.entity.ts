@@ -40,12 +40,25 @@ export class User {
   @Column({ type: 'varchar', nullable: true })
   avatarUrl: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  bannerUrl: string | null;
+
   // Fotos do perfil (mínimo 3 na criação). Armazenado como JSON array de data URLs.
   @Column({ type: 'simple-json', nullable: true })
   profilePhotos: string[] | null;
 
   @Column({ type: 'varchar', nullable: true })
   birthDate: string | null;
+
+  // Dados físicos para cálculo de calorias
+  @Column({ type: 'real', nullable: true })
+  weightKg: number | null;
+
+  @Column({ type: 'real', nullable: true })
+  heightCm: number | null;
+
+  @Column({ type: 'varchar', length: 10, nullable: true })
+  gender: string | null;
 
   // Array de esportes praticados, armazenado como string separada por virgula
   @Column({ type: 'simple-array', nullable: true })

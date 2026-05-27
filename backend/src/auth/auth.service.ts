@@ -61,6 +61,9 @@ export class AuthService {
       name: dto.name.trim().slice(0, 100),
       email,
       password: hashedPassword,
+      ...(dto.weightKg != null && { weightKg: dto.weightKg }),
+      ...(dto.heightCm != null && { heightCm: dto.heightCm }),
+      ...(dto.gender && { gender: dto.gender }),
     });
 
     await this.userRepository.save(user);
@@ -224,8 +227,22 @@ export class AuthService {
       id: user.id,
       name: user.name,
       email: user.email,
+      bio: user.bio,
       onboardingCompleted: user.onboardingCompleted,
       avatarUrl: user.avatarUrl,
+      bannerUrl: user.bannerUrl,
+      sports: user.sports,
+      level: user.level,
+      objectives: user.objectives,
+      availability: user.availability,
+      city: user.city,
+      latitude: user.latitude,
+      longitude: user.longitude,
+      weightKg: user.weightKg,
+      heightCm: user.heightCm,
+      gender: user.gender,
+      isActive: user.isActive,
+      createdAt: user.createdAt,
     };
   }
 

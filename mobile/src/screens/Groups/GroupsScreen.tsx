@@ -124,6 +124,9 @@ export default function GroupsScreen({ navigation }: any) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#fff" />
+        </TouchableOpacity>
         <Text style={styles.title}>Grupos</Text>
         <TouchableOpacity style={styles.createBtn} onPress={() => setShowCreate(true)}>
           <Ionicons name="add" size={22} color="#fff" />
@@ -251,7 +254,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
   },
-  title: { fontSize: fontSize.xxl, fontWeight: '800', color: colors.dark.text },
+  backBtn: { padding: 4, marginRight: spacing.sm },
+  title: { flex: 1, fontSize: fontSize.xxl, fontWeight: '800', color: colors.dark.text },
   createBtn: {
     backgroundColor: '#FF6B35',
     width: 38, height: 38, borderRadius: 19,

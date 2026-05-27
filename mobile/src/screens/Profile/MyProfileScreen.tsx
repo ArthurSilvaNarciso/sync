@@ -10,6 +10,7 @@ import {
   Platform,
   RefreshControl,
   Share,
+  Alert,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
@@ -20,6 +21,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { heroImages, getSportImage } from '../../theme/images';
 import StreakBadge from '../../components/StreakBadge';
+import * as ImagePicker from 'expo-image-picker';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQuote, MotivationalQuote } from '../../services/external-apis';
 import { getCurrentLocation } from '../../services/location.service';
 import api from '../../services/api';
@@ -54,7 +56,8 @@ interface Stats {
 }
 
 export default function MyProfileScreen({ navigation }: Props) {
-  const { user } = useAuthStore();
+  const { user, setUser } = useAuthStore();
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [stats, setStats] = useState<Stats>({
     totalActivities: 0, totalDistanceKm: 0, weeklyDistanceKm: 0, totalDuration: 0,
     currentStreak: 0, bestStreak: 0,
@@ -151,6 +154,35 @@ export default function MyProfileScreen({ navigation }: Props) {
     }
   };
 
+  const pickBanner = async () => {
+    if (uploadingBanner) return;
+    try {
+      const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!perm.granted) {
+        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher o banner.');
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [16, 9],
+        quality: 0.6,
+        base64: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setUploadingBanner(true);
+      const mime = asset.mimeType || 'image/jpeg';
+      const bannerBase64 = `data:${mime};base64,${asset.base64}`;
+      const { data } = await api.post('/users/me/banner', { bannerBase64 });
+      setUser(data);
+    } catch (error: any) {
+      Alert.alert('Erro', error?.response?.data?.message || 'Não foi possível enviar o banner');
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   if (!user) return null;
 
   const recommendation = weather ? getExerciseRecommendation(weather) : null;
@@ -195,7 +227,7 @@ export default function MyProfileScreen({ navigation }: Props) {
       icon: 'newspaper-outline' as const,
       label: 'Feed da comunidade',
       subtitle: 'Atividades de outros atletas',
-      onPress: () => navigation.navigate('Feed' as any),
+      onPress: () => (navigation as any).getParent()?.navigate('FeedTab'),
       color: '#EC4899',
     },
     {
@@ -250,7 +282,11 @@ export default function MyProfileScreen({ navigation }: Props) {
     >
       {/* Profile header with hero cover */}
       <ImageBackground
-        source={{ uri: user.sports?.[0] ? getSportImage(user.sports[0]) : heroImages.runnerSunrise }}
+        source={
+          user.bannerUrl
+            ? { uri: user.bannerUrl }
+            : { uri: user.sports?.[0] ? getSportImage(user.sports[0]) : heroImages.runnerSunrise }
+        }
         style={styles.headerGradient}
         resizeMode="cover"
       >
@@ -259,6 +295,10 @@ export default function MyProfileScreen({ navigation }: Props) {
           locations={[0, 0.5, 1]}
           style={StyleSheet.absoluteFill}
         />
+        {/* Banner edit button */}
+        <TouchableOpacity style={styles.bannerEditBtn} onPress={pickBanner} disabled={uploadingBanner}>
+          <Ionicons name={uploadingBanner ? 'hourglass-outline' : 'image-outline'} size={16} color="#fff" />
+        </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.avatarContainer}>
             <Image
@@ -488,6 +528,16 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xl + 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
+  },
+  bannerEditBtn: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 56 : 44,
+    right: spacing.md,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 8,
+    padding: 7,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.25)',
   },
   headerContent: {
     alignItems: 'center',

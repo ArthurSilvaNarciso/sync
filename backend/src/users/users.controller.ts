@@ -68,6 +68,26 @@ export class UsersController {
     return this.usersService.updateAvatar(user.id, avatarBase64);
   }
 
+  @Post('me/banner')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Upload do banner como base64 (max ~800KB)' })
+  async uploadBanner(
+    @CurrentUser() user: User,
+    @Body('bannerBase64') bannerBase64: string,
+  ) {
+    if (!bannerBase64 || typeof bannerBase64 !== 'string') {
+      throw new BadRequestException('Imagem não enviada');
+    }
+    if (!bannerBase64.startsWith('data:image/')) {
+      throw new BadRequestException('Formato inválido. Envie data:image/... base64.');
+    }
+    if (bannerBase64.length > 1_100_000) {
+      throw new BadRequestException('Imagem muito grande. Máximo ~800KB após compressão.');
+    }
+    return this.usersService.updateBanner(user.id, bannerBase64);
+  }
+
   @Post('me/photos')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

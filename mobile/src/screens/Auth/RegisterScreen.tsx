@@ -33,6 +33,9 @@ export default function RegisterScreen({ navigation }: Props) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [weightKg, setWeightKg] = useState('');
+  const [heightCm, setHeightCm] = useState('');
+  const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
@@ -84,7 +87,11 @@ export default function RegisterScreen({ navigation }: Props) {
     }
     setLoading(true);
     try {
-      await register(name.trim(), email.trim().toLowerCase(), password, confirmPassword);
+      await register(name.trim(), email.trim().toLowerCase(), password, confirmPassword, {
+        weightKg: weightKg ? parseFloat(weightKg) : undefined,
+        heightCm: heightCm ? parseFloat(heightCm) : undefined,
+        gender: gender || undefined,
+      });
     } catch (error: any) {
       const msg = error.response?.data?.message;
       const detail = Array.isArray(msg) ? msg.join(' • ') : msg;
@@ -164,7 +171,7 @@ export default function RegisterScreen({ navigation }: Props) {
                 />
                 <Input
                   label="Senha"
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   value={password}
                   onChangeText={(v) => { setPassword(v); setErrors((e) => ({ ...e, password: '' })); }}
                   error={errors.password}
@@ -209,6 +216,45 @@ export default function RegisterScreen({ navigation }: Props) {
                     </Text>
                   </View>
                 )}
+
+                <View style={styles.rowInputs}>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label="Peso (kg)"
+                      placeholder="Ex: 70"
+                      value={weightKg}
+                      onChangeText={setWeightKg}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Input
+                      label="Altura (cm)"
+                      placeholder="Ex: 175"
+                      value={heightCm}
+                      onChangeText={setHeightCm}
+                      keyboardType="decimal-pad"
+                    />
+                  </View>
+                </View>
+
+                <Text style={styles.genderLabel}>Sexo</Text>
+                <View style={styles.genderRow}>
+                  {(['male', 'female', 'other'] as const).map((g) => (
+                    <TouchableOpacity
+                      key={g}
+                      onPress={() => setGender(gender === g ? '' : g)}
+                      style={[
+                        styles.genderPill,
+                        gender === g && { backgroundColor: ACCENT, borderColor: ACCENT },
+                      ]}
+                    >
+                      <Text style={[styles.genderPillText, gender === g && { color: '#fff', fontWeight: '700' }]}>
+                        {g === 'male' ? 'Masculino' : g === 'female' ? 'Feminino' : 'Outro'}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
               </View>
 
               <View style={styles.termsRow}>
@@ -338,6 +384,18 @@ const styles = StyleSheet.create({
     marginTop: -spacing.sm, marginBottom: spacing.sm,
   },
   matchText: { fontSize: fontSize.xs, fontWeight: '500' },
+  rowInputs: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs },
+  genderLabel: {
+    fontSize: fontSize.sm, fontWeight: '600',
+    color: 'rgba(255,255,255,0.7)', marginTop: spacing.sm, marginBottom: spacing.xs,
+  },
+  genderRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
+  genderPill: {
+    flex: 1, paddingVertical: 10, borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  genderPillText: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.6)' },
   termsRow: {
     flexDirection: 'row', alignItems: 'center',
     gap: spacing.sm, marginBottom: spacing.lg,

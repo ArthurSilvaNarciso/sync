@@ -22,6 +22,7 @@ export type OnboardingStackParamList = {
 
 // Tabs principais
 export type MainTabParamList = {
+  FeedTab: undefined;
   HomeTab: undefined;
   MapTab: undefined;
   TrackingTab: undefined;

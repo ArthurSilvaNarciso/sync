@@ -20,8 +20,7 @@ import { trackingSocket } from '../../services/tracking-socket.service';
 import { Share } from 'react-native';
 import { announce, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
 import { AutoPauseDetector } from '../../utils/auto-pause';
-import HoldToFinishButton from '../../components/tracking/HoldToFinishButton';
-import ConfirmModal from '../../components/ui/ConfirmModal';
+// HoldToFinishButton and ConfirmModal replaced by simple tap + Alert
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -248,16 +247,10 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
     setIsPaused(newPaused);
   };
 
-  const [confirmingFinish, setConfirmingFinish] = useState(false);
   const [finishing, setFinishing] = useState(false);
 
-  const requestFinish = () => setConfirmingFinish(true);
-
-  // Use a ref so HoldToFinishButton always calls the latest version even across re-renders
-  const doFinishRef = useRef<() => void>(() => {});
-
   const doFinish = async () => {
-    if (finishing) return; // prevent double-call
+    if (finishing) return;
     setFinishing(true);
     isPausedRef.current = true;
     locationSub.current?.remove();
@@ -266,21 +259,48 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
     if (audioOn) announce.finish(distance / 1000, elapsed / 60);
     try {
       await api.put(`/activities/${activityId}/finish`);
-      setConfirmingFinish(false);
       navigation.replace('ActivitySummary', { activityId });
     } catch (e: any) {
       setFinishing(false);
-      setConfirmingFinish(false);
-      const msg = e?.response?.data?.message || 'Não foi possível finalizar a atividade. Tente novamente.';
+      // Resume timer since finish failed
+      isPausedRef.current = false;
+      startTimer();
+      const msg = e?.response?.data?.message || 'Não foi possível finalizar. Tente novamente.';
       Alert.alert('Erro ao finalizar', Array.isArray(msg) ? msg.join(' • ') : msg);
     }
   };
 
-  // Keep ref in sync with latest doFinish on every render
-  doFinishRef.current = doFinish;
-  const stableDoFinish = useRef(() => doFinishRef.current()).current;
+  const requestFinish = () => {
+    // Pause timer while user decides
+    const wasRunning = !isPausedRef.current;
+    if (wasRunning) {
+      isPausedRef.current = true;
+      if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    }
+    Alert.alert(
+      'Finalizar treino?',
+      `Você percorreu ${(distance / 1000).toFixed(2)} km em ${Math.floor(elapsed / 60)}min. Deseja encerrar?`,
+      [
+        {
+          text: 'Não, continuar',
+          style: 'cancel',
+          onPress: () => {
+            // Resume if it was running before
+            if (wasRunning) {
+              isPausedRef.current = false;
+              startTimer();
+            }
+          },
+        },
+        {
+          text: 'Sim, finalizar',
+          style: 'destructive',
+          onPress: doFinish,
+        },
+      ],
+    );
+  };
 
-  // Compat: alguns lugares ainda referenciam handleFinish
   const handleFinish = requestFinish;
 
   const handleShareLive = async () => {
@@ -503,25 +523,22 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
             <Ionicons name={isPaused ? 'play' : 'pause'} size={34} color="#fff" />
           </TouchableOpacity>
 
-          {/* DIREITA: Finalizar — hold 1.2s ou toque para confirmar */}
-          <TouchableOpacity style={styles.sideBtn} onPress={requestFinish} activeOpacity={0.7}>
-            <HoldToFinishButton onFinish={stableDoFinish} small label="Segure pra finalizar" />
-            <Text style={[styles.sideBtnLabel, { color: '#F87171', marginTop: 6 }]}>Finalizar</Text>
+          {/* DIREITA: Finalizar — toque simples → confirmação por Alert */}
+          <TouchableOpacity
+            style={styles.sideBtn}
+            onPress={requestFinish}
+            disabled={finishing}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="stop-circle" size={38} color={finishing ? '#888' : '#F87171'} />
+            <Text style={[styles.sideBtnLabel, { color: finishing ? '#888' : '#F87171' }]}>
+              {finishing ? 'Salvando…' : 'Finalizar'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <ConfirmModal
-        visible={confirmingFinish}
-        title="Finalizar treino?"
-        message={`Você correu ${(distance / 1000).toFixed(2)} km em ${Math.floor(elapsed / 60)}min. Confirma encerrar?`}
-        confirmLabel="Finalizar"
-        cancelLabel="Continuar"
-        destructive
-        loading={finishing}
-        onConfirm={doFinish}
-        onCancel={() => setConfirmingFinish(false)}
-      />
+      {/* Confirmação agora é Alert nativo — sem ConfirmModal */}
     </View>
   );
 }
