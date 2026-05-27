@@ -5,6 +5,19 @@ import { Story } from './entities/story.entity';
 import { StoryView } from './entities/story-view.entity';
 import { sanitizeText } from '../common/security/sanitize.util';
 
+// Projeta apenas campos públicos do criador do story (sem email, lat, long)
+function safeStoryUser(user: any) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+    city: user.city,
+    level: user.level,
+    sports: user.sports,
+  };
+}
+
 @Injectable()
 export class StoriesService {
   constructor(
@@ -44,24 +57,31 @@ export class StoriesService {
   async getFeed(
     page = 1,
     limit = 30,
-  ): Promise<{ stories: Story[]; total: number }> {
+  ): Promise<{ stories: any[]; total: number }> {
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const safeLimit = Math.max(1, Math.min(limit, 50));
     const [stories, total] = await this.storyRepo.findAndCount({
       where: { expiresAt: MoreThan(new Date()) },
       relations: ['user'],
       order: { createdAt: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
     });
-    return { stories, total };
+    return {
+      stories: stories.map((s) => ({ ...s, user: safeStoryUser(s.user) })),
+      total,
+    };
   }
 
   // Stories de um user específico (perfil)
-  async getByUser(userId: string): Promise<Story[]> {
-    return this.storyRepo.find({
+  async getByUser(userId: string): Promise<any[]> {
+    const stories = await this.storyRepo.find({
       where: { user_id: userId, expiresAt: MoreThan(new Date()) },
       relations: ['user'],
       order: { createdAt: 'DESC' },
+      take: 50,
     });
+    return stories.map((s) => ({ ...s, user: safeStoryUser(s.user) }));
   }
 
   // Marca como visto (idempotente)

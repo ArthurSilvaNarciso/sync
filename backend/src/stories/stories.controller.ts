@@ -65,9 +65,12 @@ export class StoriesController {
         await stripExifInPlace(file.path, { maxWidth: 1920, maxHeight: 1920, quality: 88 });
       } catch {}
     }
-    const protocol = req.protocol;
-    const host = req.get('host');
-    const url = `${protocol}://${host}/uploads/stories/${file.filename}`;
+    // SECURITY: usar BACKEND_URL da env para evitar Host Header injection.
+    // req.get('host') é controlado pelo cliente e pode apontar para domínio externo.
+    const baseUrl = process.env.BACKEND_URL
+      ? process.env.BACKEND_URL.replace(/\/$/, '')
+      : `${req.protocol}://${req.hostname}`; // req.hostname (sem porta) como fallback
+    const url = `${baseUrl}/uploads/stories/${file.filename}`;
     return this.storiesService.create(user.id, url, {
       mediaType: file.mimetype.startsWith('video') ? 'video' : 'image',
       caption: body.caption,
