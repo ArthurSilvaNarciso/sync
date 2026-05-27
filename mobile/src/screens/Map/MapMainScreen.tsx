@@ -501,7 +501,7 @@ export default function MapMainScreen({ navigation }: Props) {
           pointerEvents={showWeatherPanel ? 'auto' : 'none'}
         >
           <LinearGradient
-            colors={['#1A1A2E', '#252540']}
+            colors={['rgba(10,10,20,0.98)', 'rgba(14,14,28,0.99)']}
             style={styles.weatherPanelInner}
           >
             <View style={styles.weatherHeader}>
