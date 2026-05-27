@@ -5,11 +5,14 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Match } from '../../matching/entities/match.entity';
 
 @Entity('messages')
+@Index(['match_id', 'createdAt'])           // getMessages() + conversation sort
+@Index(['match_id', 'isRead', 'sender_id']) // batch unread count query
 export class Message {
   @PrimaryGeneratedColumn('uuid')
   id: string;

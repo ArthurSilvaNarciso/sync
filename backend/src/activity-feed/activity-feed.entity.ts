@@ -5,10 +5,13 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 
 @Entity('activity_feed_posts')
+@Index(['createdAt'])          // feed() sorts by createdAt DESC
+@Index(['user_id', 'createdAt']) // byUser() filters by user_id + sorts
 export class ActivityFeedPost {
   @PrimaryGeneratedColumn('uuid')
   id: string;

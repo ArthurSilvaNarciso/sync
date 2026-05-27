@@ -5,6 +5,7 @@ import {
   ManyToOne,
   JoinColumn,
   CreateDateColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 
@@ -23,6 +24,8 @@ export enum NotificationType {
 }
 
 @Entity('notifications')
+@Index(['user_id', 'createdAt']) // list unread notifications by user
+@Index(['user_id', 'isRead'])   // unread count badge
 export class Notification {
   @PrimaryGeneratedColumn('uuid')
   id: string;

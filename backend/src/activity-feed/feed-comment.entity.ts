@@ -1,8 +1,9 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn } from 'typeorm';
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, ManyToOne, JoinColumn, Index } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 import { ActivityFeedPost } from './activity-feed.entity';
 
 @Entity('feed_comments')
+@Index(['post_id', 'createdAt']) // getComments() filters by post_id + sorts
 export class FeedComment {
   @PrimaryGeneratedColumn('uuid')
   id: string;
