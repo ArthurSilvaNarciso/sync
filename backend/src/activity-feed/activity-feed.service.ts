@@ -6,6 +6,19 @@ import { FeedComment } from './feed-comment.entity';
 import { FeedLike } from './feed-like.entity';
 import { sanitizeText, sanitizeUrl } from '../common/security/sanitize.util';
 
+// Projeta apenas campos públicos do usuário (sem email, lat, long)
+function safeFeedUser(user: any) {
+  if (!user) return null;
+  return {
+    id: user.id,
+    name: user.name,
+    avatarUrl: user.avatarUrl,
+    city: user.city,
+    sports: user.sports,
+    level: user.level,
+  };
+}
+
 @Injectable()
 export class ActivityFeedService {
   constructor(
@@ -48,22 +61,28 @@ export class ActivityFeedService {
   }
 
   async feed(page = 1, limit = 20) {
-    return this.repo.find({
+    const safeLimit = Math.max(1, Math.min(limit, 50));
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const posts = await this.repo.find({
       relations: ['user'],
       order: { createdAt: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit,
+      take: safeLimit,
+      skip: (safePage - 1) * safeLimit,
     });
+    return posts.map((p) => ({ ...p, user: safeFeedUser(p.user) }));
   }
 
   async byUser(userId: string, page = 1, limit = 20) {
-    return this.repo.find({
+    const safeLimit = Math.max(1, Math.min(limit, 50));
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const posts = await this.repo.find({
       where: { user_id: userId },
       relations: ['user'],
       order: { createdAt: 'DESC' },
-      take: limit,
-      skip: (page - 1) * limit,
+      take: safeLimit,
+      skip: (safePage - 1) * safeLimit,
     });
+    return posts.map((p) => ({ ...p, user: safeFeedUser(p.user) }));
   }
 
   async like(postId: string, userId: string) {
@@ -110,13 +129,16 @@ export class ActivityFeedService {
   }
 
   async getComments(postId: string, page = 1, limit = 20) {
-    return this.commentRepo.find({
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const comments = await this.commentRepo.find({
       where: { post_id: postId },
       relations: ['user'],
       order: { createdAt: 'ASC' },
-      take: limit,
-      skip: (page - 1) * limit,
+      take: safeLimit,
+      skip: (safePage - 1) * safeLimit,
     });
+    return comments.map((c) => ({ ...c, user: safeFeedUser(c.user) }));
   }
 
   async addComment(postId: string, userId: string, text: string) {
@@ -131,7 +153,8 @@ export class ActivityFeedService {
     });
     const saved = await this.commentRepo.save(comment);
     await this.repo.increment({ id: postId }, 'commentsCount', 1);
-    return this.commentRepo.findOne({ where: { id: saved.id }, relations: ['user'] });
+    const full = await this.commentRepo.findOne({ where: { id: saved.id }, relations: ['user'] });
+    return full ? { ...full, user: safeFeedUser(full.user) } : saved;
   }
 
   async deleteComment(postId: string, commentId: string, userId: string) {
