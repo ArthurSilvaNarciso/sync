@@ -6,6 +6,7 @@ import {
   CreateDateColumn,
   ManyToOne,
   JoinColumn,
+  Index,
 } from 'typeorm';
 import { User } from '../users/entities/user.entity';
 
@@ -23,7 +24,8 @@ export class Segment {
   @Column({ type: 'real' })
   distanceMeters: number;
 
-  // Coordenadas start/end
+  // Coordenadas start/end — @Index em startLat para acelerar a query BETWEEN
+  @Index()
   @Column({ type: 'real' })
   startLat: number;
 

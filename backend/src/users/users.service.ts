@@ -255,11 +255,14 @@ export class UsersService {
 
     await this.findById(reportedId);
 
+    // Sanitiza descrição antes de persistir (evita XSS no painel admin)
+    const safeDescription = description ? sanitizeText(description, 500) : undefined;
+
     await this.userReportRepository.save({
       reporter_id: reporterId,
       reported_id: reportedId,
       reason,
-      description,
+      description: safeDescription,
     });
   }
 }

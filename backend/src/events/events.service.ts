@@ -122,19 +122,27 @@ export class EventsService {
       qb = qb.andWhere('event.sport = :sport', { sport });
     }
 
-    const allEvents = await qb.orderBy('event.date', 'ASC').getMany();
+    // Cap de 500 eventos futuros — evita varredura ilimitada da tabela
+    const allEvents = await qb.orderBy('event.date', 'ASC').take(500).getMany();
 
-    // Calcular distancia e filtrar por raio
+    // Calcular distancia e filtrar por raio; projeta criador sem email/lat/long
     return allEvents
       .map((event) => ({
         ...event,
         distance: haversineKm(latitude, longitude, event.latitude, event.longitude),
+        creator: event.creator
+          ? {
+              id: (event.creator as any).id,
+              name: (event.creator as any).name,
+              avatarUrl: (event.creator as any).avatarUrl,
+            }
+          : null,
       }))
       .filter((e) => e.distance <= radiusKm)
       .map((e) => ({ ...e, distance: Math.round(e.distance * 10) / 10 }));
   }
 
-  async findById(id: string): Promise<Event> {
+  async findById(id: string): Promise<any> {
     const event = await this.eventRepository.findOne({
       where: { id },
       relations: ['creator', 'participants', 'participants.user'],
@@ -142,7 +150,24 @@ export class EventsService {
     if (!event) {
       throw new NotFoundException('Evento nao encontrado');
     }
-    return event;
+    // Projeta campos públicos do criador e dos participantes (sem email, lat, long)
+    const safeCreator = event.creator
+      ? {
+          id: (event.creator as any).id,
+          name: (event.creator as any).name,
+          avatarUrl: (event.creator as any).avatarUrl,
+          city: (event.creator as any).city,
+          level: (event.creator as any).level,
+        }
+      : null;
+    const safeParticipants = (event.participants || []).map((p: any) => ({
+      id: p.id,
+      joinedAt: p.createdAt,
+      user: p.user
+        ? { id: p.user.id, name: p.user.name, avatarUrl: p.user.avatarUrl }
+        : null,
+    }));
+    return { ...event, creator: safeCreator, participants: safeParticipants };
   }
 
   async join(userId: string, eventId: string): Promise<void> {
@@ -190,19 +215,33 @@ export class EventsService {
     const created = await this.eventRepository.find({
       where: { creator_id: userId },
       order: { date: 'ASC' },
+      take: 100,
     });
 
     const participating = await this.participantRepository.find({
       where: { user_id: userId },
       relations: ['event', 'event.creator'],
+      take: 100,
     });
 
     const now = new Date();
+    const sanitizeEvent = (e: any) => ({
+      ...e,
+      creator: e.creator
+        ? {
+            id: e.creator.id,
+            name: e.creator.name,
+            avatarUrl: e.creator.avatarUrl,
+          }
+        : null,
+    });
+
     return {
       created: created.filter((e) => new Date(e.date) > now),
       participating: participating
         .map((p) => p.event)
-        .filter((e) => new Date(e.date) > now),
+        .filter((e) => new Date(e.date) > now)
+        .map(sanitizeEvent),
     };
   }
 
@@ -222,14 +261,16 @@ export class EventsService {
 
   // Buscar comentários paginados de um evento
   async getComments(eventId: string, page: number = 1, limit: number = 20) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const safeLimit = Math.max(1, Math.min(limit, 100));
+    const skip = (safePage - 1) * safeLimit;
 
     const [comments, total] = await this.commentRepository.findAndCount({
       where: { event_id: eventId },
       relations: ['user'],
       order: { createdAt: 'DESC' },
       skip,
-      take: limit,
+      take: safeLimit,
     });
 
     return {
@@ -244,9 +285,9 @@ export class EventsService {
         },
       })),
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

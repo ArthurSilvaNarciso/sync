@@ -56,7 +56,17 @@ export class GroupsService {
       const isMember = await this.memberRepo.findOne({ where: { group_id: groupId, user_id: requesterId } });
       if (!isMember) throw new ForbiddenException('Grupo privado — entre pelo código de convite');
     }
-    return group;
+    // Projeta apenas campos públicos do admin (sem email, lat, long)
+    const safeAdmin = group.admin
+      ? {
+          id: (group.admin as any).id,
+          name: (group.admin as any).name,
+          avatarUrl: (group.admin as any).avatarUrl,
+          city: (group.admin as any).city,
+          level: (group.admin as any).level,
+        }
+      : null;
+    return { ...group, admin: safeAdmin };
   }
 
   async myGroups(userId: string) {
@@ -94,12 +104,30 @@ export class GroupsService {
   }
 
   async listMembers(groupId: string) {
-    return this.memberRepo.find({
+    const members = await this.memberRepo.find({
       where: { group_id: groupId },
       relations: ['user'],
       order: { contributedKm: 'DESC' },
       take: 100,
     });
+    // Projeta apenas campos públicos dos membros (sem email, lat, long)
+    return members.map((m) => ({
+      id: m.id,
+      role: m.role,
+      contributedKm: m.contributedKm,
+      contributedActivities: (m as any).contributedActivities,
+      joinedAt: m.createdAt,
+      user: m.user
+        ? {
+            id: (m.user as any).id,
+            name: (m.user as any).name,
+            avatarUrl: (m.user as any).avatarUrl,
+            city: (m.user as any).city,
+            level: (m.user as any).level,
+            sports: (m.user as any).sports,
+          }
+        : null,
+    }));
   }
 
   async groupRanking(opts: { sport?: string; city?: string }) {

@@ -44,7 +44,8 @@ export class AchievementsService {
     }));
   }
 
-  // Verifica todas as condições e desbloqueia conquistas novas
+  // Verifica todas as condições e desbloqueia conquistas novas.
+  // Usa queries aggregadas em vez de carregar TODAS as atividades na memória.
   async checkAndUnlock(userId: string) {
     const existing = await this.achievementRepository.find({
       where: { user_id: userId },
@@ -52,45 +53,31 @@ export class AchievementsService {
     const unlockedTypes = new Set(existing.map((a) => a.type));
     const newlyUnlocked: UserAchievement[] = [];
 
-    // Buscar dados necessários
-    const completedActivities = await this.activityRepository.find({
-      where: { user_id: userId, isCompleted: true },
-      order: { startTime: 'ASC' },
-    });
+    // Agrega contagem + distância + pace + velocidade em uma query
+    const aggRow = await this.activityRepository
+      .createQueryBuilder('a')
+      .select('COUNT(a.id)', 'activitiesCount')
+      .addSelect('COALESCE(SUM(a.distance), 0)', 'totalDistance')
+      .addSelect('COUNT(DISTINCT a.sport)', 'distinctSports')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .getRawOne<{
+        activitiesCount: string;
+        totalDistance: string;
+        distinctSports: string;
+      }>();
 
-    const activitiesCount = completedActivities.length;
-    const totalDistance = completedActivities.reduce(
-      (sum, a) => sum + (a.distance || 0),
-      0,
-    );
-    const totalDistanceKm = totalDistance / 1000;
+    const activitiesCount = parseInt(aggRow?.activitiesCount ?? '0', 10);
+    const totalDistanceKm = parseFloat(aggRow?.totalDistance ?? '0') / 1000;
+    const distinctSportCount = parseInt(aggRow?.distinctSports ?? '0', 10);
 
-    // Matches count
-    const matchesCount = await this.matchRepository
-      .createQueryBuilder('match')
-      .where('match.user1_id = :userId OR match.user2_id = :userId', {
-        userId,
-      })
-      .getCount();
-
-    // Events created count
-    const eventsCreatedCount = await this.eventRepository.count({
-      where: { creator_id: userId },
-    });
-
-    // Super likes count
-    const superLikesCount = await this.likeRepository.count({
-      where: { from_user_id: userId, isSuperLike: true },
-    });
-
-    // Conquistas baseadas em contagem de atividades
+    // Conquistas por contagem de atividades
     const activityChecks: { type: AchievementType; threshold: number }[] = [
       { type: AchievementType.FIRST_ACTIVITY, threshold: 1 },
       { type: AchievementType.ACTIVITIES_10, threshold: 10 },
       { type: AchievementType.ACTIVITIES_50, threshold: 50 },
       { type: AchievementType.ACTIVITIES_100, threshold: 100 },
     ];
-
     for (const check of activityChecks) {
       if (!unlockedTypes.has(check.type) && activitiesCount >= check.threshold) {
         const achievement = await this.unlockAchievement(userId, check.type);
@@ -99,106 +86,67 @@ export class AchievementsService {
       }
     }
 
-    // Conquistas baseadas em distância (em km)
+    // Conquistas por distância total
     const distanceChecks: { type: AchievementType; threshold: number }[] = [
       { type: AchievementType.DISTANCE_10K, threshold: 10 },
       { type: AchievementType.DISTANCE_50K, threshold: 50 },
       { type: AchievementType.DISTANCE_100K, threshold: 100 },
       { type: AchievementType.DISTANCE_500K, threshold: 500 },
     ];
-
     for (const check of distanceChecks) {
-      if (
-        !unlockedTypes.has(check.type) &&
-        totalDistanceKm >= check.threshold
-      ) {
+      if (!unlockedTypes.has(check.type) && totalDistanceKm >= check.threshold) {
         const achievement = await this.unlockAchievement(userId, check.type);
         newlyUnlocked.push(achievement);
         unlockedTypes.add(check.type);
       }
     }
 
-    // First match
-    if (!unlockedTypes.has(AchievementType.FIRST_MATCH) && matchesCount >= 1) {
-      const achievement = await this.unlockAchievement(
-        userId,
-        AchievementType.FIRST_MATCH,
-      );
+    // Multi-sport: 3 esportes distintos (já temos no aggRow)
+    if (!unlockedTypes.has(AchievementType.MULTI_SPORT) && distinctSportCount >= 3) {
+      const achievement = await this.unlockAchievement(userId, AchievementType.MULTI_SPORT);
       newlyUnlocked.push(achievement);
-      unlockedTypes.add(AchievementType.FIRST_MATCH);
+      unlockedTypes.add(AchievementType.MULTI_SPORT);
     }
 
-    // Social butterfly (10 matches)
-    if (
-      !unlockedTypes.has(AchievementType.SOCIAL_BUTTERFLY) &&
-      matchesCount >= 10
-    ) {
-      const achievement = await this.unlockAchievement(
-        userId,
-        AchievementType.SOCIAL_BUTTERFLY,
-      );
-      newlyUnlocked.push(achievement);
-      unlockedTypes.add(AchievementType.SOCIAL_BUTTERFLY);
+    // Contagens paralelas: matches, events, super likes
+    const [matchesCount, eventsCreatedCount, superLikesCount] = await Promise.all([
+      this.matchRepository
+        .createQueryBuilder('match')
+        .where('match.user1_id = :userId OR match.user2_id = :userId', { userId })
+        .getCount(),
+      this.eventRepository.count({ where: { creator_id: userId } }),
+      this.likeRepository.count({ where: { from_user_id: userId, isSuperLike: true } }),
+    ]);
+
+    const socialChecks: { type: AchievementType; value: number; threshold: number }[] = [
+      { type: AchievementType.FIRST_MATCH, value: matchesCount, threshold: 1 },
+      { type: AchievementType.SOCIAL_BUTTERFLY, value: matchesCount, threshold: 10 },
+      { type: AchievementType.FIRST_EVENT, value: eventsCreatedCount, threshold: 1 },
+      { type: AchievementType.EVENT_CREATOR, value: eventsCreatedCount, threshold: 5 },
+      { type: AchievementType.SUPER_LIKER, value: superLikesCount, threshold: 10 },
+    ];
+    for (const check of socialChecks) {
+      if (!unlockedTypes.has(check.type) && check.value >= check.threshold) {
+        const achievement = await this.unlockAchievement(userId, check.type);
+        newlyUnlocked.push(achievement);
+        unlockedTypes.add(check.type);
+      }
     }
 
-    // First event
-    if (
-      !unlockedTypes.has(AchievementType.FIRST_EVENT) &&
-      eventsCreatedCount >= 1
-    ) {
-      const achievement = await this.unlockAchievement(
-        userId,
-        AchievementType.FIRST_EVENT,
-      );
-      newlyUnlocked.push(achievement);
-      unlockedTypes.add(AchievementType.FIRST_EVENT);
-    }
-
-    // Event creator (5 events)
-    if (
-      !unlockedTypes.has(AchievementType.EVENT_CREATOR) &&
-      eventsCreatedCount >= 5
-    ) {
-      const achievement = await this.unlockAchievement(
-        userId,
-        AchievementType.EVENT_CREATOR,
-      );
-      newlyUnlocked.push(achievement);
-      unlockedTypes.add(AchievementType.EVENT_CREATOR);
-    }
-
-    // Super liker (10 super likes)
-    if (
-      !unlockedTypes.has(AchievementType.SUPER_LIKER) &&
-      superLikesCount >= 10
-    ) {
-      const achievement = await this.unlockAchievement(
-        userId,
-        AchievementType.SUPER_LIKER,
-      );
-      newlyUnlocked.push(achievement);
-      unlockedTypes.add(AchievementType.SUPER_LIKER);
-    }
-
-    // Streaks (dias consecutivos com atividades completadas)
+    // Streaks — datas distintas dos últimos 2 anos (evita varredura ilimitada)
     if (
       !unlockedTypes.has(AchievementType.STREAK_3) ||
       !unlockedTypes.has(AchievementType.STREAK_7) ||
       !unlockedTypes.has(AchievementType.STREAK_30)
     ) {
-      const currentStreak = this.calculateCurrentStreak(completedActivities);
-
+      const currentStreak = await this.computeCurrentStreak(userId);
       const streakChecks: { type: AchievementType; threshold: number }[] = [
         { type: AchievementType.STREAK_3, threshold: 3 },
         { type: AchievementType.STREAK_7, threshold: 7 },
         { type: AchievementType.STREAK_30, threshold: 30 },
       ];
-
       for (const check of streakChecks) {
-        if (
-          !unlockedTypes.has(check.type) &&
-          currentStreak >= check.threshold
-        ) {
+        if (!unlockedTypes.has(check.type) && currentStreak >= check.threshold) {
           const achievement = await this.unlockAchievement(userId, check.type);
           newlyUnlocked.push(achievement);
           unlockedTypes.add(check.type);
@@ -206,65 +154,54 @@ export class AchievementsService {
       }
     }
 
-    // Speed demon (velocidade média acima de 15km/h)
+    // Speed demon — EXISTS query (não carrega todas)
     if (!unlockedTypes.has(AchievementType.SPEED_DEMON)) {
-      const hasHighSpeed = completedActivities.some(
-        (a) => a.avgSpeed && a.avgSpeed > 15,
-      );
-      if (hasHighSpeed) {
-        const achievement = await this.unlockAchievement(
-          userId,
-          AchievementType.SPEED_DEMON,
-        );
+      const fastOne = await this.activityRepository
+        .createQueryBuilder('a')
+        .select('a.id')
+        .where('a.user_id = :userId', { userId })
+        .andWhere('a.isCompleted = :c', { c: true })
+        .andWhere('a.avgSpeed > :speed', { speed: 15 })
+        .limit(1)
+        .getRawOne();
+      if (fastOne) {
+        const achievement = await this.unlockAchievement(userId, AchievementType.SPEED_DEMON);
         newlyUnlocked.push(achievement);
         unlockedTypes.add(AchievementType.SPEED_DEMON);
       }
     }
 
-    // Early bird (atividade antes das 6h)
+    // Early bird — atividade antes das 6h (SQLite: strftime('%H'))
     if (!unlockedTypes.has(AchievementType.EARLY_BIRD)) {
-      const hasEarlyActivity = completedActivities.some((a) => {
-        const hour = new Date(a.startTime).getHours();
-        return hour < 6;
-      });
-      if (hasEarlyActivity) {
-        const achievement = await this.unlockAchievement(
-          userId,
-          AchievementType.EARLY_BIRD,
-        );
+      const earlyOne = await this.activityRepository
+        .createQueryBuilder('a')
+        .select('a.id')
+        .where('a.user_id = :userId', { userId })
+        .andWhere('a.isCompleted = :c', { c: true })
+        .andWhere("CAST(strftime('%H', a.startTime) AS INTEGER) < 6")
+        .limit(1)
+        .getRawOne();
+      if (earlyOne) {
+        const achievement = await this.unlockAchievement(userId, AchievementType.EARLY_BIRD);
         newlyUnlocked.push(achievement);
         unlockedTypes.add(AchievementType.EARLY_BIRD);
       }
     }
 
-    // Night owl (atividade após as 22h)
+    // Night owl — atividade após as 22h
     if (!unlockedTypes.has(AchievementType.NIGHT_OWL)) {
-      const hasNightActivity = completedActivities.some((a) => {
-        const hour = new Date(a.startTime).getHours();
-        return hour >= 22;
-      });
-      if (hasNightActivity) {
-        const achievement = await this.unlockAchievement(
-          userId,
-          AchievementType.NIGHT_OWL,
-        );
+      const nightOne = await this.activityRepository
+        .createQueryBuilder('a')
+        .select('a.id')
+        .where('a.user_id = :userId', { userId })
+        .andWhere('a.isCompleted = :c', { c: true })
+        .andWhere("CAST(strftime('%H', a.startTime) AS INTEGER) >= 22")
+        .limit(1)
+        .getRawOne();
+      if (nightOne) {
+        const achievement = await this.unlockAchievement(userId, AchievementType.NIGHT_OWL);
         newlyUnlocked.push(achievement);
         unlockedTypes.add(AchievementType.NIGHT_OWL);
-      }
-    }
-
-    // Multi-sport (3 esportes diferentes)
-    if (!unlockedTypes.has(AchievementType.MULTI_SPORT)) {
-      const distinctSports = new Set(
-        completedActivities.map((a) => a.sport),
-      );
-      if (distinctSports.size >= 3) {
-        const achievement = await this.unlockAchievement(
-          userId,
-          AchievementType.MULTI_SPORT,
-        );
-        newlyUnlocked.push(achievement);
-        unlockedTypes.add(AchievementType.MULTI_SPORT);
       }
     }
 
@@ -329,47 +266,39 @@ export class AchievementsService {
     return saved;
   }
 
-  private calculateCurrentStreak(activities: Activity[]): number {
-    if (activities.length === 0) return 0;
+  // Streak atual via datas distintas (limitado a 2 anos)
+  private async computeCurrentStreak(userId: string): Promise<number> {
+    const rows = await this.activityRepository
+      .createQueryBuilder('a')
+      .select('DATE(a.startTime)', 'activityDate')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .andWhere('a.startTime > :since', {
+        since: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000),
+      })
+      .groupBy('DATE(a.startTime)')
+      .orderBy('activityDate', 'DESC')
+      .getRawMany<{ activityDate: string }>();
 
-    // Agrupar atividades por data (dia)
-    const activityDates = new Set<string>();
-    for (const activity of activities) {
-      const date = new Date(activity.startTime);
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      activityDates.add(dateStr);
-    }
+    if (rows.length === 0) return 0;
 
-    // Ordenar as datas
-    const sortedDates = Array.from(activityDates).sort().reverse();
-    if (sortedDates.length === 0) return 0;
+    const sortedDates = rows.map((r) => r.activityDate);
+    const today = new Date().toISOString().slice(0, 10);
+    const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
 
-    // Verificar se o streak inclui hoje ou ontem
-    const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    if (sortedDates[0] !== today && sortedDates[0] !== yesterday) return 0;
 
-    if (sortedDates[0] !== todayStr && sortedDates[0] !== yesterdayStr) {
-      return 0;
-    }
-
-    // Contar dias consecutivos
     let streak = 1;
     for (let i = 0; i < sortedDates.length - 1; i++) {
-      const current = new Date(sortedDates[i]);
+      const curr = new Date(sortedDates[i]);
       const next = new Date(sortedDates[i + 1]);
-      const diffMs = current.getTime() - next.getTime();
-      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
+      const diffDays = Math.round((curr.getTime() - next.getTime()) / 86400000);
       if (diffDays === 1) {
         streak++;
       } else {
         break;
       }
     }
-
     return streak;
   }
 }

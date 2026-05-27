@@ -19,93 +19,89 @@ export class StatsService {
     private readonly messageRepository: Repository<Message>,
   ) {}
 
-  // Retorna estatísticas completas do usuário
+  // Retorna estatísticas completas do usuário usando agregações no banco
+  // (evita carregar todas as atividades na memória para usuários com muitas atividades)
   async getUserStats(userId: string) {
-    const completedActivities = await this.activityRepository.find({
-      where: { user_id: userId, isCompleted: true },
-      order: { startTime: 'ASC' },
-    });
+    // --- Agregados totais via uma query só ---
+    const totalsRow = await this.activityRepository
+      .createQueryBuilder('a')
+      .select('COUNT(a.id)', 'totalActivities')
+      .addSelect('COALESCE(SUM(a.distance), 0)', 'totalDistanceM')
+      .addSelect('COALESCE(SUM(a.duration), 0)', 'totalDurationSec')
+      .addSelect('COALESCE(AVG(a.avgPace), 0)', 'averagePace')
+      .addSelect('COALESCE(AVG(a.avgSpeed), 0)', 'averageSpeed')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .getRawOne<{
+        totalActivities: string;
+        totalDistanceM: string;
+        totalDurationSec: string;
+        averagePace: string;
+        averageSpeed: string;
+      }>();
 
-    // Totais
-    const totalActivities = completedActivities.length;
-    const totalDistance =
-      Math.round(
-        (completedActivities.reduce((sum, a) => sum + (a.distance || 0), 0) /
-          1000) *
-          100,
-      ) / 100; // km
-    const totalDurationSeconds = completedActivities.reduce(
-      (sum, a) => sum + (a.duration || 0),
-      0,
-    );
-    const totalDuration =
-      Math.round((totalDurationSeconds / 3600) * 100) / 100; // horas
-
-    // Estimativa de calorias (aprox. 60 cal/km como média geral)
+    const totalActivities = parseInt(totalsRow?.totalActivities ?? '0', 10);
+    const totalDistanceM = parseFloat(totalsRow?.totalDistanceM ?? '0');
+    const totalDurationSec = parseFloat(totalsRow?.totalDurationSec ?? '0');
+    const totalDistance = Math.round((totalDistanceM / 1000) * 100) / 100; // km
+    const totalDuration = Math.round((totalDurationSec / 3600) * 100) / 100; // horas
     const totalCalories = Math.round(totalDistance * 60);
+    const averagePace = Math.round(parseFloat(totalsRow?.averagePace ?? '0') * 100) / 100;
+    const averageSpeed = Math.round(parseFloat(totalsRow?.averageSpeed ?? '0') * 100) / 100;
 
-    // Médias
-    const averagePace =
-      totalActivities > 0
-        ? Math.round(
-            (completedActivities.reduce(
-              (sum, a) => sum + (a.avgPace || 0),
-              0,
-            ) /
-              totalActivities) *
-              100,
-          ) / 100
-        : 0;
-    const averageSpeed =
-      totalActivities > 0
-        ? Math.round(
-            (completedActivities.reduce(
-              (sum, a) => sum + (a.avgSpeed || 0),
-              0,
-            ) /
-              totalActivities) *
-              100,
-          ) / 100
-        : 0;
-
-    // Atividade mais longa (por distância)
-    const longestActivity =
-      completedActivities.length > 0
-        ? completedActivities.reduce((longest, a) =>
-            (a.distance || 0) > (longest.distance || 0) ? a : longest,
-          )
-        : null;
-
-    // Streaks
-    const { currentStreak, bestStreak } =
-      this.calculateStreaks(completedActivities);
-
-    // Matches
-    const totalMatches = await this.matchRepository
-      .createQueryBuilder('match')
-      .where('match.user1_id = :userId OR match.user2_id = :userId', {
-        userId,
-      })
-      .getCount();
-
-    // Eventos criados
-    const totalEvents = await this.eventRepository.count({
-      where: { creator_id: userId },
+    // --- Atividade mais longa (apenas 1 linha) ---
+    const longestRow = await this.activityRepository.findOne({
+      where: { user_id: userId, isCompleted: true },
+      order: { distance: 'DESC' },
+      select: ['id', 'sport', 'distance', 'duration', 'startTime'],
     });
+    const longestActivity = longestRow
+      ? {
+          id: longestRow.id,
+          sport: longestRow.sport,
+          distance: Math.round((longestRow.distance / 1000) * 100) / 100,
+          duration: longestRow.duration,
+          date: longestRow.startTime,
+        }
+      : null;
 
-    // Mensagens enviadas
-    const totalMessagesSent = await this.messageRepository.count({
-      where: { sender_id: userId },
-    });
+    // --- Streaks: busca apenas datas distintas dos últimos ~400 dias (<=400 linhas) ---
+    const { currentStreak, bestStreak } = await this.computeStreaks(userId);
 
-    // Breakdown por esporte
-    const sportBreakdown = this.calculateSportBreakdown(completedActivities);
+    // --- Contagens em paralelo ---
+    const [totalMatches, totalEvents, totalMessagesSent] = await Promise.all([
+      this.matchRepository
+        .createQueryBuilder('match')
+        .where('match.user1_id = :userId OR match.user2_id = :userId', { userId })
+        .getCount(),
+      this.eventRepository.count({ where: { creator_id: userId } }),
+      this.messageRepository.count({ where: { sender_id: userId } }),
+    ]);
 
-    // Stats semanais (últimos 7 dias)
-    const weeklyStats = this.calculateWeeklyStats(completedActivities);
+    // --- Sport breakdown via GROUP BY ---
+    const sportRows = await this.activityRepository
+      .createQueryBuilder('a')
+      .select('a.sport', 'sport')
+      .addSelect('COUNT(a.id)', 'count')
+      .addSelect('COALESCE(SUM(a.distance), 0)', 'totalDistance')
+      .addSelect('COALESCE(SUM(a.duration), 0)', 'totalDuration')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .groupBy('a.sport')
+      .getRawMany<{ sport: string; count: string; totalDistance: string; totalDuration: string }>();
 
-    // Stats mensais (últimos 12 meses)
-    const monthlyStats = this.calculateMonthlyStats(completedActivities);
+    const sportBreakdown = sportRows.map((r) => ({
+      sport: r.sport,
+      count: parseInt(r.count, 10),
+      totalDistance: Math.round((parseFloat(r.totalDistance) / 1000) * 100) / 100,
+      totalDuration: Math.round((parseFloat(r.totalDuration) / 3600) * 100) / 100,
+    }));
+
+    // --- Últimos 7 dias ---
+    const weeklyStats = await this.computeWeeklyStats(userId);
+
+    // --- Últimos 12 meses ---
+    const monthlyStats = await this.computeMonthlyStats(userId);
 
     return {
       totalActivities,
@@ -114,16 +110,7 @@ export class StatsService {
       totalCalories,
       averagePace,
       averageSpeed,
-      longestActivity: longestActivity
-        ? {
-            id: longestActivity.id,
-            sport: longestActivity.sport,
-            distance:
-              Math.round((longestActivity.distance / 1000) * 100) / 100,
-            duration: longestActivity.duration,
-            date: longestActivity.startTime,
-          }
-        : null,
+      longestActivity,
       currentStreak,
       bestStreak,
       totalMatches,
@@ -135,44 +122,35 @@ export class StatsService {
     };
   }
 
-  // Resumo semanal
+  // Resumo semanal (delegado para computeWeeklyStats)
   async getWeeklySummary(userId: string) {
-    const completedActivities = await this.activityRepository.find({
-      where: { user_id: userId, isCompleted: true },
-      order: { startTime: 'ASC' },
-    });
-
-    return this.calculateWeeklyStats(completedActivities);
+    return this.computeWeeklyStats(userId);
   }
 
-  private calculateStreaks(activities: Activity[]): {
-    currentStreak: number;
-    bestStreak: number;
-  } {
-    if (activities.length === 0) return { currentStreak: 0, bestStreak: 0 };
+  // --- Agregação de streaks via datas distintas (max ~400 linhas) ---
+  private async computeStreaks(userId: string): Promise<{ currentStreak: number; bestStreak: number }> {
+    // Busca datas distintas de atividades nos últimos 2 anos (limita o volume)
+    const rows = await this.activityRepository
+      .createQueryBuilder('a')
+      .select('DATE(a.startTime)', 'activityDate')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .andWhere('a.startTime > :since', { since: new Date(Date.now() - 730 * 24 * 60 * 60 * 1000) })
+      .groupBy('DATE(a.startTime)')
+      .orderBy('activityDate', 'ASC')
+      .getRawMany<{ activityDate: string }>();
 
-    // Agrupar por data
-    const activityDates = new Set<string>();
-    for (const activity of activities) {
-      const date = new Date(activity.startTime);
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-      activityDates.add(dateStr);
-    }
+    if (rows.length === 0) return { currentStreak: 0, bestStreak: 0 };
 
-    const sortedDates = Array.from(activityDates).sort();
-    if (sortedDates.length === 0)
-      return { currentStreak: 0, bestStreak: 0 };
+    const sortedDates = rows.map((r) => r.activityDate);
 
-    // Calcular melhor streak
+    // Best streak
     let bestStreak = 1;
     let tempStreak = 1;
-
     for (let i = 1; i < sortedDates.length; i++) {
       const prev = new Date(sortedDates[i - 1]);
       const curr = new Date(sortedDates[i]);
-      const diffMs = curr.getTime() - prev.getTime();
-      const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
+      const diffDays = Math.round((curr.getTime() - prev.getTime()) / 86400000);
       if (diffDays === 1) {
         tempStreak++;
         if (tempStreak > bestStreak) bestStreak = tempStreak;
@@ -181,23 +159,21 @@ export class StatsService {
       }
     }
 
-    // Calcular streak atual
-    const reversedDates = [...sortedDates].reverse();
+    // Current streak
     const today = new Date();
-    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+    const todayStr = today.toISOString().slice(0, 10);
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayStr = `${yesterday.getFullYear()}-${String(yesterday.getMonth() + 1).padStart(2, '0')}-${String(yesterday.getDate()).padStart(2, '0')}`;
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
 
+    const reversedDates = [...sortedDates].reverse();
     let currentStreak = 0;
     if (reversedDates[0] === todayStr || reversedDates[0] === yesterdayStr) {
       currentStreak = 1;
       for (let i = 0; i < reversedDates.length - 1; i++) {
         const curr = new Date(reversedDates[i]);
         const next = new Date(reversedDates[i + 1]);
-        const diffMs = curr.getTime() - next.getTime();
-        const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-
+        const diffDays = Math.round((curr.getTime() - next.getTime()) / 86400000);
         if (diffDays === 1) {
           currentStreak++;
         } else {
@@ -209,111 +185,74 @@ export class StatsService {
     return { currentStreak, bestStreak };
   }
 
-  private calculateSportBreakdown(activities: Activity[]) {
-    const sportMap = new Map<
-      string,
-      { count: number; totalDistance: number; totalDuration: number }
-    >();
+  // --- Últimos 7 dias via GROUP BY ---
+  private async computeWeeklyStats(userId: string) {
+    const since = new Date();
+    since.setDate(since.getDate() - 6);
+    since.setHours(0, 0, 0, 0);
 
-    for (const activity of activities) {
-      const sport = activity.sport;
-      const existing = sportMap.get(sport) || {
-        count: 0,
-        totalDistance: 0,
-        totalDuration: 0,
-      };
-      existing.count++;
-      existing.totalDistance += activity.distance || 0;
-      existing.totalDuration += activity.duration || 0;
-      sportMap.set(sport, existing);
-    }
+    const rows = await this.activityRepository
+      .createQueryBuilder('a')
+      .select('DATE(a.startTime)', 'activityDate')
+      .addSelect('COALESCE(SUM(a.distance), 0)', 'totalDistance')
+      .addSelect('COALESCE(SUM(a.duration), 0)', 'totalDuration')
+      .addSelect('COUNT(a.id)', 'count')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .andWhere('a.startTime >= :since', { since: since.toISOString() })
+      .groupBy('DATE(a.startTime)')
+      .getRawMany<{ activityDate: string; totalDistance: string; totalDuration: string; count: string }>();
 
-    return Array.from(sportMap.entries()).map(([sport, data]) => ({
-      sport,
-      count: data.count,
-      totalDistance: Math.round((data.totalDistance / 1000) * 100) / 100,
-      totalDuration: Math.round((data.totalDuration / 3600) * 100) / 100,
-    }));
-  }
-
-  private calculateWeeklyStats(activities: Activity[]) {
-    const stats: {
-      date: string;
-      distance: number;
-      duration: number;
-      count: number;
-    }[] = [];
-    const today = new Date();
-
+    const rowMap = new Map(rows.map((r) => [r.activityDate, r]));
+    const stats = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today);
+      const date = new Date();
       date.setDate(date.getDate() - i);
-      const dateStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
-
-      const dayActivities = activities.filter((a) => {
-        const aDate = new Date(a.startTime);
-        const aDateStr = `${aDate.getFullYear()}-${String(aDate.getMonth() + 1).padStart(2, '0')}-${String(aDate.getDate()).padStart(2, '0')}`;
-        return aDateStr === dateStr;
-      });
-
+      const dateStr = date.toISOString().slice(0, 10);
+      const row = rowMap.get(dateStr);
       stats.push({
         date: dateStr,
-        distance:
-          Math.round(
-            (dayActivities.reduce((sum, a) => sum + (a.distance || 0), 0) /
-              1000) *
-              100,
-          ) / 100,
-        duration:
-          Math.round(
-            (dayActivities.reduce((sum, a) => sum + (a.duration || 0), 0) /
-              3600) *
-              100,
-          ) / 100,
-        count: dayActivities.length,
+        distance: row ? Math.round((parseFloat(row.totalDistance) / 1000) * 100) / 100 : 0,
+        duration: row ? Math.round((parseFloat(row.totalDuration) / 3600) * 100) / 100 : 0,
+        count: row ? parseInt(row.count, 10) : 0,
       });
     }
-
     return stats;
   }
 
-  private calculateMonthlyStats(activities: Activity[]) {
-    const stats: {
-      month: string;
-      distance: number;
-      duration: number;
-      count: number;
-    }[] = [];
-    const today = new Date();
+  // --- Últimos 12 meses via GROUP BY ---
+  private async computeMonthlyStats(userId: string) {
+    const since = new Date();
+    since.setMonth(since.getMonth() - 11);
+    since.setDate(1);
+    since.setHours(0, 0, 0, 0);
 
+    const rows = await this.activityRepository
+      .createQueryBuilder('a')
+      .select("strftime('%Y-%m', a.startTime)", 'yearMonth')
+      .addSelect('COALESCE(SUM(a.distance), 0)', 'totalDistance')
+      .addSelect('COALESCE(SUM(a.duration), 0)', 'totalDuration')
+      .addSelect('COUNT(a.id)', 'count')
+      .where('a.user_id = :userId', { userId })
+      .andWhere('a.isCompleted = :c', { c: true })
+      .andWhere('a.startTime >= :since', { since: since.toISOString() })
+      .groupBy("strftime('%Y-%m', a.startTime)")
+      .getRawMany<{ yearMonth: string; totalDistance: string; totalDuration: string; count: string }>();
+
+    const rowMap = new Map(rows.map((r) => [r.yearMonth, r]));
+    const stats = [];
+    const now = new Date();
     for (let i = 11; i >= 0; i--) {
-      const date = new Date(today.getFullYear(), today.getMonth() - i, 1);
+      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const monthStr = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-      const monthActivities = activities.filter((a) => {
-        const aDate = new Date(a.startTime);
-        const aMonthStr = `${aDate.getFullYear()}-${String(aDate.getMonth() + 1).padStart(2, '0')}`;
-        return aMonthStr === monthStr;
-      });
-
+      const row = rowMap.get(monthStr);
       stats.push({
         month: monthStr,
-        distance:
-          Math.round(
-            (monthActivities.reduce((sum, a) => sum + (a.distance || 0), 0) /
-              1000) *
-              100,
-          ) / 100,
-        duration:
-          Math.round(
-            (monthActivities.reduce((sum, a) => sum + (a.duration || 0), 0) /
-              3600) *
-              100,
-          ) / 100,
-        count: monthActivities.length,
+        distance: row ? Math.round((parseFloat(row.totalDistance) / 1000) * 100) / 100 : 0,
+        duration: row ? Math.round((parseFloat(row.totalDuration) / 3600) * 100) / 100 : 0,
+        count: row ? parseInt(row.count, 10) : 0,
       });
     }
-
     return stats;
   }
 }
