@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, MoreThan } from 'typeorm';
 import { Story } from './entities/story.entity';
 import { StoryView } from './entities/story-view.entity';
+import { sanitizeText } from '../common/security/sanitize.util';
 
 @Injectable()
 export class StoriesService {
@@ -30,10 +31,10 @@ export class StoriesService {
       user_id: userId,
       mediaUrl,
       mediaType: options.mediaType || 'image',
-      caption: options.caption ?? null,
+      caption: options.caption ? (sanitizeText(options.caption, 200) || null) : null,
       activity_id: options.activityId ?? null,
-      sport: options.sport ?? null,
-      distanceKm: options.distanceKm ?? null,
+      sport: options.sport ? (sanitizeText(options.sport, 40) || null) : null,
+      distanceKm: options.distanceKm != null ? Math.max(0, Math.min(10000, options.distanceKm)) : null,
       expiresAt,
     });
     return this.storyRepo.save(story);

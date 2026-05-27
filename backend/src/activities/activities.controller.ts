@@ -44,9 +44,9 @@ export class ActivitiesController {
   @Post(':id/points')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Adicionar ponto GPS à atividade' })
-  addPoint(@Param('id') id: string, @Body() dto: AddPointDto) {
-    return this.activitiesService.addPoint(id, dto);
+  @ApiOperation({ summary: 'Adicionar ponto GPS à atividade (somente o dono)' })
+  addPoint(@CurrentUser() user: User, @Param('id') id: string, @Body() dto: AddPointDto) {
+    return this.activitiesService.addPoint(id, user.id, dto);
   }
 
   @Put(':id/finish')
@@ -215,7 +215,8 @@ export class ActivitiesController {
   ) {
     const latitude = parseFloat(lat);
     const longitude = parseFloat(lng);
-    const radius = parseFloat(radiusKm || '5');
+    // Cap radius: mín 0.5km, máx 50km — previne varredura massiva do banco
+    const radius = Math.max(0.5, Math.min(50, parseFloat(radiusKm || '5')));
     if (!isFinite(latitude) || !isFinite(longitude)) {
       return { points: [] };
     }
@@ -225,10 +226,14 @@ export class ActivitiesController {
 
   // === EXPORT GPX ===
   @Get(':id/export.gpx')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Exportar atividade como GPX (compatível Strava, Garmin Connect)' })
-  async exportGpx(@Param('id') id: string, @Res() res: Response) {
+  async exportGpx(@CurrentUser() user: User, @Param('id') id: string, @Res() res: Response) {
     const detail = await this.activitiesService.getActivityDetail(id);
     if (!detail) return res.status(404).send('Activity not found');
+    // GPS privacy: só o dono pode exportar a rota precisa
+    if ((detail as any).user_id !== user.id) return res.status(403).send('Forbidden');
     const gpx = this.buildGpx(detail);
     res.setHeader('Content-Type', 'application/gpx+xml');
     res.setHeader('Content-Disposition', `attachment; filename="sync-${id}.gpx"`);

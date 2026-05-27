@@ -254,12 +254,16 @@ export class ActivitiesService {
   }
 
   // Adicionar ponto GPS durante a atividade
-  async addPoint(activityId: string, dto: AddPointDto): Promise<ActivityPoint> {
+  async addPoint(activityId: string, userId: string, dto: AddPointDto): Promise<ActivityPoint> {
     const activity = await this.activityRepository.findOne({
       where: { id: activityId },
     });
     if (!activity) {
       throw new NotFoundException('Atividade não encontrada');
+    }
+    // Ownership check — impede que outro usuário injete pontos GPS em atividade alheia
+    if (activity.user_id !== userId) {
+      throw new BadRequestException('Sem permissão para editar esta atividade');
     }
     if (activity.isCompleted) {
       throw new BadRequestException('Atividade já finalizada');
@@ -341,11 +345,13 @@ export class ActivitiesService {
 
   // Histórico de atividades do usuário
   async getUserActivities(userId: string, page: number = 1, limit: number = 20) {
+    const safePage = Math.max(1, Math.min(page, 500));
+    const safeLimit = Math.max(1, Math.min(limit, 50));
     return this.activityRepository.findAndCount({
       where: { user_id: userId, isCompleted: true },
       order: { startTime: 'DESC' },
-      skip: (page - 1) * limit,
-      take: limit,
+      skip: (safePage - 1) * safeLimit,
+      take: safeLimit,
     });
   }
 
@@ -408,9 +414,9 @@ export class ActivitiesService {
       satisfaction: data.satisfaction != null ? Math.max(1, Math.min(5, data.satisfaction)) : null,
       rpe: data.rpe != null ? Math.max(1, Math.min(10, data.rpe)) : null,
       pain: data.pain != null ? Math.max(0, Math.min(5, data.pain)) : null,
-      workoutType: data.workoutType || null,
-      weatherFelt: data.weatherFelt || null,
-      notes: typeof data.notes === 'string' ? data.notes.slice(0, 500) : null,
+      workoutType: typeof data.workoutType === 'string' ? sanitizeText(data.workoutType, 40) || null : null,
+      weatherFelt: typeof data.weatherFelt === 'string' ? sanitizeText(data.weatherFelt, 40) || null : null,
+      notes: typeof data.notes === 'string' ? sanitizeText(data.notes, 500) || null : null,
     };
 
     if (existing) {
