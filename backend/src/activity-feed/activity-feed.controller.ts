@@ -1,6 +1,7 @@
 import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ActivityFeedService } from './activity-feed.service';
+import { CreateFeedPostDto } from './dto/create-feed-post.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -30,8 +31,8 @@ export class ActivityFeedController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Postar atividade no feed' })
-  create(@CurrentUser() user: User, @Body() body: any) {
-    return this.service.create(user.id, body);
+  create(@CurrentUser() user: User, @Body() dto: CreateFeedPostDto) {
+    return this.service.create(user.id, dto);
   }
 
   @Post(':id/like')

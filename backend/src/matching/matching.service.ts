@@ -22,20 +22,30 @@ export class MatchingService {
     private readonly activityRepository: Repository<Activity>,
   ) {}
 
-  // Pace médio do usuário nos últimos 30 dias (em min/km)
-  private async getUserAvgPace(userId: string): Promise<number | null> {
+  /**
+   * Pace médio de múltiplos usuários nos últimos 30 dias — uma query em batch
+   * em vez de N queries individuais.
+   */
+  private async getBatchAvgPace(userIds: string[]): Promise<Map<string, number>> {
+    if (userIds.length === 0) return new Map();
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const activities = await this.activityRepository
+    const rows = await this.activityRepository
       .createQueryBuilder('a')
-      .where('a.user_id = :userId', { userId })
+      .select('a.user_id', 'userId')
+      .addSelect('AVG(a.avgPace)', 'avgPace')
+      .where('a.user_id IN (:...userIds)', { userIds })
       .andWhere('a.isCompleted = :completed', { completed: true })
       .andWhere('a.avgPace > 0')
       .andWhere('a.startTime > :since', { since: thirtyDaysAgo })
-      .select('AVG(a.avgPace)', 'avgPace')
-      .getRawOne<{ avgPace: number | string | null }>();
-    if (!activities || activities.avgPace === null) return null;
-    const pace = typeof activities.avgPace === 'string' ? parseFloat(activities.avgPace) : activities.avgPace;
-    return pace > 0 ? pace : null;
+      .groupBy('a.user_id')
+      .getRawMany<{ userId: string; avgPace: string | number | null }>();
+
+    const map = new Map<string, number>();
+    for (const row of rows) {
+      const pace = typeof row.avgPace === 'string' ? parseFloat(row.avgPace) : row.avgPace;
+      if (pace && pace > 0) map.set(row.userId, pace);
+    }
+    return map;
   }
 
   // Algoritmo de discovery - busca usuarios proximos e compativeis
@@ -84,33 +94,43 @@ export class MatchingService {
       filtered = filtered.filter((u) => u.availability?.includes(query.availability!));
     }
 
-    // Computa distância + pace pra cada candidato
-    const usersWithMeta = await Promise.all(
-      filtered.map(async (u) => {
-        const distance = haversineKm(
+    // Computa distância para pré-filtrar antes de buscar pace (reduz o batch)
+    const withDistance = filtered
+      .map((u) => ({
+        ...u,
+        distance: haversineKm(
           (currentUser.latitude ?? 0) as number,
           (currentUser.longitude ?? 0) as number,
           (u.latitude ?? 0) as number,
           (u.longitude ?? 0) as number,
-        );
-        const avgPace = await this.getUserAvgPace(u.id);
-        return { ...u, distance, avgPace };
-      }),
-    );
+        ),
+      }))
+      .filter((u) => u.distance <= radiusKm);
 
-    // Filtra por raio + pace
+    // Batch pace query — uma única query para todos os candidatos no raio
+    const candidateIds = withDistance.map((u) => u.id);
+    const [paceMap, myPaceRaw] = await Promise.all([
+      this.getBatchAvgPace(candidateIds),
+      this.getBatchAvgPace([userId]),
+    ]);
+    const myPace = myPaceRaw.get(userId) ?? 0;
+
+    const usersWithMeta = withDistance.map((u) => ({
+      ...u,
+      avgPace: paceMap.get(u.id) ?? null,
+    }));
+
+    // Filtra por pace
     const results = usersWithMeta
-      .filter((u) => u.distance <= radiusKm)
       .filter((u) => {
         if (query.paceMin && u.avgPace && u.avgPace < query.paceMin) return false;
         if (query.paceMax && u.avgPace && u.avgPace > query.paceMax) return false;
         return true;
       })
       .sort((a, b) => {
-        // Sort por compatibilidade: distância + diff de pace
-        const myPace = 0; // pace do user atual (calculável se necessário)
-        const paceDiffA = a.avgPace ? Math.abs((a.avgPace || 0) - myPace) : 99;
-        const paceDiffB = b.avgPace ? Math.abs((b.avgPace || 0) - myPace) : 99;
+        // Sort por compatibilidade: distância + diff de pace (usa pace real do usuário)
+        const paceDiffA = a.avgPace && myPace ? Math.abs(a.avgPace - myPace) : 99;
+        const paceDiffB = b.avgPace && myPace ? Math.abs(b.avgPace - myPace) : 99;
         return a.distance + paceDiffA / 10 - (b.distance + paceDiffB / 10);
       });
 
