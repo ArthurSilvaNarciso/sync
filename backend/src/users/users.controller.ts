@@ -11,6 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ReportUserDto } from './dto/report-user.dto';
@@ -50,6 +51,7 @@ export class UsersController {
   @Post('me/avatar')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 5 uploads / minuto (payload pesado)
   @ApiOperation({ summary: 'Upload do avatar como base64 (max ~400KB após compressão)' })
   async uploadAvatar(
     @CurrentUser() user: User,
@@ -71,6 +73,7 @@ export class UsersController {
   @Post('me/banner')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 5 } }) // 5 uploads / minuto
   @ApiOperation({ summary: 'Upload do banner como base64 (max ~800KB)' })
   async uploadBanner(
     @CurrentUser() user: User,
@@ -91,6 +94,7 @@ export class UsersController {
   @Post('me/photos')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 3 } }) // 3 uploads / minuto (payload maior)
   @ApiOperation({ summary: 'Upload de fotos do perfil como base64 (máx 5, cada ~400KB)' })
   async uploadProfilePhotos(
     @CurrentUser() user: User,
