@@ -149,11 +149,17 @@ export class UsersService {
     page: number = 1,
     limit: number = 20,
   ) {
-    const skip = (page - 1) * limit;
+    // Cap para prevenir varredura de banco via parâmetros manipulados
+    const safePage = Math.max(1, Math.min(page, 100));
+    const safeLimit = Math.max(1, Math.min(limit, 50));
+    const skip = (safePage - 1) * safeLimit;
+    // Sanitiza o termo de busca antes de usar em LIKE
+    const safeQuery = sanitizeText(query, 100).replace(/[%_\\]/g, '\\$&');
+    if (!safeQuery) return { users: [], total: 0, page: safePage, limit: safeLimit, totalPages: 0 };
 
     const [users, total] = await this.userRepository
       .createQueryBuilder('user')
-      .where('user.name LIKE :query', { query: `%${query}%` })
+      .where('user.name LIKE :query', { query: `%${safeQuery}%` })
       .andWhere('user.id != :currentUserId', { currentUserId })
       .andWhere('user.isActive = :isActive', { isActive: true })
       .select([
@@ -165,15 +171,15 @@ export class UsersService {
         'user.city',
       ])
       .skip(skip)
-      .take(limit)
+      .take(safeLimit)
       .getManyAndCount();
 
     return {
       users,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 
