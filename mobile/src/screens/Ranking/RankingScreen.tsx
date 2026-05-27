@@ -188,7 +188,7 @@ export default function RankingScreen({ navigation }: Props) {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="trophy-outline" size={48} color={colors.border} />
+              <Ionicons name="trophy-outline" size={48} color="rgba(255,255,255,0.20)" />
               <Text style={styles.empty}>
                 {scope === 'friends'
                   ? 'Você ainda não tem amigos no app. Vá pro Descobrir!'
@@ -356,7 +356,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.10)',
     marginLeft: spacing.sm,
   },
   listInfo: {

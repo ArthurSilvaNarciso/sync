@@ -411,7 +411,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: colors.success,
     borderWidth: 2,
-    borderColor: colors.dark.surface,
+    borderColor: '#0A0A0F',
   },
   headerTitle: {
     fontSize: fontSize.md,
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     width: 72,
     height: 72,
     borderRadius: 36,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: spacing.md,

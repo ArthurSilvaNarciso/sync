@@ -344,7 +344,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
                 setLiveShare(v);
                 if (v) Alert.alert('Ativado', 'Amigos poderao ver sua localizacao durante o treino.');
               }}
-              trackColor={{ false: colors.dark.surfaceLight, true: colors.dark.accent }}
+              trackColor={{ false: '#2A2A40', true: '#FF6B35' }}
               thumbColor={colors.white}
             />
           </TouchableOpacity>
@@ -360,7 +360,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
             <Switch
               value={countLaps}
               onValueChange={setCountLaps}
-              trackColor={{ false: colors.dark.surfaceLight, true: colors.dark.accent }}
+              trackColor={{ false: '#2A2A40', true: '#FF6B35' }}
               thumbColor={colors.white}
             />
           </TouchableOpacity>

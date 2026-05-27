@@ -441,7 +441,7 @@ const styles = StyleSheet.create({
     width: 54,
     height: 54,
     borderRadius: 27,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.10)',
     borderWidth: 2,
     borderColor: '#0A0A0F',
   },
@@ -449,7 +449,7 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   info: {
     flex: 1,

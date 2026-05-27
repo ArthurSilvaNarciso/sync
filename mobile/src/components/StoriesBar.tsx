@@ -210,7 +210,7 @@ const styles = StyleSheet.create({
     borderRadius: AVATAR_SIZE / 2,
   },
   avatarFallback: {
-    backgroundColor: colors.surface,
+    backgroundColor: 'rgba(255,107,53,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },

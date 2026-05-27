@@ -190,7 +190,7 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
           contentContainerStyle={styles.list}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="fitness-outline" size={48} color={colors.dark.surfaceLight} />
+              <Ionicons name="fitness-outline" size={48} color="rgba(255,255,255,0.20)" />
               <Text style={styles.emptyTitle}>Nenhuma atividade</Text>
               <Text style={styles.emptyText}>
                 Comece a treinar para ver seu historico aqui

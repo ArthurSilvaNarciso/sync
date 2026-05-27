@@ -459,7 +459,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 42, height: 42, borderRadius: 21,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   userName: { color: '#fff', fontWeight: '700', fontSize: 15 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
@@ -523,7 +523,7 @@ const styles = StyleSheet.create({
     height: 240,
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.07)',
   },
 
   // ── Actions ───────────────────────────────────────────────────────────────

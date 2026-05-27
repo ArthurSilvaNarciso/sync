@@ -241,7 +241,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
     gap: spacing.sm,
   },
-  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: colors.dark.surface },
+  avatar: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.10)' },
   bubble: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.05)',
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#0D0D1A',
     gap: spacing.sm,
   },
-  inputAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: colors.dark.surface },
+  inputAvatar: { width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(255,255,255,0.10)' },
   input: {
     flex: 1,
     backgroundColor: 'rgba(255,255,255,0.05)',

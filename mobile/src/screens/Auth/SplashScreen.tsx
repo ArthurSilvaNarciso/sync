@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: colors.border,
+    backgroundColor: 'rgba(255,255,255,0.20)',
   },
   dotActive: {
     backgroundColor: colors.primary,

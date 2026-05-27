@@ -833,8 +833,10 @@ const styles = StyleSheet.create({
   },
   lapsContainer: {
     marginBottom: spacing.sm,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.06)',
     borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
     padding: spacing.sm,
   },
   lapsTitle: {

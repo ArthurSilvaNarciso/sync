@@ -194,7 +194,7 @@ const styles = StyleSheet.create({
   },
   avatar: {
     width: 48, height: 48, borderRadius: 24,
-    backgroundColor: colors.dark.surface,
+    backgroundColor: 'rgba(255,255,255,0.10)',
   },
   userInfo: { flex: 1 },
   userName: { fontSize: fontSize.md, fontWeight: '700', color: colors.dark.text },

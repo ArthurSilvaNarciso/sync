@@ -102,7 +102,7 @@ export default function RegisterScreen({ navigation }: Props) {
   };
 
   const getPasswordStrength = () => {
-    if (password.length === 0) return { level: 0, label: '', color: colors.border };
+    if (password.length === 0) return { level: 0, label: '', color: 'rgba(255,255,255,0.15)' };
     if (password.length < 8) return { level: 1, label: 'Fraca (mín 8)', color: colors.error };
     if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
       return { level: 2, label: 'Precisa letras + números', color: colors.warning };
