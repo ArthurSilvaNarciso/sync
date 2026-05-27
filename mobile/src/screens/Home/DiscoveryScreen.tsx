@@ -71,6 +71,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [filterSport, setFilterSport] = useState('all');
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
+  const [weatherCardDismissed, setWeatherCardDismissed] = useState(false);
   const [creatingStory, setCreatingStory] = useState(false);
   const [viewingStory, setViewingStory] = useState<{ stories: Story[]; initialIndex: number; markSeen?: (userId: string) => void } | null>(null);
   const [storiesRefreshKey, setStoriesRefreshKey] = useState(0);
@@ -512,6 +513,43 @@ export default function DiscoveryScreen({ navigation }: Props) {
         </Modal>
       )}
 
+      {/* Weather workout suggestion card — shown when data is available and not dismissed */}
+      {weather && recommendation && !weatherCardDismissed && (
+        <View style={[styles.weatherSuggestionCard, { borderColor: recommendation.color + '30' }]}>
+          <View style={styles.weatherSuggestionLeft}>
+            <View style={[styles.weatherScoreCircle, { borderColor: recommendation.color + '50' }]}>
+              <Ionicons name={weather.weatherIcon as any} size={18} color={recommendation.color} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.weatherSuggestionTitle, { color: recommendation.color }]}>
+                {weather.temperature}° · {recommendation.message}
+              </Text>
+              <Text style={styles.weatherSuggestionSub} numberOfLines={1}>
+                {recommendation.tips[0]}
+              </Text>
+              {recommendation.bestActivities.length > 0 && (
+                <View style={styles.weatherActivities}>
+                  {recommendation.bestActivities.slice(0, 3).map((activity) => (
+                    <View key={activity} style={[styles.weatherActivityChip, { borderColor: recommendation.color + '40' }]}>
+                      <Text style={[styles.weatherActivityText, { color: recommendation.color }]}>
+                        {activity}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+          <TouchableOpacity
+            style={styles.weatherDismissBtn}
+            onPress={() => setWeatherCardDismissed(true)}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons name="close" size={14} color="rgba(255,255,255,0.3)" />
+          </TouchableOpacity>
+        </View>
+      )}
+
       <View
         style={styles.cardsContainer}
         onLayout={(e) => setDeckH(e.nativeEvent.layout.height)}
@@ -802,6 +840,42 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: colors.dark.text,
   },
+
+  // Weather suggestion card
+  weatherSuggestionCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginHorizontal: 12,
+    marginBottom: 6,
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderRadius: 14,
+    borderWidth: 1,
+    padding: 10,
+    gap: 8,
+  },
+  weatherSuggestionLeft: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, flex: 1 },
+  weatherScoreCircle: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  weatherSuggestionTitle: { fontSize: 12, fontWeight: '700', lineHeight: 16 },
+  weatherSuggestionSub: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  weatherActivities: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
+  weatherActivityChip: {
+    paddingHorizontal: 8, paddingVertical: 2,
+    borderRadius: 20, borderWidth: 1,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  weatherActivityText: { fontSize: 10, fontWeight: '600' },
+  weatherDismissBtn: {
+    width: 20, height: 20, borderRadius: 10,
+    justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+
   matchBadgeBtn: {
     width: 40,
     height: 40,

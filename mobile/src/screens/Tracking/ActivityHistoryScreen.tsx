@@ -36,9 +36,34 @@ const sportLabels: Record<string, string> = {
   gym: 'Academia',
 };
 
+// Map activityId → { isPRDistance: boolean; isPRPace: boolean }
+function computePRMap(acts: Activity[]): Map<string, { distPR: boolean; pacePR: boolean }> {
+  const map = new Map<string, { distPR: boolean; pacePR: boolean }>();
+  // Group by sport
+  const bySport = new Map<string, Activity[]>();
+  for (const a of acts) {
+    if (!bySport.has(a.sport)) bySport.set(a.sport, []);
+    bySport.get(a.sport)!.push(a);
+  }
+  // For each sport find max distance and best (lowest) pace
+  bySport.forEach((sportActs) => {
+    const maxDist = Math.max(...sportActs.map((a) => a.distance ?? 0));
+    const paced = sportActs.filter((a) => a.avgPace);
+    const bestPace = paced.length ? Math.min(...paced.map((a) => a.avgPace!)) : null;
+    for (const a of sportActs) {
+      map.set(a.id, {
+        distPR: (a.distance ?? 0) === maxDist && maxDist > 0,
+        pacePR: !!(a.avgPace && bestPace && a.avgPace === bestPace),
+      });
+    }
+  });
+  return map;
+}
+
 export default function ActivityHistoryScreen({ navigation }: Props) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [prMap, setPrMap] = useState<Map<string, { distPR: boolean; pacePR: boolean }>>(new Map());
 
   useEffect(() => {
     loadActivities();
@@ -47,7 +72,9 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
   const loadActivities = async () => {
     try {
       const { data } = await api.get('/activities/history');
-      setActivities(data[0]);
+      const list: Activity[] = Array.isArray(data) ? (Array.isArray(data[0]) ? data[0] : data) : [];
+      setActivities(list);
+      setPrMap(computePRMap(list));
     } catch (error) {
       console.log('Error:', error);
     } finally {
@@ -62,24 +89,42 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
     return `${m}min`;
   };
 
-  const renderItem = ({ item }: { item: Activity }) => (
+  const renderItem = ({ item }: { item: Activity }) => {
+    const pr = prMap.get(item.id);
+    const hasPR = pr?.distPR || pr?.pacePR;
+
+    return (
     <TouchableOpacity
-      style={styles.card}
+      style={[styles.card, hasPR && styles.cardPR]}
       onPress={() => navigation.navigate('ActivitySummary', { activityId: item.id })}
       activeOpacity={0.7}
     >
       <View style={styles.cardHeader}>
-        <View style={styles.sportIconWrap}>
+        <View style={[styles.sportIconWrap, hasPR && { backgroundColor: 'rgba(252,211,77,0.15)' }]}>
           <Ionicons
             name={sportIcons[item.sport] || 'fitness-outline'}
             size={20}
-            color={colors.dark.accent}
+            color={hasPR ? '#FCD34D' : colors.dark.accent}
           />
         </View>
         <View style={styles.cardInfo}>
-          <Text style={styles.sportName}>
-            {sportLabels[item.sport] || item.sport}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text style={styles.sportName}>
+              {sportLabels[item.sport] || item.sport}
+            </Text>
+            {pr?.distPR && (
+              <View style={styles.prBadge}>
+                <Ionicons name="trophy" size={10} color="#FCD34D" />
+                <Text style={styles.prBadgeText}>🏅 Dist. PR</Text>
+              </View>
+            )}
+            {pr?.pacePR && !pr?.distPR && (
+              <View style={styles.prBadge}>
+                <Ionicons name="flash" size={10} color="#FCD34D" />
+                <Text style={styles.prBadgeText}>⚡ Pace PR</Text>
+              </View>
+            )}
+          </View>
           <Text style={styles.dateText}>
             {new Date(item.startTime).toLocaleDateString('pt-BR', {
               day: '2-digit',
@@ -124,7 +169,8 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
         </View>
       </View>
     </TouchableOpacity>
-  );
+    );
+  };
 
   // Group by month
   const totalDistance = activities.reduce((sum, a) => sum + a.distance, 0);
@@ -285,6 +331,18 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  cardPR: {
+    borderColor: 'rgba(252,211,77,0.30)',
+    backgroundColor: 'rgba(252,211,77,0.04)',
+  },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  prBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(252,211,77,0.12)',
+    borderRadius: 20, borderWidth: 1, borderColor: 'rgba(252,211,77,0.30)',
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  prBadgeText: { fontSize: 10, fontWeight: '700', color: '#FCD34D' },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',

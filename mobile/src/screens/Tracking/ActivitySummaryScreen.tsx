@@ -22,6 +22,8 @@ import { TrackingStackParamList } from '../../navigation/types';
 import { Activity } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
 import api from '../../services/api';
 import { feedApi } from '../../services/feed.service';
 import { generateWorkoutSummary } from '../../utils/workout-summary';
@@ -191,16 +193,33 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
 
   const handleExport = () => {
     if (!activity) return;
-    const doExport = (format: 'gpx' | 'csv') => {
+    const doExport = async (format: 'gpx' | 'csv') => {
       const content = format === 'gpx' ? generateGpx() : generateCsv();
       if (!content) {
         Alert.alert('Sem dados', 'Esta atividade não tem pontos GPS para exportar.');
         return;
       }
-      Share.share({
-        title: `atividade_${activity.sport}_${new Date(activity.startTime).toISOString().slice(0, 10)}.${format}`,
-        message: content,
-      }).catch(() => {});
+      const filename = `atividade_${activity.sport}_${new Date(activity.startTime).toISOString().slice(0, 10)}.${format}`;
+      try {
+        // Write to a temp file and share as actual file (works with Garmin, Strava, etc.)
+        const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+        await FileSystem.writeAsStringAsync(fileUri, content, {
+          encoding: FileSystem.EncodingType.UTF8,
+        });
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(fileUri, {
+            mimeType: format === 'gpx' ? 'application/gpx+xml' : 'text/csv',
+            dialogTitle: `Exportar ${format.toUpperCase()}`,
+            UTI: format === 'gpx' ? 'com.topografix.gpx' : 'public.comma-separated-values-text',
+          });
+        } else {
+          // Fallback for web/simulators
+          await Share.share({ message: content, title: filename });
+        }
+      } catch {
+        showToast('Erro ao exportar arquivo', 'error');
+      }
     };
     if (Platform.OS === 'ios') {
       ActionSheetIOS.showActionSheetWithOptions(
