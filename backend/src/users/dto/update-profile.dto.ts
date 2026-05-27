@@ -6,6 +6,7 @@ import {
   IsNumber,
   IsDateString,
   IsIn,
+  MaxLength,
 } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { SportLevel } from '../entities/user.entity';
@@ -13,11 +14,13 @@ import { SportLevel } from '../entities/user.entity';
 export class UpdateProfileDto {
   @ApiPropertyOptional({ example: 'João Silva' })
   @IsString()
+  @MaxLength(100)
   @IsOptional()
   name?: string;
 
   @ApiPropertyOptional({ example: 'Amo correr e pedalar!' })
   @IsString()
+  @MaxLength(500)
   @IsOptional()
   bio?: string;
 
@@ -28,6 +31,8 @@ export class UpdateProfileDto {
 
   @ApiPropertyOptional({ example: ['running', 'cycling'] })
   @IsArray()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
   @IsOptional()
   sports?: string[];
 
@@ -38,11 +43,15 @@ export class UpdateProfileDto {
 
   @ApiPropertyOptional({ example: ['health', 'social'] })
   @IsArray()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
   @IsOptional()
   objectives?: string[];
 
   @ApiPropertyOptional({ example: ['morning', 'weekend'] })
   @IsArray()
+  @IsString({ each: true })
+  @MaxLength(40, { each: true })
   @IsOptional()
   availability?: string[];
 
