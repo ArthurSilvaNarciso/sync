@@ -119,11 +119,13 @@ export class ActivityFeedService {
   /** Retorna os IDs dos posts curtidos pelo usuário (para estado inicial do feed) */
   async getLikedPostIds(userId: string, postIds: string[]): Promise<string[]> {
     if (postIds.length === 0) return [];
+    // Cap a 100 IDs por chamada para evitar IN query gigante
+    const safeIds = postIds.slice(0, 100);
     const likes = await this.likeRepo
       .createQueryBuilder('fl')
       .select('fl.post_id')
       .where('fl.user_id = :userId', { userId })
-      .andWhere('fl.post_id IN (:...postIds)', { postIds })
+      .andWhere('fl.post_id IN (:...postIds)', { postIds: safeIds })
       .getRawMany();
     return likes.map((l) => l.fl_post_id);
   }

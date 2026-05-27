@@ -9,6 +9,27 @@ import { SwipeDto } from './dto/swipe.dto';
 import { DiscoveryQueryDto } from './dto/discovery-query.dto';
 import { haversineKm } from '../common/utils/haversine';
 
+// Projeta apenas campos públicos-seguros de um usuário descoberto/matched.
+// NÃO inclui email, latitude exata, longitude exata.
+function safeDiscoverUser(u: any) {
+  return {
+    id: u.id,
+    name: u.name,
+    avatarUrl: u.avatarUrl,
+    bannerUrl: u.bannerUrl,
+    profilePhotos: u.profilePhotos,
+    bio: u.bio,
+    city: u.city,     // cidade sem coordenadas precisas
+    sports: u.sports,
+    level: u.level,
+    objectives: u.objectives,
+    availability: u.availability,
+    subscriptionTier: u.subscriptionTier,
+    totalXP: u.totalXP,
+    createdAt: u.createdAt,
+  };
+}
+
 @Injectable()
 export class MatchingService {
   constructor(
@@ -137,7 +158,7 @@ export class MatchingService {
     // Paginacao
     const start = (page - 1) * limit;
     return results.slice(start, start + limit).map((u) => ({
-      ...u,
+      ...safeDiscoverUser(u),      // sem email / lat exata / long exata
       distance: Math.round(u.distance * 10) / 10,
       avgPace: u.avgPace ? Math.round(u.avgPace * 100) / 100 : null,
     }));
@@ -216,7 +237,7 @@ export class MatchingService {
 
     return matches.map((match) => ({
       matchId: match.id,
-      user: match.user1_id === userId ? match.user2 : match.user1,
+      user: safeDiscoverUser(match.user1_id === userId ? match.user2 : match.user1),
       createdAt: match.createdAt,
     }));
   }
