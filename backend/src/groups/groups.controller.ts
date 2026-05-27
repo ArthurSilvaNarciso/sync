@@ -53,7 +53,9 @@ export class GroupsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Ranking de membros (km contribuído)' })
-  members(@Param('id') id: string) {
+  async members(@CurrentUser() user: User, @Param('id') id: string) {
+    // Verifica acesso (grupos privados exigem membership)
+    await this.service.getById(id, user.id);
     return this.service.listMembers(id);
   }
 

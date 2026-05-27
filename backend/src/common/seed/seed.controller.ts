@@ -43,8 +43,12 @@ export class SeedController {
   ) {}
 
   @Get('seed-status')
-  @ApiOperation({ summary: 'Status do seed (quantos demo users existem)' })
-  async status() {
+  @ApiOperation({ summary: 'Status do seed (quantos demo users existem) — requer SEED_TOKEN' })
+  async status(@Headers('x-seed-token') token: string) {
+    // Protege mesmo o status endpoint — evita enumerar se é ambiente demo
+    if (!process.env.SEED_TOKEN || token !== process.env.SEED_TOKEN) {
+      throw new ForbiddenException('SEED_TOKEN inválido ou ausente');
+    }
     const count = await this.userRepo
       .createQueryBuilder('u')
       .where('u.email LIKE :p', { p: '%@demo.sync' })
@@ -53,21 +57,22 @@ export class SeedController {
   }
 
   @Post('seed-demo')
-  @ApiOperation({ summary: 'Popula DB com 20 usuários fake + atividades. Idempotente.' })
+  @ApiOperation({ summary: 'Popula DB com 20 usuários fake + atividades. Requer SEED_TOKEN sempre.' })
   async seed(@Headers('x-seed-token') token: string) {
-    // Anti-abuso: bloqueia se já populou (20 demo users existem) — exige token pra re-rodar
+    // SECURITY: requer SEED_TOKEN em TODAS as invocações — inclusive a primeira.
+    // Sem isso, qualquer pessoa poderia criar 20 usuários demo num DB vazio em produção.
+    if (!process.env.SEED_TOKEN || token !== process.env.SEED_TOKEN) {
+      throw new ForbiddenException('SEED_TOKEN inválido ou ausente');
+    }
+
     const existingCount = await this.userRepo
       .createQueryBuilder('u')
       .where('u.email LIKE :p', { p: '%@demo.sync' })
       .getCount();
 
     if (existingCount >= FAKE_USERS.length) {
-      // Já populou: exige SEED_TOKEN pra fazer qualquer coisa
-      if (!process.env.SEED_TOKEN || token !== process.env.SEED_TOKEN) {
-        throw new ForbiddenException('Demo já populado. Use SEED_TOKEN pra re-rodar.');
-      }
+      return { ok: true, message: 'Demo já populado (idempotente). Nada alterado.' };
     }
-    // Caso contrário: liberado (primeira execução em prod)
 
     const hashedPassword = await bcrypt.hash('demo1234', 10);
     let created = 0;

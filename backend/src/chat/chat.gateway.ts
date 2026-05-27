@@ -77,7 +77,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       }
 
       this.socketToUser.set(client.id, userId);
-      this.server.emit('userOnline', { userId });
+      // PRIVACY: não fazemos broadcast global de presença — evita expor quem está
+      // online para usuários que não são matches. O status é consultado via REST.
     } catch {
       client.emit('auth_error', { message: 'Autenticação falhou' });
       client.disconnect(true);
@@ -88,7 +89,7 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     const userId = this.socketToUser.get(client.id);
     if (userId) {
       this.socketToUser.delete(client.id);
-      this.server.emit('userOffline', { userId });
+      // PRIVACY: sem broadcast global de offline — ver nota em handleConnection
     }
     this.msgRate.delete(client.id);
   }

@@ -61,6 +61,14 @@ export class SubscriptionsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Upgrade pra Premium ou Pro (mock — Stripe TODO)' })
   async upgrade(@CurrentUser() user: User, @Body() body: { tier: 'premium' | 'atleta_pro' }) {
+    // SECURITY: em produção com Stripe configurado, upgrades devem vir APENAS
+    // via webhook assinado do Stripe — nunca via chamada direta do cliente.
+    if (process.env.STRIPE_SECRET_KEY) {
+      return {
+        error: 'use_stripe_checkout',
+        message: 'Stripe configurado. Use POST /subscriptions/stripe/checkout para iniciar pagamento.',
+      };
+    }
     const validTiers = ['premium', 'atleta_pro'];
     if (!validTiers.includes(body.tier)) {
       return { error: 'Tier inválido', validTiers };

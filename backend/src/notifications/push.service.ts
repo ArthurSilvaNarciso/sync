@@ -1,6 +1,6 @@
 // Envio de push via Expo Push API (free, sem key)
 // Docs: https://docs.expo.dev/push-notifications/sending-notifications/
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { PushToken } from './entities/push-token.entity';
@@ -32,9 +32,14 @@ export class PushService {
     platform?: string,
     deviceName?: string,
   ): Promise<PushToken> {
-    if (!token || !token.startsWith('ExponentPushToken[') && !token.startsWith('ExpoPushToken[')) {
-      // aceita também tokens não-Expo (raw FCM) — sem prefixo
+    // Validação básica: token não pode ser vazio nem gigante
+    if (!token || typeof token !== 'string' || token.trim().length === 0) {
+      throw new BadRequestException('Push token inválido');
     }
+    if (token.length > 300) {
+      throw new BadRequestException('Push token muito longo');
+    }
+    // aceita tokens Expo (ExponentPushToken[…] / ExpoPushToken[…]) e raw FCM/APNs
     const existing = await this.tokenRepo.findOne({
       where: { user_id: userId, token },
     });
