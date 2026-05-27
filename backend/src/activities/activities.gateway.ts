@@ -54,10 +54,9 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
 
   async handleConnection(client: Socket) {
     // Autenticação por JWT no handshake.
-    // Cliente envia `auth: { token }` ou query `?token=`.
-    const token =
-      (client.handshake.auth?.token as string | undefined) ||
-      (client.handshake.query?.token as string | undefined);
+    // SECURITY: token lido APENAS de handshake.auth — nunca de query params
+    // (query params ficam em access logs do servidor e no histórico do browser).
+    const token = client.handshake.auth?.token as string | undefined;
 
     if (!token) {
       // Anônimos podem APENAS observar (joinActivity em modo read-only)
@@ -189,8 +188,21 @@ export class ActivitiesGateway implements OnGatewayConnection, OnGatewayDisconne
   }
 
   @SubscribeMessage('finishActivity')
-  async onFinish(@MessageBody() data: { activityId: string }) {
+  async onFinish(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { activityId: string },
+  ) {
     if (!data?.activityId) return { ok: false };
+    // Ownership check — só o dono pode finalizar a atividade via socket
+    const userId = this.socketUser.get(client.id);
+    if (!userId) return { ok: false, error: 'unauthenticated' };
+    const activity = await this.activityRepository.findOne({
+      where: { id: data.activityId },
+      select: ['id', 'user_id'],
+    });
+    if (!activity || activity.user_id !== userId) {
+      return { ok: false, error: 'forbidden' };
+    }
     await this.flushActivity(data.activityId);
     this.server.to(`activity:${data.activityId}`).emit('activityFinished', {
       activityId: data.activityId,
