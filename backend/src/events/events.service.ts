@@ -14,6 +14,7 @@ import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
 import { haversineKm } from '../common/utils/haversine';
+import { sanitizeText } from '../common/security/sanitize.util';
 
 @Injectable()
 export class EventsService {
@@ -32,6 +33,9 @@ export class EventsService {
   async create(userId: string, dto: CreateEventDto): Promise<Event> {
     const event = this.eventRepository.create({
       ...dto,
+      title: sanitizeText(dto.title, 120),
+      description: sanitizeText(dto.description, 1000) || undefined,
+      address: sanitizeText(dto.address, 200) || undefined,
       creator_id: userId,
     });
     return this.eventRepository.save(event);
@@ -57,13 +61,13 @@ export class EventsService {
     const creator = await this.userRepository.findOne({ where: { id: userId } });
 
     const event = this.eventRepository.create({
-      title: dto.title || `${dto.sport} relâmpago em ${startsInMin}min`,
-      description: `Evento relâmpago criado por ${creator?.name || 'um atleta'}. Bora!`,
-      sport: dto.sport,
+      title: sanitizeText(dto.title, 120) || `${sanitizeText(dto.sport, 40)} relâmpago em ${startsInMin}min`,
+      description: `Evento relâmpago criado por ${sanitizeText(creator?.name, 100) || 'um atleta'}. Bora!`,
+      sport: sanitizeText(dto.sport, 40),
       date,
       latitude: dto.latitude,
       longitude: dto.longitude,
-      address: dto.address,
+      address: sanitizeText(dto.address, 200) || undefined,
       maxParticipants: dto.maxParticipants ?? 12,
       isFlash: true,
       creator_id: userId,
@@ -205,11 +209,13 @@ export class EventsService {
   // Adicionar comentário a um evento
   async addComment(eventId: string, userId: string, content: string): Promise<EventComment> {
     await this.findById(eventId);
+    const clean = sanitizeText(content, 500);
+    if (!clean) throw new BadRequestException('Comentário não pode ser vazio');
 
     const comment = this.commentRepository.create({
       event_id: eventId,
       user_id: userId,
-      content,
+      content: clean,
     });
     return this.commentRepository.save(comment);
   }

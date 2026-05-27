@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ActivityFeedPost } from './activity-feed.entity';
 import { FeedComment } from './feed-comment.entity';
+import { FeedLike } from './feed-like.entity';
 import { sanitizeText, sanitizeUrl } from '../common/security/sanitize.util';
 
 @Injectable()
@@ -12,6 +13,8 @@ export class ActivityFeedService {
     private readonly repo: Repository<ActivityFeedPost>,
     @InjectRepository(FeedComment)
     private readonly commentRepo: Repository<FeedComment>,
+    @InjectRepository(FeedLike)
+    private readonly likeRepo: Repository<FeedLike>,
   ) {}
 
   async create(
@@ -63,20 +66,47 @@ export class ActivityFeedService {
     });
   }
 
-  async like(postId: string) {
+  async like(postId: string, userId: string) {
     const post = await this.repo.findOne({ where: { id: postId } });
     if (!post) throw new NotFoundException('Post não encontrado');
+
+    // Idempotente: insere somente se o usuário ainda não curtiu
+    const existing = await this.likeRepo.findOne({ where: { post_id: postId, user_id: userId } });
+    if (existing) {
+      return { likesCount: post.likesCount, alreadyLiked: true };
+    }
+
+    await this.likeRepo.save({ post_id: postId, user_id: userId });
     await this.repo.increment({ id: postId }, 'likesCount', 1);
-    return { likesCount: post.likesCount + 1 };
+    return { likesCount: post.likesCount + 1, alreadyLiked: false };
   }
 
-  async unlike(postId: string) {
+  async unlike(postId: string, userId: string) {
     const post = await this.repo.findOne({ where: { id: postId } });
     if (!post) throw new NotFoundException('Post não encontrado');
+
+    const existing = await this.likeRepo.findOne({ where: { post_id: postId, user_id: userId } });
+    if (!existing) {
+      return { likesCount: post.likesCount, alreadyUnliked: true };
+    }
+
+    await this.likeRepo.delete({ post_id: postId, user_id: userId });
     if (post.likesCount > 0) {
       await this.repo.decrement({ id: postId }, 'likesCount', 1);
     }
-    return { likesCount: Math.max(0, post.likesCount - 1) };
+    return { likesCount: Math.max(0, post.likesCount - 1), alreadyUnliked: false };
+  }
+
+  /** Retorna os IDs dos posts curtidos pelo usuário (para estado inicial do feed) */
+  async getLikedPostIds(userId: string, postIds: string[]): Promise<string[]> {
+    if (postIds.length === 0) return [];
+    const likes = await this.likeRepo
+      .createQueryBuilder('fl')
+      .select('fl.post_id')
+      .where('fl.user_id = :userId', { userId })
+      .andWhere('fl.post_id IN (:...postIds)', { postIds })
+      .getRawMany();
+    return likes.map((l) => l.fl_post_id);
   }
 
   async getComments(postId: string, page = 1, limit = 20) {

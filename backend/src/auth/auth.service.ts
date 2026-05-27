@@ -223,6 +223,7 @@ export class AuthService {
   }
 
   private publicUser(user: User) {
+    // lat/long NÃO são expostos — apenas city para privacidade do usuário (LGPD)
     return {
       id: user.id,
       name: user.name,
@@ -236,8 +237,6 @@ export class AuthService {
       objectives: user.objectives,
       availability: user.availability,
       city: user.city,
-      latitude: user.latitude,
-      longitude: user.longitude,
       weightKg: user.weightKg,
       heightCm: user.heightCm,
       gender: user.gender,

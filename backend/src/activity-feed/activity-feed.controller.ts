@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Body, Param, Query, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { ActivityFeedService } from './activity-feed.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
@@ -37,17 +37,28 @@ export class ActivityFeedController {
   @Post(':id/like')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Like em post do feed' })
-  like(@Param('id') id: string) {
-    return this.service.like(id);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Curtir post do feed (idempotente por usuário)' })
+  like(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.service.like(id, user.id);
   }
 
   @Delete(':id/like')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Descurtir post do feed' })
-  unlike(@Param('id') id: string) {
-    return this.service.unlike(id);
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Descurtir post do feed (idempotente por usuário)' })
+  unlike(@CurrentUser() user: User, @Param('id') id: string) {
+    return this.service.unlike(id, user.id);
+  }
+
+  @Post('liked-ids')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'IDs de posts curtidos pelo usuário atual (para estado inicial do feed)' })
+  likedIds(@CurrentUser() user: User, @Body() body: { postIds: string[] }) {
+    return this.service.getLikedPostIds(user.id, body.postIds ?? []);
   }
 
   @Get(':id/comments')

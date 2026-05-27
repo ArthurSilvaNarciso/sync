@@ -8,6 +8,7 @@ import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity';
 import { Match } from '../matching/entities/match.entity';
 import { SendMessageDto } from './dto/send-message.dto';
+import { sanitizeText } from '../common/security/sanitize.util';
 
 @Injectable()
 export class ChatService {
@@ -42,7 +43,7 @@ export class ChatService {
     const message = this.messageRepository.create({
       match_id: dto.matchId,
       sender_id: userId,
-      content: dto.content,
+      content: sanitizeText(dto.content, 1000),
     });
 
     return this.messageRepository.save(message);

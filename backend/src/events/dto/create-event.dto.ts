@@ -6,6 +6,7 @@ import {
   IsOptional,
   Min,
   Max,
+  MaxLength,
   IsIn,
   registerDecorator,
   ValidationOptions,
@@ -41,11 +42,13 @@ export class CreateEventDto {
   @ApiProperty({ example: 'Corrida no Ibirapuera' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(120)
   title: string;
 
   @ApiPropertyOptional({ example: 'Corrida leve de 5km, todos os níveis!' })
   @IsString()
   @IsOptional()
+  @MaxLength(1000)
   description?: string;
 
   @ApiProperty({ example: 'running', enum: VALID_SPORTS })
@@ -70,6 +73,7 @@ export class CreateEventDto {
   @ApiPropertyOptional({ example: 'Parque Ibirapuera, São Paulo' })
   @IsString()
   @IsOptional()
+  @MaxLength(200)
   address?: string;
 
   @ApiPropertyOptional({ example: 15, default: 10 })

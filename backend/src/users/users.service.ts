@@ -6,6 +6,7 @@ import { UserBlock } from './entities/user-block.entity';
 import { UserReport } from './entities/user-report.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ReportReason } from './entities/user-report.entity';
+import { sanitizeText } from '../common/security/sanitize.util';
 
 @Injectable()
 export class UsersService {
@@ -27,6 +28,31 @@ export class UsersService {
   }
 
   /**
+   * Perfil público seguro: remove email, lat/long precisos e outros dados sensíveis.
+   * Usar para GET /users/:id (perfil de outro usuário).
+   */
+  async publicProfile(id: string) {
+    const user = await this.findById(id);
+    return {
+      id: user.id,
+      name: user.name,
+      bio: user.bio,
+      avatarUrl: user.avatarUrl,
+      bannerUrl: user.bannerUrl,
+      profilePhotos: user.profilePhotos,
+      sports: user.sports,
+      level: user.level,
+      objectives: user.objectives,
+      availability: user.availability,
+      city: user.city,           // apenas cidade — sem coordenadas precisas
+      isActive: user.isActive,
+      subscriptionTier: user.subscriptionTier,
+      totalXP: user.totalXP,
+      createdAt: user.createdAt,
+    };
+  }
+
+  /**
    * LGPD/GDPR: anonimiza usuário (não deleta para preservar integridade
    * referencial de atividades em grupos/eventos públicos).
    */
@@ -37,6 +63,8 @@ export class UsersService {
       email: `${fake}@deleted.sync`,
       bio: null,
       avatarUrl: null,
+      bannerUrl: null,
+      profilePhotos: null,
       birthDate: null,
       sports: null,
       objectives: null,
@@ -44,6 +72,9 @@ export class UsersService {
       latitude: null,
       longitude: null,
       city: null,
+      weightKg: null,
+      heightCm: null,
+      gender: null,
       isActive: false,
       twoFactorSecret: null,
       twoFactorEnabled: false,
@@ -52,7 +83,13 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
-    await this.userRepository.update(userId, dto);
+    const sanitized: UpdateProfileDto = {
+      ...dto,
+      ...(dto.name !== undefined && { name: sanitizeText(dto.name, 100) }),
+      ...(dto.bio !== undefined && { bio: sanitizeText(dto.bio, 500) || undefined }),
+      ...(dto.city !== undefined && { city: sanitizeText(dto.city, 100) || undefined }),
+    };
+    await this.userRepository.update(userId, sanitized);
     return this.findById(userId);
   }
 
@@ -61,8 +98,14 @@ export class UsersService {
     userId: string,
     data: UpdateProfileDto,
   ): Promise<User> {
-    await this.userRepository.update(userId, {
+    const sanitized: UpdateProfileDto = {
       ...data,
+      ...(data.name !== undefined && { name: sanitizeText(data.name, 100) }),
+      ...(data.bio !== undefined && { bio: sanitizeText(data.bio, 500) || undefined }),
+      ...(data.city !== undefined && { city: sanitizeText(data.city, 100) || undefined }),
+    };
+    await this.userRepository.update(userId, {
+      ...sanitized,
       onboardingCompleted: true,
     });
     return this.findById(userId);

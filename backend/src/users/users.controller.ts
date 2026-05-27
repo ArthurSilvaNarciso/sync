@@ -181,9 +181,9 @@ export class UsersController {
   @Get(':id')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Ver perfil de outro usuário' })
+  @ApiOperation({ summary: 'Ver perfil de outro usuário (sem email/coordenadas)' })
   getUserProfile(@Param('id') id: string) {
-    return this.usersService.findById(id);
+    return this.usersService.publicProfile(id);
   }
 
   @Post(':id/block')

@@ -1,4 +1,4 @@
-import { IsString, IsUUID, IsNotEmpty } from 'class-validator';
+import { IsString, IsUUID, IsNotEmpty, MaxLength } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class SendMessageDto {
@@ -6,8 +6,9 @@ export class SendMessageDto {
   @IsUUID()
   matchId: string;
 
-  @ApiProperty({ description: 'Conteúdo da mensagem' })
+  @ApiProperty({ description: 'Conteúdo da mensagem (máx 1000 caracteres)' })
   @IsString()
   @IsNotEmpty()
+  @MaxLength(1000)
   content: string;
 }
