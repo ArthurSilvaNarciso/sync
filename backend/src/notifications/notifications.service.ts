@@ -32,21 +32,23 @@ export class NotificationsService {
     page: number = 1,
     limit: number = 20,
   ) {
-    const skip = (page - 1) * limit;
+    const safePage = Math.max(1, Math.min(page, 1000));
+    const safeLimit = Math.max(1, Math.min(limit, 50));
+    const skip = (safePage - 1) * safeLimit;
 
     const [notifications, total] = await this.notificationRepository.findAndCount({
       where: { user_id: userId },
       order: { createdAt: 'DESC' },
       skip,
-      take: limit,
+      take: safeLimit,
     });
 
     return {
       data: notifications,
       total,
-      page,
-      limit,
-      totalPages: Math.ceil(total / limit),
+      page: safePage,
+      limit: safeLimit,
+      totalPages: Math.ceil(total / safeLimit),
     };
   }
 

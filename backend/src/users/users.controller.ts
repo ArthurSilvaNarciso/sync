@@ -121,12 +121,12 @@ export class UsersController {
     @CurrentUser() user: User,
     @Body() body: { latitude: number; longitude: number; city?: string },
   ) {
-    return this.usersService.updateLocation(
-      user.id,
-      body.latitude,
-      body.longitude,
-      body.city,
-    );
+    const lat = Number(body.latitude);
+    const lng = Number(body.longitude);
+    if (!isFinite(lat) || !isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
+      throw new BadRequestException('Coordenadas GPS inválidas');
+    }
+    return this.usersService.updateLocation(user.id, lat, lng, body.city);
   }
 
   @Get('search')

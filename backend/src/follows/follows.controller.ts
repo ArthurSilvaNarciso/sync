@@ -44,15 +44,39 @@ export class FollowsController {
   @Get('me/following')
   @ApiOperation({ summary: 'Lista de quem eu sigo' })
   async myFollowing(@CurrentUser() user: User) {
-    const rows = await this.repo.find({ where: { follower_id: user.id }, relations: ['following'] });
-    return rows.map((r) => r.following);
+    const rows = await this.repo.find({
+      where: { follower_id: user.id },
+      relations: ['following'],
+      take: 500,
+      order: { createdAt: 'DESC' },
+    });
+    return rows.map((r) => ({
+      id: r.following?.id,
+      name: r.following?.name,
+      avatarUrl: r.following?.avatarUrl,
+      city: r.following?.city,
+      sports: (r.following as any)?.sports,
+      level: (r.following as any)?.level,
+    }));
   }
 
   @Get('me/followers')
   @ApiOperation({ summary: 'Lista de meus seguidores' })
   async myFollowers(@CurrentUser() user: User) {
-    const rows = await this.repo.find({ where: { following_id: user.id }, relations: ['follower'] });
-    return rows.map((r) => r.follower);
+    const rows = await this.repo.find({
+      where: { following_id: user.id },
+      relations: ['follower'],
+      take: 500,
+      order: { createdAt: 'DESC' },
+    });
+    return rows.map((r) => ({
+      id: r.follower?.id,
+      name: r.follower?.name,
+      avatarUrl: r.follower?.avatarUrl,
+      city: r.follower?.city,
+      sports: (r.follower as any)?.sports,
+      level: (r.follower as any)?.level,
+    }));
   }
 
   @Get('me/counts')

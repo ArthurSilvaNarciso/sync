@@ -56,10 +56,11 @@ export class EventsController {
     @Query('radiusKm') radiusKm?: string,
     @Query('sport') sport?: string,
   ) {
+    const radius = radiusKm ? Math.max(0.5, Math.min(100, parseFloat(radiusKm))) : undefined;
     return this.eventsService.findNearby(
       parseFloat(latitude),
       parseFloat(longitude),
-      radiusKm ? parseFloat(radiusKm) : undefined,
+      radius,
       sport,
     );
   }
