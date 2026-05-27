@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import {
   View,
   Text,
@@ -26,9 +26,11 @@ import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import StoriesBar from '../../components/StoriesBar';
 import { matchingApi } from '../../services/matching.service';
-import StoryViewerScreen from '../Stories/StoryViewerScreen';
-import CreateStoryScreen from '../Stories/CreateStoryScreen';
 import type { Story } from '../../services/stories.service';
+
+// Lazy-load heavy story modals — defers parse + init until first user interaction
+const StoryViewerScreen = lazy(() => import('../Stories/StoryViewerScreen'));
+const CreateStoryScreen = lazy(() => import('../Stories/CreateStoryScreen'));
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
@@ -83,6 +85,13 @@ export default function DiscoveryScreen({ navigation }: Props) {
     loadMatchCount();
     loadWeather();
     setQuote(getRandomQuote());
+    // Prefetch lazy Story modules in the background after initial render
+    // so they're warm by the time the user first taps a story ring
+    const t = setTimeout(() => {
+      import('../Stories/StoryViewerScreen').catch(() => {});
+      import('../Stories/CreateStoryScreen').catch(() => {});
+    }, 1500);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -461,33 +470,45 @@ export default function DiscoveryScreen({ navigation }: Props) {
         }}
       />
 
-      {/* Story Viewer Modal */}
+      {/* Story Viewer Modal — lazy loaded on first interaction */}
       {viewingStory && (
         <Modal visible animationType="fade" transparent onRequestClose={() => {
           viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
           setViewingStory(null);
         }}>
-          <StoryViewerScreen
-            initialStories={viewingStory.stories}
-            initialIndex={viewingStory.initialIndex}
-            onClose={() => {
-              viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
-              setViewingStory(null);
-            }}
-          />
+          <Suspense fallback={
+            <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#FF6B35" />
+            </View>
+          }>
+            <StoryViewerScreen
+              initialStories={viewingStory.stories}
+              initialIndex={viewingStory.initialIndex}
+              onClose={() => {
+                viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
+                setViewingStory(null);
+              }}
+            />
+          </Suspense>
         </Modal>
       )}
 
-      {/* Create Story Modal */}
+      {/* Create Story Modal — lazy loaded on first interaction */}
       {creatingStory && (
         <Modal visible animationType="slide" onRequestClose={() => setCreatingStory(false)}>
-          <CreateStoryScreen
-            onClose={() => setCreatingStory(false)}
-            onSuccess={() => {
-              setCreatingStory(false);
-              setStoriesRefreshKey((k) => k + 1);
-            }}
-          />
+          <Suspense fallback={
+            <View style={{ flex: 1, backgroundColor: '#0A0A0F', justifyContent: 'center', alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#FF6B35" />
+            </View>
+          }>
+            <CreateStoryScreen
+              onClose={() => setCreatingStory(false)}
+              onSuccess={() => {
+                setCreatingStory(false);
+                setStoriesRefreshKey((k) => k + 1);
+              }}
+            />
+          </Suspense>
         </Modal>
       )}
 
