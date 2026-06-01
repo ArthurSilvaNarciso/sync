@@ -6,9 +6,10 @@ import { User } from '../users/entities/user.entity';
 import { Like } from './entities/like.entity';
 import { Match } from './entities/match.entity';
 import { Activity } from '../activities/entities/activity.entity';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User, Like, Match, Activity])],
+  imports: [TypeOrmModule.forFeature([User, Like, Match, Activity]), NotificationsModule],
   controllers: [MatchingController],
   providers: [MatchingService],
   exports: [MatchingService],

@@ -8,8 +8,10 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity';
 import { Match } from '../matching/entities/match.entity';
+import { User } from '../users/entities/user.entity';
 import { SendMessageDto } from './dto/send-message.dto';
 import { sanitizeText } from '../common/security/sanitize.util';
+import { PushService } from '../notifications/push.service';
 
 @Injectable()
 export class ChatService {
@@ -18,6 +20,9 @@ export class ChatService {
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(Match)
     private readonly matchRepository: Repository<Match>,
+    @InjectRepository(User)
+    private readonly userRepository: Repository<User>,
+    private readonly pushService: PushService,
   ) {}
 
   // Verificar se o usuário faz parte do match (segurança)
@@ -39,7 +44,7 @@ export class ChatService {
 
   // Enviar mensagem - chat só liberado após match
   async sendMessage(userId: string, dto: SendMessageDto): Promise<Message> {
-    await this.verifyMatchAccess(dto.matchId, userId);
+    const match = await this.verifyMatchAccess(dto.matchId, userId);
 
     const msgType = dto.type === 'audio' ? 'audio' : 'text';
     // Áudio agora chega como URL (/uploads/media/...) — validamos que é mesmo
@@ -62,7 +67,33 @@ export class ChatService {
       type: msgType,
     });
 
-    return this.messageRepository.save(message);
+    const saved = await this.messageRepository.save(message);
+
+    // Push para o destinatário (fire-and-forget — não bloqueia o envio)
+    const recipientId = match.user1_id === userId ? match.user2_id : match.user1_id;
+    this.notifyNewMessage(recipientId, userId, dto.matchId, msgType, content).catch(() => {});
+
+    return saved;
+  }
+
+  /** Push de nova mensagem para o destinatário */
+  private async notifyNewMessage(
+    recipientId: string,
+    senderId: string,
+    matchId: string,
+    type: string,
+    content: string,
+  ) {
+    const sender = await this.userRepository.findOne({
+      where: { id: senderId },
+      select: ['id', 'name'],
+    });
+    const firstName = (sender?.name || 'Alguém').split(' ')[0];
+    const preview = type === 'audio' ? '🎤 Mensagem de áudio' : content.slice(0, 80);
+    await this.pushService.sendToUser(recipientId, firstName, preview, {
+      type: 'message',
+      matchId,
+    });
   }
 
   // Buscar mensagens de uma conversa com paginação

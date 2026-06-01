@@ -8,6 +8,7 @@ import { Activity } from '../activities/entities/activity.entity';
 import { SwipeDto } from './dto/swipe.dto';
 import { DiscoveryQueryDto } from './dto/discovery-query.dto';
 import { haversineKm } from '../common/utils/haversine';
+import { PushService } from '../notifications/push.service';
 
 // Projeta apenas campos públicos-seguros de um usuário descoberto/matched.
 // NÃO inclui email, latitude exata, longitude exata.
@@ -41,6 +42,7 @@ export class MatchingService {
     private readonly matchRepository: Repository<Match>,
     @InjectRepository(Activity)
     private readonly activityRepository: Repository<Activity>,
+    private readonly pushService: PushService,
   ) {}
 
   /**
@@ -205,6 +207,8 @@ export class MatchingService {
           user1_id: userId,
           user2_id: dto.targetUserId,
         });
+        // Notifica AMBOS os usuários do novo match (fire-and-forget)
+        this.notifyMatch(userId, dto.targetUserId, match.id).catch(() => {});
         return { matched: true, matchId: match.id };
       } catch {
         return { matched: false };
@@ -212,6 +216,29 @@ export class MatchingService {
     }
 
     return { matched: false };
+  }
+
+  /** Push de novo match para ambos os usuários, com o nome um do outro */
+  private async notifyMatch(userA: string, userB: string, matchId: string) {
+    const [a, b] = await Promise.all([
+      this.userRepository.findOne({ where: { id: userA }, select: ['id', 'name'] }),
+      this.userRepository.findOne({ where: { id: userB }, select: ['id', 'name'] }),
+    ]);
+    const firstName = (n?: string) => (n || 'alguém').split(' ')[0];
+    await Promise.all([
+      this.pushService.sendToUser(
+        userA,
+        'Novo match! 🎉',
+        `Você e ${firstName(b?.name)} deram match. Manda um oi!`,
+        { type: 'match', matchId },
+      ),
+      this.pushService.sendToUser(
+        userB,
+        'Novo match! 🎉',
+        `Você e ${firstName(a?.name)} deram match. Manda um oi!`,
+        { type: 'match', matchId },
+      ),
+    ]);
   }
 
   async getNewMatchCount(userId: string): Promise<number> {
