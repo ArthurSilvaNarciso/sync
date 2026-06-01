@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0F' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44, paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
+    paddingTop: Platform.OS === 'ios' ? 62 : 44, paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },

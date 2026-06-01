@@ -3,10 +3,10 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
   Dimensions,
   TouchableWithoutFeedback,
 } from 'react-native';
+import { Image } from 'expo-image'; // cache em disco + transição suave
 import { LinearGradient } from 'expo-linear-gradient';
 import { DiscoveryUser, SPORTS, SportLevel } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
@@ -107,7 +107,10 @@ function SwipeCardInner({ user, cardHeight }: SwipeCardProps) {
             : require('../../assets/images/default-avatar.png')
         }
         style={styles.image}
-        defaultSource={require('../../assets/images/default-avatar.png')}
+        contentFit="cover"
+        cachePolicy="memory-disk"
+        transition={150}
+        placeholder={require('../../assets/images/default-avatar.png')}
       />
 
       {/* Tap zones for photo navigation */}

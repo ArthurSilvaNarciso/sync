@@ -5,7 +5,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   ImageBackground,
   TouchableOpacity,
   RefreshControl,
@@ -13,6 +12,7 @@ import {
   Animated,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image'; // cache em disco + blurhash-ready
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -112,6 +112,8 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment }: FeedC
                   : require('../../assets/images/default-avatar.png')
               }
               style={styles.avatar}
+              contentFit="cover"
+              cachePolicy="memory-disk"
             />
           </View>
           <View style={{ flex: 1, marginLeft: spacing.sm }}>
@@ -162,7 +164,7 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment }: FeedC
         </View>
 
         {post.photoUrl && (
-          <Image source={{ uri: post.photoUrl }} style={styles.photo} resizeMode="cover" />
+          <Image source={{ uri: post.photoUrl }} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" transition={150} />
         )}
 
         {/* Actions */}

@@ -220,7 +220,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingTop: Platform.OS === 'ios' ? 62 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,

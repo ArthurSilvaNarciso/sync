@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingTop: Platform.OS === 'ios' ? 62 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },
