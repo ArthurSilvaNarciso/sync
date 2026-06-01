@@ -14,6 +14,7 @@ import { Achievement, UserXP } from '../../types';
 import { achievementsService } from '../../services/achievements.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
@@ -21,6 +22,7 @@ type Props = {
 };
 
 export default function AchievementsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [xpData, setXpData] = useState<UserXP | null>(null);
   const [loading, setLoading] = useState(true);
@@ -102,7 +104,7 @@ export default function AchievementsScreen({ navigation }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
@@ -175,7 +177,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,

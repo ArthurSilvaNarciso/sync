@@ -10,6 +10,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing } from '../../theme';
 import api from '../../services/api';
@@ -53,6 +54,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function NotificationsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [list, setList] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -118,7 +120,7 @@ export default function NotificationsScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
         <TouchableOpacity
           onPress={() => navigation?.goBack?.()}
@@ -171,7 +173,6 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,

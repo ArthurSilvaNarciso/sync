@@ -219,34 +219,49 @@ export default function DiscoveryScreen({ navigation }: Props) {
     }
   };
 
-  const panResponder = PanResponder.create({
-    onStartShouldSetPanResponder: () => true,
-    onPanResponderMove: (_, gesture) => {
-      position.setValue({ x: gesture.dx, y: gesture.dy });
-    },
-    onPanResponderRelease: (_, gesture) => {
-      if (gesture.dx > SWIPE_THRESHOLD) {
-        handleSwipe('right');
-      } else if (gesture.dx < -SWIPE_THRESHOLD) {
-        handleSwipe('left');
-      } else if (gesture.dy < -SWIPE_THRESHOLD) {
-        const user = users[currentIndex];
-        if (user) {
-          navigation.navigate('UserProfile', { userId: user.id });
+  // Refs com os valores mais recentes — permitem criar o PanResponder UMA vez
+  // sem fechar sobre estado velho (evita recriar o responder a cada render).
+  const handleSwipeRef = useRef(handleSwipe);
+  handleSwipeRef.current = handleSwipe;
+  const usersRef = useRef(users);
+  usersRef.current = users;
+  const currentIndexRef = useRef(currentIndex);
+  currentIndexRef.current = currentIndex;
+  const navigationRef = useRef(navigation);
+  navigationRef.current = navigation;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      // Só captura o gesto se houver movimento horizontal/vertical relevante
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+      onPanResponderMove: (_, gesture) => {
+        position.setValue({ x: gesture.dx, y: gesture.dy });
+      },
+      onPanResponderRelease: (_, gesture) => {
+        if (gesture.dx > SWIPE_THRESHOLD) {
+          handleSwipeRef.current('right');
+        } else if (gesture.dx < -SWIPE_THRESHOLD) {
+          handleSwipeRef.current('left');
+        } else if (gesture.dy < -SWIPE_THRESHOLD) {
+          const user = usersRef.current[currentIndexRef.current];
+          if (user) {
+            navigationRef.current.navigate('UserProfile', { userId: user.id });
+          }
+          Animated.spring(position, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+          }).start();
+        } else {
+          Animated.spring(position, {
+            toValue: { x: 0, y: 0 },
+            friction: 5,
+            useNativeDriver: false,
+          }).start();
         }
-        Animated.spring(position, {
-          toValue: { x: 0, y: 0 },
-          useNativeDriver: false,
-        }).start();
-      } else {
-        Animated.spring(position, {
-          toValue: { x: 0, y: 0 },
-          friction: 5,
-          useNativeDriver: false,
-        }).start();
-      }
-    },
-  });
+      },
+    }),
+  ).current;
 
   const rotate = position.x.interpolate({
     inputRange: [-SCREEN_WIDTH, 0, SCREEN_WIDTH],
@@ -285,8 +300,22 @@ export default function DiscoveryScreen({ navigation }: Props) {
     ).start();
   };
 
-  // Profile completion mock
-  const profileCompletion = 78;
+  // Profile completion — calculado de campos reais do usuário
+  const profileCompletion = React.useMemo(() => {
+    if (!authUser) return 0;
+    const checks = [
+      !!authUser.name,
+      !!authUser.bio,
+      !!authUser.avatarUrl,
+      !!(authUser.sports && authUser.sports.length > 0),
+      !!(authUser.objectives && authUser.objectives.length > 0),
+      !!(authUser.availability && authUser.availability.length > 0),
+      !!authUser.city,
+      !!(authUser.profilePhotos && authUser.profilePhotos.length >= 3),
+    ];
+    const done = checks.filter(Boolean).length;
+    return Math.round((done / checks.length) * 100);
+  }, [authUser]);
   const recommendation = weather ? getExerciseRecommendation(weather) : null;
 
   if (loading) {
@@ -654,13 +683,14 @@ export default function DiscoveryScreen({ navigation }: Props) {
       </LinearGradient>
 
       {/* Filter Modal */}
-      <Modal visible={showFilters} animationType="slide" transparent>
+      <Modal visible={showFilters} animationType="slide" transparent onRequestClose={() => setShowFilters(false)}>
         <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { paddingBottom: Math.max(insets.bottom, 16) + spacing.lg }]}>
             <View style={styles.modalHandle} />
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>Filtros</Text>
               <TouchableOpacity
+                style={{ paddingVertical: 8, paddingHorizontal: 4, minHeight: 44, justifyContent: 'center' }}
                 onPress={() => {
                   setFilterDistance(25);
                   setFilterLevel('all');
@@ -783,11 +813,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
   },
   headerRight: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+    flexShrink: 0,
   },
   headerTitle: {
     fontSize: fontSize.xxl,
@@ -823,7 +857,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   completionText: {
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: '700',
     color: colors.dark.accent,
   },
@@ -1110,6 +1144,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
     paddingVertical: spacing.sm,
     paddingHorizontal: spacing.md,
+    minHeight: 44,
   },
   adjustFiltersText: {
     fontSize: fontSize.sm,

@@ -84,7 +84,7 @@ export default function ConversationListScreen({ navigation }: Props) {
       )
     : conversations;
 
-  const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+  const totalUnread = conversations.reduce((sum, c) => sum + (c.unreadCount || 0), 0);
 
   const renderItem = ({ item }: { item: Conversation }) => (
     <TouchableOpacity

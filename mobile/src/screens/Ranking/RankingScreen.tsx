@@ -14,6 +14,7 @@ import { ProfileStackParamList } from '../../navigation/types';
 import { RankingItem } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 
@@ -32,6 +33,7 @@ const SCOPES: { id: Scope; label: string; icon: keyof typeof Ionicons.glyphMap }
 ];
 
 export default function RankingScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [scope, setScope] = useState<Scope>('monthly');
@@ -143,7 +145,7 @@ export default function RankingScreen({ navigation }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
         <TouchableOpacity
           style={styles.backBtn}
@@ -211,7 +213,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },

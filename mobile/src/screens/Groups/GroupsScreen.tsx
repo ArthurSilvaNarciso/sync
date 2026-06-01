@@ -15,6 +15,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { groupsApi, GroupSummary } from '../../services/groups.service';
@@ -23,6 +24,7 @@ import Button from '../../components/ui/Button';
 type Tab = 'mine' | 'discover' | 'ranking';
 
 export default function GroupsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('mine');
   const [mine, setMine] = useState<GroupSummary[]>([]);
   const [discover, setDiscover] = useState<GroupSummary[]>([]);
@@ -127,7 +129,7 @@ export default function GroupsScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
         <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="#fff" />
@@ -255,7 +257,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
     borderBottomWidth: 1,

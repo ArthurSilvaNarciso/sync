@@ -226,8 +226,9 @@ export default function RegisterScreen({ navigation }: Props) {
                       label="Peso (kg)"
                       placeholder="Ex: 70"
                       value={weightKg}
-                      onChangeText={setWeightKg}
+                      onChangeText={(v) => setWeightKg(v.replace(/[^0-9.,]/g, ''))}
                       keyboardType="decimal-pad"
+                      maxLength={5}
                     />
                   </View>
                   <View style={{ flex: 1 }}>
@@ -235,8 +236,9 @@ export default function RegisterScreen({ navigation }: Props) {
                       label="Altura (cm)"
                       placeholder="Ex: 175"
                       value={heightCm}
-                      onChangeText={setHeightCm}
+                      onChangeText={(v) => setHeightCm(v.replace(/[^0-9.,]/g, ''))}
                       keyboardType="decimal-pad"
+                      maxLength={5}
                     />
                   </View>
                 </View>

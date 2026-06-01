@@ -71,7 +71,7 @@ interface FeedCardProps {
   onComment: (post: FeedPost) => void;
 }
 
-function FeedCard({ post, liked, likesCount, onLike, onComment }: FeedCardProps) {
+function FeedCardComponent({ post, liked, likesCount, onLike, onComment }: FeedCardProps) {
   const heartScale = useRef(new Animated.Value(1)).current;
 
   const handleLike = () => {
@@ -213,6 +213,15 @@ function FeedCard({ post, liked, likesCount, onLike, onComment }: FeedCardProps)
     </View>
   );
 }
+
+// React.memo — só re-renderiza quando muda o estado de like/contagem do próprio post
+const FeedCard = React.memo(
+  FeedCardComponent,
+  (prev, next) =>
+    prev.post.id === next.post.id &&
+    prev.liked === next.liked &&
+    prev.likesCount === next.likesCount,
+);
 
 export default function FeedScreen() {
   const navigation = useNavigation<any>();
@@ -524,7 +533,7 @@ const styles = StyleSheet.create({
   statDivider: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.08)' },
   photo: {
     width: '100%',
-    height: 240,
+    aspectRatio: 4 / 3,
     borderRadius: borderRadius.md,
     marginBottom: spacing.md,
     backgroundColor: 'rgba(255,255,255,0.07)',

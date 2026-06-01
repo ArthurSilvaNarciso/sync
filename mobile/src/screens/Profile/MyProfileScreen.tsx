@@ -73,17 +73,20 @@ export default function MyProfileScreen({ navigation }: Props) {
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {
-    loadStats();
-    loadWeather();
+    let mounted = true;
+    loadStats(() => mounted);
+    loadWeather(() => mounted);
     setQuote(getRandomQuote());
+    return () => { mounted = false; };
   }, []);
 
-  const loadStats = async () => {
+  // isMounted() guard evita setState em componente desmontado (warning React)
+  const loadStats = async (isMounted: () => boolean = () => true) => {
     setStatsLoading(true);
     try {
       const { data } = await api.get('/stats');
-      // Compute start-of-current-week for weekly distance
       const weeklyKm = data.weeklyDistance ?? data.weeklyDistanceKm ?? 0;
+      if (!isMounted()) return;
       setStats({
         totalActivities: data.totalActivities || 0,
         totalDistanceKm: data.totalDistance || 0,
@@ -97,12 +100,9 @@ export default function MyProfileScreen({ navigation }: Props) {
         totalEvents: data.totalEvents || 0,
       });
     } catch {
-      // fallback: pega só atividades
       try {
         const { data } = await api.get('/activities/history');
-        // data is the activity array directly, not a tuple
         const activities = Array.isArray(data) ? data : [];
-        // Compute weekly distance by filtering activities from the current week
         const now = new Date();
         const weekStart = new Date(now);
         weekStart.setDate(now.getDate() - now.getDay()); // Sunday
@@ -114,6 +114,7 @@ export default function MyProfileScreen({ navigation }: Props) {
         const totalDistance = activities.reduce((sum: number, a: any) => sum + (a.distance || 0), 0);
         const weeklyDistance = weeklyActivities.reduce((sum: number, a: any) => sum + (a.distance || 0), 0);
         const totalDuration = activities.reduce((sum: number, a: any) => sum + (a.duration || 0), 0);
+        if (!isMounted()) return;
         setStats((s) => ({
           ...s,
           totalActivities: activities.length,
@@ -125,15 +126,15 @@ export default function MyProfileScreen({ navigation }: Props) {
         // sem stats
       }
     } finally {
-      setStatsLoading(false);
+      if (isMounted()) setStatsLoading(false);
     }
   };
 
-  const loadWeather = async () => {
+  const loadWeather = async (isMounted: () => boolean = () => true) => {
     try {
       const coords = await getCurrentLocation();
       const data = await fetchCurrentWeather(coords.latitude, coords.longitude);
-      setWeather(data);
+      if (isMounted()) setWeather(data);
     } catch {
       // sem dados de clima
     }
@@ -190,6 +191,7 @@ export default function MyProfileScreen({ navigation }: Props) {
 
   const recommendation = weather ? getExerciseRecommendation(weather) : null;
 
+  // Array estático de navegação (não memoizado: vem após early return de !user)
   const menuItems = [
     {
       icon: 'create-outline' as const,

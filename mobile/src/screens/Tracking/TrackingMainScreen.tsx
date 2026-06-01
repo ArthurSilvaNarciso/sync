@@ -23,6 +23,8 @@ import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQ
 import api from '../../services/api';
 import BestTimeWidget from '../../components/BestTimeWidget';
 import TodayBriefWidget from '../../components/TodayBriefWidget';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -39,6 +41,7 @@ const SPORT_OPTIONS = [
 ];
 
 export default function TrackingMainScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [selectedSport, setSelectedSport] = useState('running');
   const [showStats, setShowStats] = useState(true);
   const [liveShare, setLiveShare] = useState(false);
@@ -187,7 +190,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
       />
 
       {/* Top bar overlay */}
-      <View style={styles.topBar}>
+      <View style={[styles.topBar, { top: Math.max(insets.top + 6, 50) }]}>
         <TouchableOpacity
           style={styles.topBtn}
           onPress={() => navigation.navigate('ActivityHistory')}
@@ -211,7 +214,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
 
       {/* Stats panel (collapsible) */}
       {showStats && (
-        <View style={styles.statsPanel}>
+        <View style={[styles.statsPanel, { top: Math.max(insets.top + 56, 100) }]}>
           <TouchableOpacity
             style={styles.statsExpand}
             onPress={() => setShowStats(!showStats)}
@@ -322,7 +325,11 @@ export default function TrackingMainScreen({ navigation }: Props) {
         )}
 
         {/* Options list */}
-        <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={styles.optionsList}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom }}
+        >
           <TouchableOpacity
             style={styles.optionItem}
             onPress={() => {
@@ -464,7 +471,7 @@ const styles = StyleSheet.create({
   },
   topBar: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 50 : 40,
+    top: 50, // overridden dynamically with insets.top
     left: spacing.md,
     right: spacing.md,
     flexDirection: 'row',
@@ -472,9 +479,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   topBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     backgroundColor: colors.dark.mapOverlay,
     justifyContent: 'center',
     alignItems: 'center',
@@ -501,7 +508,7 @@ const styles = StyleSheet.create({
   },
   statsPanel: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 100 : 90,
+    top: 100, // overridden dynamically with insets.top
     left: spacing.md,
     right: spacing.md,
     backgroundColor: colors.dark.mapOverlay,
@@ -510,8 +517,13 @@ const styles = StyleSheet.create({
   },
   statsExpand: {
     position: 'absolute',
-    top: spacing.sm,
-    right: spacing.sm,
+    top: 0,
+    right: 0,
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 2,
   },
   statsSportRow: {
     flexDirection: 'row',
@@ -565,7 +577,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: borderRadius.lg,
     borderTopRightRadius: borderRadius.lg,
     paddingTop: spacing.md,
-    maxHeight: '50%',
+    maxHeight: '52%',
   },
   sportRow: {
     flexDirection: 'row',
@@ -579,6 +591,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flex: 1,
     gap: 4,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   sportLabelInactive: {
     fontSize: fontSize.xs,
@@ -662,5 +676,41 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.dark.accent,
     fontWeight: '500',
+  },
+
+  // ── Quick goals (estavam sem estilo — bug corrigido) ──────────────────────
+  goalsSection: {
+    paddingHorizontal: spacing.lg,
+    paddingTop: spacing.md,
+    paddingBottom: spacing.sm,
+  },
+  goalsSectionTitle: {
+    fontSize: fontSize.sm,
+    fontWeight: '700',
+    color: colors.dark.secondaryText,
+    marginBottom: spacing.sm,
+    letterSpacing: 0.5,
+  },
+  goalsRow: {
+    flexDirection: 'row',
+    gap: spacing.sm,
+    flexWrap: 'wrap',
+  },
+  goalChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    minHeight: 44,
+    borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(255,107,53,0.10)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.25)',
+  },
+  goalChipText: {
+    fontSize: fontSize.sm,
+    color: colors.dark.accent,
+    fontWeight: '600',
   },
 });

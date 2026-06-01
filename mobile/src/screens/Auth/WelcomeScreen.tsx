@@ -12,6 +12,7 @@ import {
   ScrollView,
   useWindowDimensions,
   Image,
+  AppState,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -113,13 +114,34 @@ export default function WelcomeScreen({ navigation }: Props) {
   }, []);
 
   useEffect(() => {
-    const t = setInterval(() => {
-      Animated.timing(imgOpacity, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
-        setSlideIdx((i) => (i + 1) % SLIDES.length);
-        Animated.timing(imgOpacity, { toValue: 1, duration: 500, useNativeDriver: true }).start();
-      });
-    }, 4500);
-    return () => clearInterval(t);
+    let t: ReturnType<typeof setInterval> | null = null;
+
+    const startSlideshow = () => {
+      if (t) return;
+      t = setInterval(() => {
+        Animated.timing(imgOpacity, { toValue: 0, duration: 350, useNativeDriver: true }).start(() => {
+          setSlideIdx((i) => (i + 1) % SLIDES.length);
+          Animated.timing(imgOpacity, { toValue: 1, duration: 500, useNativeDriver: true }).start();
+        });
+      }, 4500);
+    };
+
+    const stopSlideshow = () => {
+      if (t) { clearInterval(t); t = null; }
+    };
+
+    startSlideshow();
+
+    // Pausa o slideshow quando o app vai pra background (economiza CPU/bateria)
+    const sub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') startSlideshow();
+      else stopSlideshow();
+    });
+
+    return () => {
+      stopSlideshow();
+      sub.remove();
+    };
   }, []);
 
   const slide = SLIDES[slideIdx];
@@ -231,93 +253,6 @@ export default function WelcomeScreen({ navigation }: Props) {
       onLogin={() => navigation.navigate('Login')}
       onDemo={handleDemoLogin}
     />
-  );
-
-  // (legacy landing kept below — unreachable now)
-  // eslint-disable-next-line no-unreachable
-  return (
-    <ScrollView style={styles.root} showsVerticalScrollIndicator={false}>
-      {Hero}
-
-      {/* Stats bar */}
-      <View style={styles.statsSection}>
-        <View style={styles.statsRow}>
-          {STATS.map((s) => (
-            <View key={s.label} style={styles.statItem}>
-              <Text style={styles.statValue}>{s.value}</Text>
-              <Text style={styles.statLabel}>{s.label}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* Features grid */}
-      <View style={styles.featuresSection}>
-        <Text style={styles.sectionEyebrow}>POR QUE SYNC</Text>
-        <Text style={styles.sectionTitle}>
-          Tudo que você precisa pra{' '}
-          <Text style={{ color: ACCENT }}>treinar de verdade.</Text>
-        </Text>
-        <Text style={styles.sectionSubtitle}>
-          Construído pra atletas que correm, pedalam, nadam ou só amam mover. {' '}
-          Tudo num app. Tudo em tempo real.
-        </Text>
-
-        <View style={styles.featureGrid}>
-          {LANDING_FEATURES.map((f) => (
-            <View key={f.title} style={styles.featureCard}>
-              <View style={[styles.featureCardIcon, { backgroundColor: f.color + '20', borderColor: f.color + '40' }]}>
-                <Ionicons name={f.icon} size={22} color={f.color} />
-              </View>
-              <Text style={styles.featureCardTitle}>{f.title}</Text>
-              <Text style={styles.featureCardDesc}>{f.desc}</Text>
-            </View>
-          ))}
-        </View>
-      </View>
-
-      {/* CTA final */}
-      <View style={styles.finalCta}>
-        <LinearGradient
-          colors={['rgba(255,107,53,0.1)', 'rgba(255,107,53,0)']}
-          style={StyleSheet.absoluteFill}
-        />
-        <Text style={styles.finalCtaTitle}>
-          Pronto pra começar?
-        </Text>
-        <Text style={styles.finalCtaSubtitle}>
-          Cria sua conta em 30 segundos. É grátis.
-        </Text>
-        <Pressable
-          onPress={() => navigation.navigate('Register')}
-          style={({ pressed }) => [styles.finalCtaBtn, pressed && { opacity: 0.85 }]}
-        >
-          <LinearGradient
-            colors={[ACCENT, '#FF5021']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.finalCtaInner}
-          >
-            <Text style={styles.finalCtaBtnText}>Criar conta grátis</Text>
-            <Ionicons name="arrow-forward" size={20} color="#fff" />
-          </LinearGradient>
-        </Pressable>
-      </View>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          © 2026 Sync · Feito pra quem move
-        </Text>
-        <View style={styles.footerLinks}>
-          <Text style={styles.footerLink}>Termos</Text>
-          <Text style={styles.footerSep}>·</Text>
-          <Text style={styles.footerLink}>Privacidade</Text>
-          <Text style={styles.footerSep}>·</Text>
-          <Text style={styles.footerLink}>Contato</Text>
-        </View>
-      </View>
-    </ScrollView>
   );
 }
 
