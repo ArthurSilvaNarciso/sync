@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../services/api';
+import { uploadMedia } from '../../services/media.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -74,25 +75,21 @@ export default function PhotosScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,
-        base64: true,
+        quality: 0.6,
       });
 
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
 
       setUploading(true);
-      let base64: string;
-
-      if (Platform.OS === 'web') {
-        base64 = await resizeForWeb(asset.uri, 400);
-      } else {
-        const mime = asset.mimeType || 'image/jpeg';
-        base64 = `data:${mime};base64,${asset.base64}`;
-      }
+      // Upload do arquivo → URL (não mais base64)
+      const { url } = await uploadMedia(asset.uri, {
+        name: `photo-${Date.now()}.jpg`,
+        mimeType: asset.mimeType || 'image/jpeg',
+      });
 
       if (photos.length < MAX_PHOTOS) {
-        setPhotos((prev) => [...prev, base64]);
+        setPhotos((prev) => [...prev, url]);
       }
     } catch (e: any) {
       Alert.alert('Erro', e?.message || 'Não foi possível carregar a foto');

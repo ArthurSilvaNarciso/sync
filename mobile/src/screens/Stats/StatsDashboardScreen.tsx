@@ -12,6 +12,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import Skeleton from '../../components/ui/Skeleton';
 import api from '../../services/api';
 import { computeUserXP } from '../../utils/xp-system';
 
@@ -227,6 +228,14 @@ export default function StatsDashboardScreen({ navigation }: any) {
             })}
           </View>
         </>
+      )}
+
+      {loading && (
+        <View style={{ paddingHorizontal: 16, gap: 16, marginTop: 8 }}>
+          <Skeleton width="100%" height={120} borderRadius={16} />
+          <Skeleton width="100%" height={180} borderRadius={16} />
+          <Skeleton width="100%" height={100} borderRadius={16} />
+        </View>
       )}
 
       {filtered.length === 0 && !loading && (

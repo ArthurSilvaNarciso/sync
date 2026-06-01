@@ -19,6 +19,11 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from './entities/user.entity';
 
+/** true se for uma URL de mídia (novo fluxo via /api/media) e não base64 */
+function isMediaUrl(s: string): boolean {
+  return /^https?:\/\/\S+$/i.test(s) || s.startsWith('/uploads/');
+}
+
 @ApiTags('Users')
 @Controller('api/users')
 export class UsersController {
@@ -60,8 +65,12 @@ export class UsersController {
     if (!avatarBase64 || typeof avatarBase64 !== 'string') {
       throw new BadRequestException('Imagem não enviada');
     }
+    // Aceita URL (novo fluxo via /api/media) OU base64 (compat retroativa)
+    if (isMediaUrl(avatarBase64)) {
+      return this.usersService.updateAvatar(user.id, avatarBase64.trim());
+    }
     if (!avatarBase64.startsWith('data:image/')) {
-      throw new BadRequestException('Formato inválido. Envie data:image/... base64.');
+      throw new BadRequestException('Formato inválido. Envie uma URL ou data:image/... base64.');
     }
     // ~400KB de imagem comprimida equivale a ~530K chars de base64
     if (avatarBase64.length > 550_000) {
@@ -82,8 +91,11 @@ export class UsersController {
     if (!bannerBase64 || typeof bannerBase64 !== 'string') {
       throw new BadRequestException('Imagem não enviada');
     }
+    if (isMediaUrl(bannerBase64)) {
+      return this.usersService.updateBanner(user.id, bannerBase64.trim());
+    }
     if (!bannerBase64.startsWith('data:image/')) {
-      throw new BadRequestException('Formato inválido. Envie data:image/... base64.');
+      throw new BadRequestException('Formato inválido. Envie uma URL ou data:image/... base64.');
     }
     if (bannerBase64.length > 1_100_000) {
       throw new BadRequestException('Imagem muito grande. Máximo ~800KB após compressão.');
@@ -107,14 +119,19 @@ export class UsersController {
       throw new BadRequestException('Máximo de 5 fotos permitido.');
     }
     for (const photo of photos) {
-      if (typeof photo !== 'string' || !photo.startsWith('data:image/')) {
-        throw new BadRequestException('Formato inválido. Cada foto deve ser data:image/... base64.');
+      if (typeof photo !== 'string') {
+        throw new BadRequestException('Foto inválida.');
+      }
+      // Aceita URL (novo) OU base64 (compat)
+      if (isMediaUrl(photo)) continue;
+      if (!photo.startsWith('data:image/')) {
+        throw new BadRequestException('Formato inválido. Cada foto deve ser uma URL ou data:image/... base64.');
       }
       if (photo.length > 550_000) {
         throw new BadRequestException('Uma das fotos é muito grande. Máximo ~400KB cada após compressão.');
       }
     }
-    return this.usersService.updateProfilePhotos(user.id, photos);
+    return this.usersService.updateProfilePhotos(user.id, photos.map((p) => p.trim()));
   }
 
   @Put('location')

@@ -23,6 +23,7 @@ import Input from '../../components/ui/Input';
 import Chip from '../../components/ui/Chip';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
+import { uploadMedia } from '../../services/media.service';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, 'EditProfile'>;
@@ -82,30 +83,20 @@ export default function EditProfileScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.5,   // baixa qualidade para manter base64 pequeno
-        base64: true,   // pede base64 direto (nativo)
+        quality: 0.6,
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
 
       setUploadingAvatar(true);
-      let avatarBase64: string;
+      // Upload do arquivo → URL pública (não mais base64 no banco)
+      const { url } = await uploadMedia(asset.uri, {
+        name: `avatar-${Date.now()}.jpg`,
+        mimeType: asset.mimeType || 'image/jpeg',
+      });
 
-      if (Platform.OS === 'web') {
-        // Web: redimensiona via canvas para 300×300 e converte para data URL
-        avatarBase64 = await resizeAvatarForWeb(asset.uri, 300);
-      } else {
-        // Native: ImagePicker já entrega base64 raw
-        if (!asset.base64) {
-          Alert.alert('Erro', 'Não foi possível ler a imagem. Tente novamente.');
-          setUploadingAvatar(false);
-          return;
-        }
-        const mime = asset.mimeType || 'image/jpeg';
-        avatarBase64 = `data:${mime};base64,${asset.base64}`;
-      }
-
-      const { data } = await api.post('/users/me/avatar', { avatarBase64 });
+      // O backend aceita URL ou base64 no mesmo campo (compat retroativa)
+      const { data } = await api.post('/users/me/avatar', { avatarBase64: url });
       setUser(data);
       Alert.alert('Foto atualizada!', 'Seu avatar foi salvo com sucesso.');
     } catch (error: any) {

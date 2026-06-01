@@ -1,0 +1,48 @@
+name: CI
+
+# Roda em PRs e pushes na main. Garante que o type-check (agora verde) não
+# regrida e que os testes do backend passem.
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend (typecheck + tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+      - name: Install deps
+        run: npm ci --legacy-peer-deps
+      - name: Type check
+        run: npm run typecheck
+      - name: Unit tests
+        run: npm test --if-present -- --passWithNoTests
+
+  mobile:
+    name: Mobile (typecheck)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: mobile/package-lock.json
+      - name: Install deps
+        run: npm ci --legacy-peer-deps
+      - name: Type check
+        run: npm run typecheck

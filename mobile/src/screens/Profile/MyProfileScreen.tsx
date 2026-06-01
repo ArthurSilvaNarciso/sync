@@ -25,6 +25,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQuote, MotivationalQuote } from '../../services/external-apis';
 import { getCurrentLocation } from '../../services/location.service';
 import api from '../../services/api';
+import { uploadMedia } from '../../services/media.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
@@ -170,15 +171,17 @@ export default function MyProfileScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [16, 9],
-        quality: 0.6,
-        base64: true,
+        quality: 0.7,
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       setUploadingBanner(true);
-      const mime = asset.mimeType || 'image/jpeg';
-      const bannerBase64 = `data:${mime};base64,${asset.base64}`;
-      const { data } = await api.post('/users/me/banner', { bannerBase64 });
+      // Upload do arquivo → URL (não mais base64 no banco)
+      const { url } = await uploadMedia(asset.uri, {
+        name: `banner-${Date.now()}.jpg`,
+        mimeType: asset.mimeType || 'image/jpeg',
+      });
+      const { data } = await api.post('/users/me/banner', { bannerBase64: url });
       setUser(data);
     } catch (error: any) {
       Alert.alert('Erro', error?.response?.data?.message || 'Não foi possível enviar o banner');
