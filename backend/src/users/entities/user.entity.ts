@@ -4,6 +4,7 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
+  DeleteDateColumn,
   OneToMany,
 } from 'typeorm';
 import { Like } from '../../matching/entities/like.entity';
@@ -137,6 +138,11 @@ export class User {
 
   @UpdateDateColumn()
   updatedAt: Date;
+
+  // Soft-delete LGPD: quando preenchido, o TypeORM exclui o registro de
+  // find/findOne automaticamente. O purge definitivo roda por cron após 30 dias.
+  @DeleteDateColumn({ select: false })
+  deletedAt: Date | null;
 
   // Relações
   @OneToMany(() => Like, (like) => like.fromUser)

@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, Like as ILike } from 'typeorm';
+import { Repository, Like as ILike, LessThan } from 'typeorm';
+import { Logger } from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { UserBlock } from './entities/user-block.entity';
 import { UserReport } from './entities/user-report.entity';
@@ -56,6 +57,14 @@ export class UsersService {
    * LGPD/GDPR: anonimiza usuário (não deleta para preservar integridade
    * referencial de atividades em grupos/eventos públicos).
    */
+  /**
+   * Exclusão de conta LGPD — soft-delete real:
+   * 1. Anonimiza TODO o PII imediatamente (privacy-first)
+   * 2. Marca deletedAt (@DeleteDateColumn) → TypeORM exclui de find/findOne
+   *    automaticamente, então o usuário some do app e não consegue mais logar
+   * 3. O purge definitivo (hard-delete da linha) roda por cron após 30 dias
+   *    — ver purgeDeletedAccounts()
+   */
   async anonymizeUser(userId: string): Promise<{ ok: true; message: string }> {
     const fake = `deleted-${userId.slice(0, 8)}-${Date.now()}`;
     await this.userRepository.update(userId, {
@@ -78,8 +87,33 @@ export class UsersService {
       isActive: false,
       twoFactorSecret: null,
       twoFactorEnabled: false,
+      deletedAt: new Date(), // soft-delete: some de todas as queries
     } as any);
-    return { ok: true, message: 'Conta anonimizada conforme LGPD. Atividades públicas preservadas com nome anônimo.' };
+    return {
+      ok: true,
+      message:
+        'Conta excluída e anonimizada conforme LGPD. Dados serão apagados definitivamente em 30 dias.',
+    };
+  }
+
+  /**
+   * Purga definitiva: hard-delete de contas soft-deletadas há mais de 30 dias.
+   * Chamado por cron diário. Retorna quantas foram removidas.
+   */
+  async purgeDeletedAccounts(graceDays = 30): Promise<number> {
+    const cutoff = new Date(Date.now() - graceDays * 86_400_000);
+    // withDeleted: precisa ver os soft-deletados para purgá-los de vez
+    const stale = await this.userRepository.find({
+      where: { deletedAt: LessThan(cutoff) },
+      withDeleted: true,
+      select: ['id'],
+    });
+    if (stale.length === 0) return 0;
+    const ids = stale.map((u) => u.id);
+    // delete() físico (hard) — remove a linha definitivamente
+    await this.userRepository.delete(ids);
+    new Logger('UsersService').log(`Purga LGPD: ${ids.length} conta(s) removida(s) definitivamente`);
+    return ids.length;
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {

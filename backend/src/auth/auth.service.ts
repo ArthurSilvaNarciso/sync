@@ -86,6 +86,7 @@ export class AuthService {
       .addSelect('user.failedLoginAttempts')
       .addSelect('user.lockedUntil')
       .where('user.email = :email', { email })
+      .andWhere('user.deletedAt IS NULL') // bloqueia login de conta excluída (LGPD)
       .getOne();
 
     // Resposta genérica e timing constante: mesmo se user não existe,
