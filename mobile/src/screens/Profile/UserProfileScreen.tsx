@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, Image,
+  View, Text, StyleSheet, ScrollView,
   TouchableOpacity, ActivityIndicator, Alert, Platform,
 } from 'react-native';
+import { Image } from 'expo-image'; // cache em disco para a foto do perfil
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -161,7 +162,9 @@ export default function UserProfileScreen({ navigation, route }: Props) {
                 : require('../../assets/images/default-avatar.png')
             }
             style={styles.heroImage}
-            resizeMode="cover"
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
           />
           {/* Gradient overlay */}
           <LinearGradient

@@ -34,9 +34,27 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: undefined,                                // pode ser undefined em dev
-    } as any);
+    // projectId é OBRIGATÓRIO em builds standalone (EAS). Lê de
+    // app.json → expo.extra.eas.projectId. Em Expo Go pode ser undefined.
+    let projectId: string | undefined;
+    try {
+      const Constants = (await import('expo-constants')).default;
+      projectId =
+        (Constants?.expoConfig as any)?.extra?.eas?.projectId ||
+        (Constants as any)?.easConfig?.projectId;
+    } catch { /* expo-constants ausente */ }
+
+    if (!projectId && !(await import('expo-constants')).default?.expoConfig?.hostUri) {
+      // Sem projectId e fora do Expo Go (build standalone) → não dá pra obter token.
+      console.warn(
+        '[push] Sem EAS projectId. Rode `eas init` e adicione extra.eas.projectId no app.json para push em produção.',
+      );
+      return null;
+    }
+
+    const tokenData = await Notifications.getExpoPushTokenAsync(
+      projectId ? { projectId } : ({} as any),
+    );
     const token = tokenData.data;
 
     if (Platform.OS === 'android') {

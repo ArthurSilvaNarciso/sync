@@ -5,13 +5,13 @@ import {
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  Image,
   ActivityIndicator,
   Platform,
   TextInput,
   RefreshControl,
   Animated,
 } from 'react-native';
+import { Image } from 'expo-image'; // cache em disco para avatares do chat
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChatStackParamList } from '../../navigation/types';
 import { Conversation } from '../../types';

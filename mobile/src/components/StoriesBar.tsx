@@ -1,9 +1,10 @@
 // Bar horizontal de stories ativas (estilo Instagram) — aparece no topo do Discovery
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity, Image,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image'; // cache em disco para avatares de stories
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { storiesService, Story } from '../services/stories.service';
