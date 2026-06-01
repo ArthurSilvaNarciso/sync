@@ -46,3 +46,5 @@ jobs:
         run: npm ci --legacy-peer-deps
       - name: Type check
         run: npm run typecheck
+      - name: Unit tests
+        run: npm test --if-present
