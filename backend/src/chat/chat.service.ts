@@ -2,6 +2,7 @@ import {
   Injectable,
   ForbiddenException,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -41,8 +42,18 @@ export class ChatService {
     await this.verifyMatchAccess(dto.matchId, userId);
 
     const msgType = dto.type === 'audio' ? 'audio' : 'text';
-    // Audio messages store base64 data URL as-is; text messages are sanitized
-    const content = msgType === 'audio' ? dto.content : sanitizeText(dto.content, 1000);
+    // Áudio agora chega como URL (/uploads/media/...) — validamos que é mesmo
+    // uma URL e não base64/script. Texto continua sanitizado.
+    let content: string;
+    if (msgType === 'audio') {
+      const isValidUrl = /^https?:\/\/\S+$/i.test(dto.content) || dto.content.startsWith('/uploads/');
+      if (!isValidUrl) {
+        throw new BadRequestException('Mensagem de áudio deve ser uma URL válida');
+      }
+      content = dto.content.trim();
+    } else {
+      content = sanitizeText(dto.content, 1000);
+    }
 
     const message = this.messageRepository.create({
       match_id: dto.matchId,

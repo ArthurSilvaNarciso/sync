@@ -116,7 +116,7 @@ export class GroupsService {
       role: m.role,
       contributedKm: m.contributedKm,
       contributedActivities: (m as any).contributedActivities,
-      joinedAt: m.createdAt,
+      joinedAt: m.joinedAt,
       user: m.user
         ? {
             id: (m.user as any).id,

@@ -28,6 +28,7 @@ import { FollowsModule } from './follows/follows.module';
 import { SegmentsModule } from './segments/segments.module';
 import { CoachModule } from './coach/coach.module';
 import { ChallengesModule } from './challenges/challenges.module';
+import { MediaModule } from './media/media.module';
 import { HealthController } from './health.controller';
 
 @Module({
@@ -73,6 +74,7 @@ import { HealthController } from './health.controller';
     SegmentsModule,
     CoachModule,
     ChallengesModule,
+    MediaModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

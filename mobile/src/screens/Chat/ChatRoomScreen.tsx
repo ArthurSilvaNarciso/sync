@@ -13,6 +13,7 @@ import {
   Alert,
   ActionSheetIOS,
   Animated,
+  ActivityIndicator,
 } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -26,7 +27,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
-import * as FileSystem from 'expo-file-system';
+import { uploadMedia } from '../../services/media.service';
 
 type Props = {
   navigation: NativeStackNavigationProp<ChatStackParamList, 'ChatRoom'>;
@@ -48,7 +49,12 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const [recording, setRecording] = useState<Audio.Recording | null>(null);
   const [isRecording, setIsRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);
+  const [uploadingAudio, setUploadingAudio] = useState(false);
   const recordingTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Voice playback
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const soundRef = useRef<Audio.Sound | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
   const typingAnim = useRef(new Animated.Value(0)).current;
@@ -63,8 +69,42 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (recordingTimer.current) clearInterval(recordingTimer.current);
       recording?.stopAndUnloadAsync().catch(() => {});
+      soundRef.current?.unloadAsync().catch(() => {});
     };
   }, []);
+
+  // Toca/pausa uma mensagem de áudio a partir da URL
+  const playAudio = async (messageId: string, url: string) => {
+    try {
+      // Se já está tocando esta, para
+      if (playingId === messageId) {
+        await soundRef.current?.stopAsync().catch(() => {});
+        await soundRef.current?.unloadAsync().catch(() => {});
+        soundRef.current = null;
+        setPlayingId(null);
+        return;
+      }
+      // Descarrega qualquer som anterior
+      if (soundRef.current) {
+        await soundRef.current.unloadAsync().catch(() => {});
+        soundRef.current = null;
+      }
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync({ uri: url }, { shouldPlay: true });
+      soundRef.current = sound;
+      setPlayingId(messageId);
+      sound.setOnPlaybackStatusUpdate((status) => {
+        if (status.isLoaded && status.didJustFinish) {
+          sound.unloadAsync().catch(() => {});
+          soundRef.current = null;
+          setPlayingId(null);
+        }
+      });
+    } catch {
+      showToast('Erro ao reproduzir áudio', 'error');
+      setPlayingId(null);
+    }
+  };
 
   useEffect(() => {
     Animated.timing(typingAnim, {
@@ -205,30 +245,34 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
 
       if (!uri || recordDuration < 1) {
         showToast('Gravação muito curta', 'error');
+        setRecordDuration(0);
         return;
       }
 
-      // Read as base64 and send
-      const base64 = await FileSystem.readAsStringAsync(uri, {
-        encoding: FileSystem.EncodingType.Base64,
+      setUploadingAudio(true);
+      // Upload do arquivo → URL pública (não mais base64 no banco!)
+      const { url } = await uploadMedia(uri, {
+        name: `voice-${Date.now()}.m4a`,
+        mimeType: 'audio/m4a',
       });
-      const audioContent = `data:audio/m4a;base64,${base64}`;
 
       const optimistic: Message = {
         id: Date.now().toString(),
         match_id: matchId,
         sender_id: user!.id,
-        content: audioContent,
+        content: url,
         type: 'audio',
         isRead: false,
         createdAt: new Date().toISOString(),
       } as any;
       setMessages((prev) => [...prev, optimistic]);
-      socketService.sendAudioMessage(matchId, audioContent);
+      socketService.sendAudioMessage(matchId, url);
     } catch {
       showToast('Erro ao enviar áudio', 'error');
+    } finally {
+      setUploadingAudio(false);
+      setRecordDuration(0);
     }
-    setRecordDuration(0);
   };
 
   const cancelRecording = async () => {
@@ -341,8 +385,18 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
         )}
         <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
           {isAudio ? (
-            <View style={styles.audioBubble}>
-              <Ionicons name="mic" size={16} color={isMe ? '#fff' : '#FF6B35'} />
+            <TouchableOpacity
+              style={styles.audioBubble}
+              onPress={() => playAudio(item.id, item.content)}
+              activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={playingId === item.id ? 'Pausar áudio' : 'Reproduzir áudio'}
+            >
+              <Ionicons
+                name={playingId === item.id ? 'pause-circle' : 'play-circle'}
+                size={26}
+                color={isMe ? '#fff' : '#FF6B35'}
+              />
               <View style={styles.audioWave}>
                 {[...Array(8)].map((_, i) => (
                   <View
@@ -356,9 +410,9 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
                 ))}
               </View>
               <Text style={[styles.audioDurText, isMe && { color: 'rgba(255,255,255,0.8)' }]}>
-                🎵 Áudio
+                {playingId === item.id ? 'Tocando…' : 'Áudio'}
               </Text>
-            </View>
+            </TouchableOpacity>
           ) : (
             <Text style={[styles.messageText, isMe && styles.myMessageText]}>
               {item.content}
@@ -493,15 +547,20 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               />
             </View>
             {text.trim() ? (
-              <TouchableOpacity style={styles.sendBtn} onPress={sendMessage}>
+              <TouchableOpacity style={styles.sendBtn} onPress={sendMessage} accessibilityLabel="Enviar mensagem">
                 <Ionicons name="send" size={18} color="#fff" />
               </TouchableOpacity>
+            ) : uploadingAudio ? (
+              <View style={styles.micBtn}>
+                <ActivityIndicator size="small" color="#FF6B35" />
+              </View>
             ) : (
               <Animated.View style={{ transform: [{ scale: micPressAnim }] }}>
                 <TouchableOpacity
                   style={styles.micBtn}
                   onLongPress={startRecording}
                   delayLongPress={200}
+                  accessibilityLabel="Segure para gravar áudio"
                 >
                   <Ionicons name="mic-outline" size={22} color="#FF6B35" />
                 </TouchableOpacity>
