@@ -19,12 +19,15 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
 type Props = {
   navigation: NativeStackNavigationProp<ChatStackParamList, 'ConversationList'>;
 };
 
 export default function ConversationListScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -204,7 +207,7 @@ export default function ConversationListScreen({ navigation }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Mensagens</Text>
@@ -303,7 +306,8 @@ export default function ConversationListScreen({ navigation }: Props) {
               tintColor={colors.primary}
             />
           }
-          contentContainerStyle={{ paddingBottom: 100 }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + 16 }}
+          removeClippedSubviews={true}
         />
       )}
     </View>
@@ -328,7 +332,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },

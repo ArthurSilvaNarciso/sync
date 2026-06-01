@@ -21,6 +21,8 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { heroImages } from '../../theme/images';
 import { showToast } from '../../components/ui/Toast';
 import Logo from '../../components/Logo';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
 function formatPace(min: number): string {
   if (!min || !isFinite(min) || min <= 0) return '--:--';
@@ -214,6 +216,7 @@ function FeedCard({ post, liked, likesCount, onLike, onComment }: FeedCardProps)
 
 export default function FeedScreen() {
   const navigation = useNavigation<any>();
+  const insets = useSafeAreaInsets();
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -311,7 +314,7 @@ export default function FeedScreen() {
   };
 
   const ListFooter = () => {
-    if (!loadingMore) return <View style={{ height: 100 }} />;
+    if (!loadingMore) return null;
     return (
       <View style={styles.footerLoader}>
         <ActivityIndicator size="small" color={colors.primary} />
@@ -325,8 +328,9 @@ export default function FeedScreen() {
       {/* Hero header — mesmo padrão das telas de auth */}
       <ImageBackground
         source={{ uri: heroImages.cityGroup }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
         resizeMode="cover"
+        fadeDuration={300}
       >
         <LinearGradient
           colors={['rgba(10,10,15,0.55)', 'rgba(10,10,15,0.97)']}
@@ -378,7 +382,8 @@ export default function FeedScreen() {
           onEndReached={onEndReached}
           onEndReachedThreshold={0.4}
           ListFooterComponent={<ListFooter />}
-          contentContainerStyle={{ paddingBottom: spacing.xl }}
+          contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + spacing.md }}
+          removeClippedSubviews={true}
           ListEmptyComponent={
             loadError ? (
               <View style={styles.empty}>
@@ -410,7 +415,6 @@ const styles = StyleSheet.create({
 
   // ── Hero header ──────────────────────────────────────────────────────────
   header: {
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
     paddingBottom: spacing.lg,
     overflow: 'hidden',
   },

@@ -414,8 +414,8 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: { color: '#fff', fontSize: 16, fontWeight: '700', letterSpacing: 0.3 },
   terms: {
-    fontSize: fontSize.xs, color: 'rgba(255,255,255,0.5)',
-    textAlign: 'center', marginTop: spacing.lg,
+    fontSize: fontSize.xs, color: 'rgba(255,255,255,0.68)',
+    textAlign: 'center', marginTop: spacing.lg, lineHeight: 18,
   },
   termsLink: { color: ACCENT, fontWeight: '600' },
 

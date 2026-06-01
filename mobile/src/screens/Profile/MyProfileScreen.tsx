@@ -25,6 +25,8 @@ import * as ImagePicker from 'expo-image-picker';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQuote, MotivationalQuote } from '../../services/external-apis';
 import { getCurrentLocation } from '../../services/location.service';
 import api from '../../services/api';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, 'MyProfile'>;
@@ -56,6 +58,7 @@ interface Stats {
 }
 
 export default function MyProfileScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const { user, setUser } = useAuthStore();
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [stats, setStats] = useState<Stats>({
@@ -280,8 +283,9 @@ export default function MyProfileScreen({ navigation }: Props) {
             ? { uri: user.bannerUrl }
             : { uri: user.sports?.[0] ? getSportImage(user.sports[0]) : heroImages.runnerSunrise }
         }
-        style={styles.headerGradient}
+        style={[styles.headerGradient, { paddingTop: Math.max(insets.top + 12, 60) }]}
         resizeMode="cover"
+        fadeDuration={300}
       >
         <LinearGradient
           colors={['rgba(10,10,15,0.15)', 'rgba(10,10,15,0.65)', 'rgba(10,10,15,0.97)']}
@@ -289,8 +293,12 @@ export default function MyProfileScreen({ navigation }: Props) {
           style={StyleSheet.absoluteFill}
         />
         {/* Banner edit button */}
-        <TouchableOpacity style={styles.bannerEditBtn} onPress={pickBanner} disabled={uploadingBanner}>
-          <Ionicons name={uploadingBanner ? 'hourglass-outline' : 'image-outline'} size={16} color="#fff" />
+        <TouchableOpacity
+          style={[styles.bannerEditBtn, { top: Math.max(insets.top + 12, 56) }]}
+          onPress={pickBanner}
+          disabled={uploadingBanner}
+        >
+          <Ionicons name={uploadingBanner ? 'hourglass-outline' : 'image-outline'} size={18} color="#fff" />
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.avatarContainer}>
@@ -489,7 +497,7 @@ export default function MyProfileScreen({ navigation }: Props) {
         ))}
       </View>
 
-      <View style={{ height: spacing.xxl + 20 }} />
+      <View style={{ height: TAB_BAR_HEIGHT + insets.bottom + spacing.md }} />
     </ScrollView>
   );
 }
@@ -500,18 +508,20 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
   },
   headerGradient: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 48,
     paddingBottom: spacing.xl + 20,
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
   },
   bannerEditBtn: {
     position: 'absolute',
-    top: Platform.OS === 'ios' ? 56 : 44,
+    top: 56, // overridden dynamically with insets.top
     right: spacing.md,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 8,
-    padding: 7,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderRadius: 10,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.25)',
   },
@@ -535,16 +545,21 @@ const styles = StyleSheet.create({
   },
   editAvatarBtn: {
     position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    bottom: -2,
+    right: -2,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: colors.primary,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
     borderColor: colors.white,
+    shadowColor: colors.primary,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 4,
   },
   nameRow: {
     flexDirection: 'row',

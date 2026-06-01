@@ -12,6 +12,7 @@ import {
   Easing,
   Pressable,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/authStore';
@@ -30,6 +31,7 @@ type Props = {
 const ACCENT = '#FF6B35';
 
 export default function LoginScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -106,14 +108,16 @@ export default function LoginScreen({ navigation }: Props) {
       </ImageBackground>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -24}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.centerStage}>
+          <View style={[styles.centerStage, { paddingTop: Math.max(insets.top + 16, 56) }]}>
             <Animated.View
               style={[styles.content, { opacity: fade, transform: [{ translateY: slideY }] }]}
             >
@@ -215,7 +219,6 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? 60 : 36,
     paddingBottom: spacing.xl,
   },
   content: {
@@ -223,8 +226,8 @@ const styles = StyleSheet.create({
     maxWidth: 440,
   },
   backButton: {
-    width: 40,
-    height: 40,
+    width: 44,
+    height: 44,
     borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,
@@ -234,7 +237,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   titleBlock: {
-    marginTop: 120,
+    marginTop: spacing.xl,
     marginBottom: spacing.xl,
   },
   title: {
@@ -259,8 +262,12 @@ const styles = StyleSheet.create({
   },
   forgotPassword: {
     alignSelf: 'flex-end',
-    marginTop: spacing.sm,
-    marginBottom: spacing.lg,
+    marginTop: spacing.xs,
+    marginBottom: spacing.md,
+    paddingVertical: spacing.sm,
+    paddingHorizontal: spacing.sm,
+    minHeight: 44,
+    justifyContent: 'center',
   },
   forgotPasswordText: {
     fontSize: fontSize.sm,

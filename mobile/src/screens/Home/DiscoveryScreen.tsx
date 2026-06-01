@@ -27,6 +27,8 @@ import api from '../../services/api';
 import StoriesBar from '../../components/StoriesBar';
 import { matchingApi } from '../../services/matching.service';
 import type { Story } from '../../services/stories.service';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
 // Lazy-load heavy story modals — defers parse + init until first user interaction
 const StoryViewerScreen = lazy(() => import('../Stories/StoryViewerScreen'));
@@ -57,6 +59,7 @@ const SPORT_FILTER_OPTIONS = [
 ];
 
 export default function DiscoveryScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const authUser = useAuthStore((s) => s.user);
   const hasLocation = !!(authUser?.latitude && authUser?.longitude);
   const [users, setUsers] = useState<DiscoveryUser[]>([]);
@@ -400,7 +403,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
         colors={['#14142A', '#0F0F1A']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Descobrir</Text>
@@ -772,7 +775,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    paddingTop: 56, // fallback; overridden dynamically with insets.top in JSX
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.sm,
   },

@@ -21,6 +21,7 @@ import Input from '../../components/ui/Input';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { showToast } from '../../components/ui/Toast';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Register'>;
@@ -29,6 +30,7 @@ type Props = {
 const ACCENT = '#FF6B35';
 
 export default function RegisterScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -126,14 +128,15 @@ export default function RegisterScreen({ navigation }: Props) {
       </ImageBackground>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior="padding"
         style={{ flex: 1 }}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : -24}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scroll}
         >
-          <View style={styles.centerStage}>
+          <View style={[styles.centerStage, { paddingTop: Math.max(insets.top + 16, 56) }]}>
             <Animated.View
               style={[styles.content, { opacity: fade, transform: [{ translateY: slideY }] }]}
             >
@@ -344,18 +347,17 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     paddingHorizontal: spacing.lg,
-    paddingTop: Platform.OS === 'ios' ? 60 : 36,
     paddingBottom: spacing.xl,
   },
   content: { width: '100%', maxWidth: 440 },
   backButton: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 44, height: 44, borderRadius: 12,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center', alignItems: 'center',
     marginBottom: spacing.md,
   },
-  titleBlock: { marginTop: 80, marginBottom: spacing.lg },
+  titleBlock: { marginTop: spacing.lg, marginBottom: spacing.lg },
   title: {
     fontSize: 32, fontWeight: '800', color: '#fff',
     lineHeight: 38, letterSpacing: -0.5,
@@ -391,9 +393,10 @@ const styles = StyleSheet.create({
   },
   genderRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.xs },
   genderPill: {
-    flex: 1, paddingVertical: 10, borderRadius: 10,
+    flex: 1, paddingVertical: 12, borderRadius: 10,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
     alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)',
+    minHeight: 44,
   },
   genderPillText: { fontSize: fontSize.sm, color: 'rgba(255,255,255,0.6)' },
   termsRow: {

@@ -12,6 +12,7 @@ import { createBottomTabNavigator, BottomTabBarProps } from '@react-navigation/b
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTabParamList } from './types';
 import { colors } from '../theme';
 
@@ -26,75 +27,79 @@ import ProfileStack from './stacks/ProfileStack';
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const ACCENT = '#FF6B35';
 
-// Configuração visual de cada tab — ícones mais expressivos
-// TrackingTab usa nosso Logo (infinito roxo)
+// Altura base da barra (sem safe area — o padding bottom é dinâmico via insets)
+const BAR_INNER_HEIGHT = Platform.OS === 'ios' ? 60 : 58;
+
+// Exportado para uso em paddingBottom de listas
+export const TAB_BAR_HEIGHT = BAR_INNER_HEIGHT + (Platform.OS === 'ios' ? 34 : 0);
+
 const TABS: Record<
   string,
-  { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap; useLogo?: boolean }
+  { label: string; icon: keyof typeof Ionicons.glyphMap; iconActive: keyof typeof Ionicons.glyphMap }
 > = {
-  FeedTab: { label: 'Feed', icon: 'newspaper-outline', iconActive: 'newspaper' },
-  HomeTab: { label: 'Descobrir', icon: 'heart-outline', iconActive: 'heart' },
-  MapTab: { label: 'Mapa', icon: 'map-outline', iconActive: 'map' },
-  TrackingTab: { label: 'Treinar', icon: 'add', iconActive: 'add', useLogo: true },
-  ChatTab: { label: 'Chat', icon: 'chatbubble-outline', iconActive: 'chatbubble' },
-  ProfileTab: { label: 'Perfil', icon: 'person-outline', iconActive: 'person' },
+  FeedTab:     { label: 'Feed',     icon: 'grid-outline',      iconActive: 'grid' },
+  HomeTab:     { label: 'Descobrir',icon: 'compass-outline',   iconActive: 'compass' },
+  MapTab:      { label: 'Mapa',     icon: 'map-outline',       iconActive: 'map' },
+  TrackingTab: { label: 'Treinar',  icon: 'add',               iconActive: 'add' },
+  ChatTab:     { label: 'Chat',     icon: 'chatbubble-outline', iconActive: 'chatbubble' },
+  ProfileTab:  { label: 'Perfil',   icon: 'person-outline',    iconActive: 'person' },
 };
 
-// ================== Tab Item ==================
+// ─── TabItem ──────────────────────────────────────────────────────────────────
 function TabItem({
-  focused,
-  onPress,
-  onLongPress,
-  routeName,
+  focused, onPress, onLongPress, routeName, badgeCount = 0,
 }: {
   focused: boolean;
   onPress: () => void;
   onLongPress?: () => void;
   routeName: string;
+  badgeCount?: number;
 }) {
   const config = TABS[routeName];
-  const scale = useRef(new Animated.Value(focused ? 1 : 0.9)).current;
-  const labelOpacity = useRef(new Animated.Value(focused ? 1 : 0.6)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+  const pillWidth = useRef(new Animated.Value(focused ? 1 : 0)).current;
 
   useEffect(() => {
     Animated.parallel([
       Animated.spring(scale, {
-        toValue: focused ? 1.05 : 1,
+        toValue: focused ? 1.08 : 1,
         useNativeDriver: true,
-        friction: 6,
-        tension: 100,
+        friction: 7,
+        tension: 120,
       }),
-      Animated.timing(labelOpacity, {
-        toValue: focused ? 1 : 0.55,
-        duration: 200,
+      Animated.timing(pillWidth, {
+        toValue: focused ? 1 : 0,
+        duration: 220,
         easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
+        useNativeDriver: false,
       }),
     ]).start();
   }, [focused]);
 
-  // Tracking tab é especial — botão central elevado com Logo Sync
+  // ── Tracking center button ───────────────────────────────────────────────
   if (routeName === 'TrackingTab') {
     return (
-      <Pressable onPress={onPress} onLongPress={onLongPress} style={styles.tabCenter}>
+      <Pressable
+        onPress={onPress}
+        onLongPress={onLongPress}
+        style={styles.tabCenter}
+        accessibilityRole="button"
+        accessibilityLabel="Treinar"
+        accessibilityState={{ selected: focused }}
+      >
         <Animated.View style={[styles.centerOuter, { transform: [{ scale }] }]}>
           <LinearGradient
-            colors={focused ? ['#FF6B35', '#FF4500'] : ['#4A0E2C', '#2A0518']}
+            colors={focused ? ['#FF6B35', '#FF3D00'] : ['#2A1520', '#1A0E18']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.centerGradient}
           >
-            <Logo size={28} color="#fff" />
+            <Logo size={26} color="#fff" />
           </LinearGradient>
         </Animated.View>
-        <Animated.Text
-          style={[
-            styles.centerLabel,
-            { opacity: labelOpacity, color: focused ? ACCENT : '#8E8EA0' },
-          ]}
-        >
+        <Text style={[styles.centerLabel, { color: focused ? ACCENT : '#7A7A8E' }]}>
           {config.label}
-        </Animated.Text>
+        </Text>
       </Pressable>
     );
   }
@@ -103,70 +108,90 @@ function TabItem({
     <Pressable
       onPress={onPress}
       onLongPress={onLongPress}
-      style={({ pressed }) => [styles.tabItem, pressed && { opacity: 0.7 }]}
+      style={styles.tabItem}
+      accessibilityRole="tab"
+      accessibilityLabel={config.label}
+      accessibilityState={{ selected: focused }}
     >
-      <Animated.View style={[styles.iconBox, { transform: [{ scale }] }]}>
-        {focused && (
-          <LinearGradient
-            colors={[ACCENT + '40', ACCENT + '10']}
-            style={styles.iconBoxBg}
+      {/* Pill indicator por trás do ícone */}
+      <Animated.View
+        style={[
+          styles.iconPill,
+          {
+            backgroundColor: pillWidth.interpolate({
+              inputRange: [0, 1],
+              outputRange: ['transparent', ACCENT + '20'],
+            }),
+            paddingHorizontal: pillWidth.interpolate({
+              inputRange: [0, 1],
+              outputRange: [0, 14],
+            }),
+          },
+        ]}
+      >
+        <Animated.View style={{ transform: [{ scale }] }}>
+          <Ionicons
+            name={focused ? config.iconActive : config.icon}
+            size={22}
+            color={focused ? ACCENT : '#7A7A8E'}
           />
-        )}
-        <Ionicons
-          name={focused ? config.iconActive : config.icon}
-          size={22}
-          color={focused ? ACCENT : '#8E8EA0'}
-        />
+        </Animated.View>
       </Animated.View>
-      <Animated.Text
+
+      <Text
         style={[
           styles.label,
           {
-            opacity: labelOpacity,
-            color: focused ? ACCENT : '#8E8EA0',
+            color: focused ? ACCENT : '#7A7A8E',
             fontWeight: focused ? '700' : '500',
           },
         ]}
       >
         {config.label}
-      </Animated.Text>
-      {/* Indicador inferior */}
-      {focused && <View style={styles.dotIndicator} />}
+      </Text>
+
+      {/* Badge */}
+      {badgeCount > 0 && (
+        <View style={styles.badge}>
+          <Text style={styles.badgeText}>{badgeCount > 9 ? '9+' : badgeCount}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
 
-// ================== Custom Tab Bar ==================
+// ─── CustomTabBar ─────────────────────────────────────────────────────────────
 function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
-  // Honra tabBarStyle: {display:'none'} setado via options da rota focada
+  const insets = useSafeAreaInsets();
+
   const focusedRoute = state.routes[state.index];
   const focusedOptions = descriptors[focusedRoute.key]?.options;
   const tabBarStyle = focusedOptions?.tabBarStyle as any;
   if (tabBarStyle && tabBarStyle.display === 'none') return null;
 
+  // Padding bottom dinâmico: home indicator real do dispositivo
+  const bottomPad = Math.max(insets.bottom, Platform.OS === 'ios' ? 8 : 6);
+
   return (
-    <View style={styles.barContainer} pointerEvents="box-none">
-      {/* Glass background com gradient sutil */}
+    <View
+      style={[styles.barContainer, { paddingBottom: bottomPad }]}
+      pointerEvents="box-none"
+    >
+      {/* Background glassmorphism */}
       <View style={styles.barBg}>
         <LinearGradient
-          colors={['rgba(20,20,32,0.92)', 'rgba(10,10,15,0.98)']}
+          colors={['rgba(18,18,28,0.96)', 'rgba(10,10,15,0.99)']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
           style={StyleSheet.absoluteFill}
         />
-        {/* Borda superior gradient */}
-        <LinearGradient
-          colors={['transparent', 'rgba(255,107,53,0.3)', 'transparent']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.topHairline}
-        />
+        {/* Linha superior sutil */}
+        <View style={styles.topLine} />
       </View>
 
-      <View style={styles.row}>
+      <View style={[styles.row, { height: BAR_INNER_HEIGHT }]}>
         {state.routes.map((route, index) => {
           const focused = state.index === index;
-          const { options } = descriptors[route.key];
 
           const onPress = () => {
             const event = navigation.emit({
@@ -179,16 +204,12 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             }
           };
 
-          const onLongPress = () => {
-            navigation.emit({ type: 'tabLongPress', target: route.key });
-          };
-
           return (
             <TabItem
               key={route.key}
               focused={focused}
               onPress={onPress}
-              onLongPress={onLongPress}
+              onLongPress={() => navigation.emit({ type: 'tabLongPress', target: route.key })}
               routeName={route.name}
             />
           );
@@ -198,128 +219,126 @@ function CustomTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   );
 }
 
-// ================== Navigator ==================
+// ─── Navigator ────────────────────────────────────────────────────────────────
 export default function MainTabNavigator() {
   return (
     <Tab.Navigator
       tabBar={(props) => <CustomTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tab.Screen name="FeedTab" component={FeedStack} />
-      <Tab.Screen name="HomeTab" component={HomeStack} />
-      <Tab.Screen name="MapTab" component={MapStack} />
+      <Tab.Screen name="FeedTab"     component={FeedStack} />
+      <Tab.Screen name="HomeTab"     component={HomeStack} />
+      <Tab.Screen name="MapTab"      component={MapStack} />
       <Tab.Screen
         name="TrackingTab"
         component={TrackingStack}
         options={({ route }) => {
           const focused = getFocusedRouteNameFromRoute(route) ?? 'TrackingMain';
           const hidden = TRACKING_FULLSCREEN_ROUTES.has(focused);
-          return {
-            tabBarStyle: hidden ? { display: 'none' } : undefined,
-          };
+          return { tabBarStyle: hidden ? { display: 'none' } : undefined };
         }}
       />
-      <Tab.Screen name="ChatTab" component={ChatStack} />
-      <Tab.Screen name="ProfileTab" component={ProfileStack} />
+      <Tab.Screen name="ChatTab"     component={ChatStack} />
+      <Tab.Screen name="ProfileTab"  component={ProfileStack} />
     </Tab.Navigator>
   );
 }
 
-const BAR_HEIGHT = Platform.OS === 'ios' ? 88 : 72;
-
+// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
   barContainer: {
     position: 'absolute',
     bottom: 0,
     left: 0,
     right: 0,
-    alignItems: 'center',
   },
   barBg: {
     ...StyleSheet.absoluteFillObject,
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
     overflow: 'hidden',
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
   },
-  topHairline: {
+  topLine: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: 1,
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: 'rgba(255,255,255,0.12)',
   },
   row: {
-    width: '100%',
-    maxWidth: 520, // centraliza na web
     flexDirection: 'row',
-    paddingTop: 10,
-    paddingBottom: Platform.OS === 'ios' ? 26 : 12,
-    paddingHorizontal: 4,
-    height: BAR_HEIGHT,
-    alignItems: 'flex-start',
+    alignItems: 'center',
     justifyContent: 'space-around',
+    paddingHorizontal: 8,
   },
+
+  // Regular tab item — full pressable area 44px+ effective
   tabItem: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 4,
-    gap: 4,
-  },
-  iconBox: {
-    width: 42,
-    height: 30,
-    borderRadius: 12,
+    minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    overflow: 'hidden',
+    gap: 3,
+    paddingVertical: 6,
   },
-  iconBoxBg: {
-    ...StyleSheet.absoluteFillObject,
-    borderRadius: 12,
+  iconPill: {
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 40,
   },
   label: {
-    fontSize: 11,
-    letterSpacing: 0.3,
+    fontSize: 10,
+    letterSpacing: 0.2,
   },
-  dotIndicator: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: ACCENT,
-    marginTop: 1,
-  },
-  // Center button (Tracking)
-  tabCenter: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingTop: 0,
-    marginTop: -16,
-  },
-  centerOuter: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    shadowColor: ACCENT,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 14,
-  },
-  centerGradient: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
+  badge: {
+    position: 'absolute',
+    top: 2,
+    right: '15%',
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#F87171',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 3,
+  },
+  badgeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
+
+  // Center (Tracking) button — elevated
+  tabCenter: {
+    flex: 1,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    marginTop: -20,
+    paddingVertical: 4,
+  },
+  centerOuter: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    shadowColor: ACCENT,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45,
+    shadowRadius: 12,
+    elevation: 10,
+  },
+  centerGradient: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.08)',
   },
   centerLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    marginTop: 6,
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
 });
