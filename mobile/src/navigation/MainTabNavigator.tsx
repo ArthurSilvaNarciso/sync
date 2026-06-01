@@ -16,7 +16,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTabParamList } from './types';
 import { colors } from '../theme';
 
-import Logo from '../components/Logo';
 import FeedStack from './stacks/FeedStack';
 import HomeStack from './stacks/HomeStack';
 import MapStack from './stacks/MapStack';
@@ -40,7 +39,7 @@ const TABS: Record<
   FeedTab:     { label: 'Feed',     icon: 'grid-outline',      iconActive: 'grid' },
   HomeTab:     { label: 'Descobrir',icon: 'compass-outline',   iconActive: 'compass' },
   MapTab:      { label: 'Mapa',     icon: 'map-outline',       iconActive: 'map' },
-  TrackingTab: { label: 'Treinar',  icon: 'add',               iconActive: 'add' },
+  TrackingTab: { label: 'Treinar',  icon: 'barbell-outline',   iconActive: 'barbell' },
   ChatTab:     { label: 'Chat',     icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   ProfileTab:  { label: 'Perfil',   icon: 'person-outline',    iconActive: 'person' },
 };
@@ -75,34 +74,6 @@ function TabItem({
       }),
     ]).start();
   }, [focused]);
-
-  // ── Tracking center button ───────────────────────────────────────────────
-  if (routeName === 'TrackingTab') {
-    return (
-      <Pressable
-        onPress={onPress}
-        onLongPress={onLongPress}
-        style={styles.tabCenter}
-        accessibilityRole="button"
-        accessibilityLabel="Treinar"
-        accessibilityState={{ selected: focused }}
-      >
-        <Animated.View style={[styles.centerOuter, { transform: [{ scale }] }]}>
-          <LinearGradient
-            colors={focused ? ['#FF6B35', '#FF3D00'] : ['#2A1520', '#1A0E18']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.centerGradient}
-          >
-            <Logo size={26} color="#fff" />
-          </LinearGradient>
-        </Animated.View>
-        <Text style={[styles.centerLabel, { color: focused ? ACCENT : '#7A7A8E' }]}>
-          {config.label}
-        </Text>
-      </Pressable>
-    );
-  }
 
   return (
     <Pressable

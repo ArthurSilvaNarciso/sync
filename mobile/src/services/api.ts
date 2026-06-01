@@ -46,11 +46,17 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
-// Interceptor: trata erros globalmente
+// Interceptor: trata erros globalmente.
+// IMPORTANTE: só limpamos a sessão quando o 401 vem da validação de sessão
+// (/users/me ou /auth/*). Um 401 de um recurso isolado (upload, feed, etc.)
+// NÃO deve deslogar o usuário de tudo — antes, um único upload com falha
+// derrubava a sessão inteira.
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    if (error.response?.status === 401) {
+    const url: string = error.config?.url || '';
+    const isSessionCheck = url.includes('/users/me') || url.includes('/auth/');
+    if (error.response?.status === 401 && isSessionCheck) {
       await secureStorage.removeItem('@sync:token');
       await AsyncStorage.removeItem('@sync:token').catch(() => {});
       await AsyncStorage.removeItem('@sync:user').catch(() => {});

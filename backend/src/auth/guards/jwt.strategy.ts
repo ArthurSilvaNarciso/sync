@@ -10,7 +10,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: process.env.JWT_SECRET || 'sync-secret-key',
+      // DEVE bater com o secret de assinatura do JwtModule (auth.module.ts),
+      // senão todo token é rejeitado (401) em dev sem JWT_SECRET no env.
+      secretOrKey: process.env.JWT_SECRET || 'sync-dev-secret-CHANGE-IN-PROD',
     });
   }
 

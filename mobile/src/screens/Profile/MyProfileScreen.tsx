@@ -313,6 +313,8 @@ export default function MyProfileScreen({ navigation }: Props) {
               source={
                 user.avatarUrl
                   ? { uri: user.avatarUrl }
+                  : user.profilePhotos && user.profilePhotos.length > 0
+                  ? { uri: user.profilePhotos[0] }
                   : require('../../assets/images/default-avatar.png')
               }
               style={styles.avatar}
