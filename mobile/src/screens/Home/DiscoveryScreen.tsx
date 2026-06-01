@@ -486,6 +486,8 @@ export default function DiscoveryScreen({ navigation }: Props) {
             style={styles.filterBtn}
             onPress={() => setShowFilters(true)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Filtros de descoberta"
           >
             <Ionicons name="options-outline" size={22} color={colors.text} />
           </TouchableOpacity>

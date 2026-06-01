@@ -299,6 +299,8 @@ export default function MyProfileScreen({ navigation }: Props) {
           style={[styles.bannerEditBtn, { top: Math.max(insets.top + 12, 56) }]}
           onPress={pickBanner}
           disabled={uploadingBanner}
+          accessibilityRole="button"
+          accessibilityLabel="Alterar foto de capa"
         >
           <Ionicons name={uploadingBanner ? 'hourglass-outline' : 'image-outline'} size={18} color="#fff" />
         </TouchableOpacity>
@@ -315,8 +317,10 @@ export default function MyProfileScreen({ navigation }: Props) {
             <TouchableOpacity
               style={styles.editAvatarBtn}
               onPress={() => navigation.navigate('EditProfile')}
+              accessibilityRole="button"
+              accessibilityLabel="Alterar foto de perfil"
             >
-              <Ionicons name="camera" size={14} color={colors.white} />
+              <Ionicons name="camera" size={16} color={colors.white} />
             </TouchableOpacity>
           </View>
           <View style={styles.nameRow}>

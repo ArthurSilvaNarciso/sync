@@ -143,6 +143,8 @@ export default function RegisterScreen({ navigation }: Props) {
               <TouchableOpacity
                 onPress={() => navigation.goBack()}
                 style={styles.backButton}
+                accessibilityRole="button"
+                accessibilityLabel="Voltar"
               >
                 <Ionicons name="arrow-back" size={22} color="#fff" />
               </TouchableOpacity>
