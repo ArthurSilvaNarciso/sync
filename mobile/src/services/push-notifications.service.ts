@@ -21,11 +21,13 @@ export async function registerForPushNotifications(): Promise<string | null> {
       return null;
     }
 
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    // status/granted vêm de PermissionResponse; cast defensivo pois o import
+    // dinâmico nem sempre resolve a interface herdada de expo-modules-core
+    const existing = (await Notifications.getPermissionsAsync()) as { status: string; granted?: boolean };
+    let finalStatus = existing.status;
+    if (finalStatus !== 'granted') {
+      const requested = (await Notifications.requestPermissionsAsync()) as { status: string; granted?: boolean };
+      finalStatus = requested.status;
     }
     if (finalStatus !== 'granted') {
       console.log('[push] Permissão negada');
