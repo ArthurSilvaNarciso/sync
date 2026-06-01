@@ -22,7 +22,6 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../services/api';
-import { uploadMedia } from '../../services/media.service';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type Props = {
@@ -75,21 +74,26 @@ export default function PhotosScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.6,
+        quality: 0.5,
+        base64: true,
       });
 
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
 
       setUploading(true);
-      // Upload do arquivo → URL (não mais base64)
-      const { url } = await uploadMedia(asset.uri, {
-        name: `photo-${Date.now()}.jpg`,
-        mimeType: asset.mimeType || 'image/jpeg',
-      });
+      // Mantém base64 no state (sem rede) — persistido só no final em handleFinish,
+      // que tem fallback offline. Onboarding não pode travar por upload.
+      let base64: string;
+      if (Platform.OS === 'web') {
+        base64 = await resizeForWeb(asset.uri, 400);
+      } else {
+        const mime = asset.mimeType || 'image/jpeg';
+        base64 = asset.base64 ? `data:${mime};base64,${asset.base64}` : asset.uri;
+      }
 
       if (photos.length < MAX_PHOTOS) {
-        setPhotos((prev) => [...prev, url]);
+        setPhotos((prev) => [...prev, base64]);
       }
     } catch (e: any) {
       Alert.alert('Erro', e?.message || 'Não foi possível carregar a foto');
