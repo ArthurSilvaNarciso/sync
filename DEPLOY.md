@@ -105,3 +105,63 @@ Fluxo total: ~15 minutos. Você só loga uma vez em cada serviço.
 - **Postgres no Railway**: incluído nos $5
 
 Total esperado pra MVP: **$5-10/mês**.
+
+---
+
+## 4. ⚠️ Atualizações importantes (mídia, push, LGPD, crons)
+
+Mudanças recentes adicionaram requisitos novos de operação. **Leia antes do próximo deploy.**
+
+### 4.1 `BACKEND_URL` — agora obrigatória
+Uploads (avatar, banner, fotos de perfil, áudio do chat, stories) deixaram de ser
+base64 no banco e viram **arquivos** servidos em `/uploads/...`. O backend monta a
+URL pública a partir de `BACKEND_URL`.
+
+```
+BACKEND_URL=https://sync-api-production.up.railway.app   # mesmo domínio do §1.5
+```
+Sem isso, as imagens/áudios vêm com host errado e não carregam.
+
+### 4.2 🔴 Disco efêmero — mídia some no redeploy
+O Railway (e qualquer container) tem **disco efêmero**: a pasta `uploads/` é apagada
+a cada deploy. Para mídia persistir, escolha uma:
+- **Railway Volume** montado em `backend/uploads/` (rápido) — Settings → Volumes
+- **S3 / Cloudflare R2 / Cloudinary** (correto a longo prazo — trocar o `diskStorage`
+  do multer em `media.controller.ts` por um adapter de storage)
+
+Em beta dá pra viver sem; em produção paga, configure um dos dois.
+
+### 4.3 Push notifications (build standalone)
+O envio via Expo Push já está conectado (novo match + nova mensagem + lembretes).
+Para o **registro de token** funcionar num build standalone (EAS):
+```bash
+cd mobile
+eas init                       # cria/linka projeto Expo → grava extra.eas.projectId
+```
+- Em Expo Go funciona sem projectId
+- Sem projectId num standalone, o registro é pulado com aviso (não crasha)
+
+### 4.4 Crons agora ativos (`@nestjs/schedule` instalado)
+Antes nenhum cron rodava. Agora rodam:
+- **Lembretes** (hidratação 10/14/17h, treino 7h) → desligar com `REMINDERS_DISABLED=true`
+- **Purga LGPD** (3h da manhã, hard-delete de contas excluídas há +30 dias) →
+  desligar com `PURGE_DISABLED=true`
+
+### 4.5 LGPD soft-delete — nova coluna `deletedAt`
+A exclusão de conta agora é soft-delete real (anonimiza + esconde + purga em 30 dias).
+A coluna `deletedAt` é criada pelo `DB_SYNCHRONIZE=true`. **No próximo deploy**, suba
+uma vez com `DB_SYNCHRONIZE=true` pra criar a coluna, depois volte pra `false`.
+
+### 4.6 Env vars opcionais úteis
+| Variável | Pra quê |
+|----------|---------|
+| `SWAGGER_USER` / `SWAGGER_PASS` | Proteger `/api/docs` com basic auth em prod |
+| `SENTRY_DSN` | Error tracking (recomendado em prod) |
+| `REMINDERS_DISABLED` / `PURGE_DISABLED` | Desligar crons individualmente |
+
+### 4.7 Sanity check (roda no CI também)
+```bash
+cd backend && npm run typecheck && npm test   # 26 testes
+cd mobile  && npm run typecheck && npm test    # 5 testes
+```
+O `.github/workflows/ci.yml` já executa isso em todo PR/push na `main`.
