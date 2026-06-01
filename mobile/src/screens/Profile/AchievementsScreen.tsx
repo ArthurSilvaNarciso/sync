@@ -15,6 +15,7 @@ import { achievementsService } from '../../services/achievements.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SkeletonList } from '../../components/ui/Skeleton';
 import { LinearGradient } from 'expo-linear-gradient';
 
 type Props = {
@@ -91,8 +92,8 @@ export default function AchievementsScreen({ navigation }: Props) {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={colors.dark.accent} />
+      <View style={[styles.container, { paddingTop: Math.max(insets.top + 12, 56) }]}>
+        <SkeletonList count={7} />
       </View>
     );
   }

@@ -15,6 +15,7 @@ import { RankingItem } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SkeletonList } from '../../components/ui/Skeleton';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 
@@ -179,7 +180,7 @@ export default function RankingScreen({ navigation }: Props) {
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#FF6B35" style={{ marginTop: 50 }} />
+        <SkeletonList count={8} />
       ) : (
         <FlatList
           data={ranking.slice(3)}

@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { challengesService, Challenge } from '../../services/challenges.service';
+import { useHaptic } from '../../hooks/useHaptic';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/ui/Toast';
 
@@ -70,6 +71,7 @@ function timeAgo(dateStr: string) {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function ChallengesScreen({ navigation }: any) {
   const user = useAuthStore((s) => s.user);
+  const haptic = useHaptic();
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -121,6 +123,7 @@ export default function ChallengesScreen({ navigation }: any) {
     setResponding(challenge.id);
     try {
       await challengesService.respond(challenge.id, accept);
+      if (accept) haptic.success(); else haptic.light();
       showToast(accept ? 'Desafio aceito! 💪' : 'Desafio recusado', accept ? 'success' : 'info');
       await load(true);
     } catch {

@@ -11,7 +11,6 @@ import {
   Platform,
   Modal,
   Easing,
-  Vibration,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { HomeStackParamList } from '../../navigation/types';
@@ -28,6 +27,7 @@ import StoriesBar from '../../components/StoriesBar';
 import { matchingApi } from '../../services/matching.service';
 import type { Story } from '../../services/stories.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useHaptic } from '../../hooks/useHaptic';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
 // Lazy-load heavy story modals — defers parse + init until first user interaction
@@ -60,6 +60,7 @@ const SPORT_FILTER_OPTIONS = [
 
 export default function DiscoveryScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
+  const haptic = useHaptic();
   const authUser = useAuthStore((s) => s.user);
   const hasLocation = !!(authUser?.latitude && authUser?.longitude);
   const [users, setUsers] = useState<DiscoveryUser[]>([]);
@@ -154,8 +155,9 @@ export default function DiscoveryScreen({ navigation }: Props) {
     const currentUser = users[currentIndex];
     if (!currentUser) return;
 
-    // Haptic feedback
-    try { Vibration.vibrate(50); } catch {}
+    // Haptic feedback — leve no swipe (like = médio, nope = leve)
+    if (direction === 'right') haptic.medium();
+    else haptic.light();
 
     setLastSwipedUser(currentUser);
     Animated.timing(undoOpacity, {
@@ -194,6 +196,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
         });
 
         if (data.matched) {
+          haptic.success(); // celebração tátil no match
           setNewMatchCount((prev) => prev + 1);
           navigation.navigate('MatchScreen', {
             matchId: data.matchId,

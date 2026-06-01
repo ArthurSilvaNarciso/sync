@@ -61,9 +61,38 @@ export default function Skeleton({
   );
 }
 
+/**
+ * Lista de skeleton-rows (avatar + 2 linhas) — drop-in pra telas de lista
+ * enquanto carregam (Ranking, Groups, Achievements, etc.)
+ */
+export function SkeletonList({ count = 6 }: { count?: number }) {
+  return (
+    <View style={{ paddingTop: 8 }}>
+      {Array.from({ length: count }).map((_, i) => (
+        <View key={i} style={styles.row}>
+          <Skeleton width={48} height={48} borderRadius={24} />
+          <View style={styles.rowText}>
+            <Skeleton width={'55%'} height={14} />
+            <Skeleton width={'35%'} height={11} />
+          </View>
+          <Skeleton width={40} height={20} borderRadius={10} />
+        </View>
+      ))}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   base: {
     backgroundColor: 'rgba(255,255,255,0.04)',
     overflow: 'hidden',
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+  },
+  rowText: { flex: 1, gap: 8 },
 });

@@ -28,6 +28,7 @@ import api from '../../services/api';
 import { feedApi } from '../../services/feed.service';
 import { generateWorkoutSummary } from '../../utils/workout-summary';
 import { showToast } from '../../components/ui/Toast';
+import { useHaptic } from '../../hooks/useHaptic';
 import PostWorkoutRatingModal from '../../components/PostWorkoutRatingModal';
 
 type Props = {
@@ -60,6 +61,7 @@ interface PRResult {
 }
 
 export default function ActivitySummaryScreen({ navigation, route }: Props) {
+  const haptic = useHaptic();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -86,6 +88,7 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
 
   useEffect(() => {
     if (!loading && activity) {
+      haptic.success(); // celebração tátil ao concluir o treino
       Animated.sequence([
         Animated.parallel([
           Animated.spring(checkScale, { toValue: 1, tension: 70, friction: 7, useNativeDriver: true }),
