@@ -20,6 +20,7 @@ import FeedStack from './stacks/FeedStack';
 import HomeStack from './stacks/HomeStack';
 import MapStack from './stacks/MapStack';
 import TrackingStack, { TRACKING_FULLSCREEN_ROUTES } from './stacks/TrackingStack';
+import GroupsStack from './stacks/GroupsStack';
 import ChatStack from './stacks/ChatStack';
 import ProfileStack from './stacks/ProfileStack';
 
@@ -40,6 +41,7 @@ const TABS: Record<
   HomeTab:     { label: 'Descobrir',icon: 'compass-outline',   iconActive: 'compass' },
   MapTab:      { label: 'Mapa',     icon: 'map-outline',       iconActive: 'map' },
   TrackingTab: { label: 'Treinar',  icon: 'barbell-outline',   iconActive: 'barbell' },
+  GroupsTab:   { label: 'Grupos',   icon: 'people-outline',    iconActive: 'people' },
   ChatTab:     { label: 'Chat',     icon: 'chatbubble-outline', iconActive: 'chatbubble' },
   ProfileTab:  { label: 'Perfil',   icon: 'person-outline',    iconActive: 'person' },
 };
@@ -103,7 +105,7 @@ function TabItem({
         <Animated.View style={{ transform: [{ scale }] }}>
           <Ionicons
             name={focused ? config.iconActive : config.icon}
-            size={22}
+            size={20}
             color={focused ? ACCENT : '#7A7A8E'}
           />
         </Animated.View>
@@ -209,6 +211,7 @@ export default function MainTabNavigator() {
           return { tabBarStyle: hidden ? { display: 'none' } : undefined };
         }}
       />
+      <Tab.Screen name="GroupsTab"   component={GroupsStack} />
       <Tab.Screen name="ChatTab"     component={ChatStack} />
       <Tab.Screen name="ProfileTab"  component={ProfileStack} />
     </Tab.Navigator>
@@ -241,28 +244,30 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingHorizontal: 8,
+    paddingHorizontal: 2,
   },
 
-  // Regular tab item — full pressable area 44px+ effective
+  // Regular tab item — full pressable area 44px+ effective.
+  // Compacto para caber 7 abas confortavelmente.
   tabItem: {
     flex: 1,
     minHeight: 44,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 2,
     paddingVertical: 6,
+    paddingHorizontal: 1,
   },
   iconPill: {
-    height: 32,
-    borderRadius: 16,
+    height: 30,
+    borderRadius: 15,
     alignItems: 'center',
     justifyContent: 'center',
-    minWidth: 40,
+    minWidth: 34,
   },
   label: {
-    fontSize: 10,
-    letterSpacing: 0.2,
+    fontSize: 9,
+    letterSpacing: 0,
   },
   badge: {
     position: 'absolute',

@@ -146,13 +146,13 @@ export class ChatService {
           qb
             .select('msg.match_id', 'match_id')
             .addSelect('MAX(msg.createdAt)', 'lastDate')
-            .from('message', 'msg')
+            .from('messages', 'msg')
             .groupBy('msg.match_id'),
         'lastMsgSub',
         'lastMsgSub.match_id = match.id',
       )
       .leftJoinAndSelect(
-        'message',
+        'messages',
         'lastMsg',
         'lastMsg.match_id = match.id AND lastMsg.createdAt = lastMsgSub.lastDate',
       )

@@ -20,14 +20,19 @@ export type OnboardingStackParamList = {
   Photos: undefined;  // ← Obrigatório mínimo 3 fotos
 };
 
-// Tabs principais
+// Tabs principais — Treinar fica no centro (índice 3 de 7)
 export type MainTabParamList = {
   FeedTab: undefined;
   HomeTab: undefined;
   MapTab: undefined;
   TrackingTab: undefined;
+  GroupsTab: undefined;
   ChatTab: undefined;
   ProfileTab: undefined;
+};
+
+export type GroupsStackParamList = {
+  GroupsHome: undefined;
 };
 
 // Stacks dentro das tabs

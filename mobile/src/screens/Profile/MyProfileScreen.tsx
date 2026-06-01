@@ -218,13 +218,6 @@ export default function MyProfileScreen({ navigation }: Props) {
       color: colors.dark.accent,
     },
     {
-      icon: 'people-circle-outline' as const,
-      label: 'Meus Grupos',
-      subtitle: 'Clubes que participo + ranking',
-      onPress: () => navigation.navigate('Groups' as any),
-      color: '#3B82F6',
-    },
-    {
       icon: 'fitness-outline' as const,
       label: 'Planos de treino',
       subtitle: '5K / 10K / 21K com cronograma',
