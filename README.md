@@ -1,6 +1,6 @@
 <div align="center">
 
-# 🟣 Sync
+# 🟠 Sync
 
 **O app social esportivo geolocalizado para quem treina de verdade.**
 
@@ -78,7 +78,9 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 - **Pace zones Z1-Z5** baseadas no LT pace do usuário
 - **Live tracking** com link público compartilhável (24h)
 - **Botão "Vai!"** público pra família torcer
-- Export GPX/CSV compatível Strava/Garmin
+- Export **GPX/CSV como arquivo** (expo-sharing) compatível Strava/Garmin
+- **Recordes pessoais (PRs)** detectados automaticamente (distância/pace) com banner de celebração
+- Badges de PR no histórico
 - Histórico completo com mapa da rota
 - Resumo natural automático ("Você correu 5km em 28min…")
 - Modal de avaliação pós-treino (energia, satisfação, RPE, dor, tipo)
@@ -92,12 +94,25 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 - Match por pace compatível + esporte + nível
 - Like / Match mútuo
 - Chat 1:1 em tempo real (WebSocket)
+- **Mensagens de voz** no chat (grava, envia e reproduz)
+- **Recibos de leitura** (✓✓) em tempo real
 - **Follow/unfollow** (separado de match)
-- Stories de treino (foto/vídeo, expira 24h)
+- Stories de treino (foto/**vídeo**, expira 24h)
 - Feed estilo Strava com fotos + kudos + comentários
 - Posts com rota desenhada + métricas
-- Bloquear / denunciar usuário
+- Bloquear / denunciar usuário (com tela de bloqueados)
+- **Selo verificado** (atletas/coaches/academias)
 - Mentions e reactions em comentários
+
+</details>
+
+<details>
+<summary><b>⚡ Desafios & Premium</b></summary>
+
+- **Desafios entre atletas** — distância, pace ou duração, com prazo
+- Caixa de entrada/saída, aceitar/recusar, marcar concluído + vencedor
+- **Planos Premium** (Free / Premium / Atleta Pro) com comparação de recursos
+- Badge de plano e selo verificado no perfil
 
 </details>
 
@@ -184,7 +199,9 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 <summary><b>🌡️ Eventos & Clima</b></summary>
 
 - Eventos relâmpago com push pra usuários no raio
+- **Adicionar evento ao calendário** do celular (expo-calendar, com alarmes)
 - Clima atual + recomendação por hora
+- **Sugestão de treino baseada no clima** (card no Discovery)
 - AQI (qualidade do ar)
 - Sunrise/sunset
 - Melhor horário pra treinar (scoring inteligente)
@@ -208,7 +225,14 @@ React Native 0.76  ·  Expo 52  ·  TypeScript
 React Navigation 6  ·  Zustand  ·  Axios
 Leaflet (web) + react-native-maps (native)
 expo-location · expo-secure-store · expo-notifications
+expo-image (cache em disco) · expo-av (áudio) · expo-haptics · expo-calendar
 Web Speech API · Service Worker · PWA manifest
+```
+
+### Qualidade
+```
+TypeScript estrito (tsc 0 erros)  ·  Jest (backend + lógica mobile)
+GitHub Actions CI (typecheck + testes em todo PR)
 ```
 
 ### APIs externas (todas free)
