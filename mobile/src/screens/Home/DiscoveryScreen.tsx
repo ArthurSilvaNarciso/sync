@@ -29,6 +29,7 @@ import type { Story } from '../../services/stories.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHaptic } from '../../hooks/useHaptic';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
+import ErrorBoundary from '../../components/ErrorBoundary';
 
 // Lazy-load heavy story modals — defers parse + init until first user interaction
 const StoryViewerScreen = lazy(() => import('../Stories/StoryViewerScreen'));
@@ -242,11 +243,15 @@ export default function DiscoveryScreen({ navigation }: Props) {
         position.setValue({ x: gesture.dx, y: gesture.dy });
       },
       onPanResponderRelease: (_, gesture) => {
+        const isTap = Math.abs(gesture.dx) < 6 && Math.abs(gesture.dy) < 6;
         if (gesture.dx > SWIPE_THRESHOLD) {
+          // Arrastar pra DIREITA = curtir (like / OK)
           handleSwipeRef.current('right');
         } else if (gesture.dx < -SWIPE_THRESHOLD) {
+          // Arrastar pra ESQUERDA = passar (nope)
           handleSwipeRef.current('left');
-        } else if (gesture.dy < -SWIPE_THRESHOLD) {
+        } else if (gesture.dy < -SWIPE_THRESHOLD || isTap) {
+          // Swipe pra cima OU toque simples no card = abrir o perfil completo (estilo Tinder)
           const user = usersRef.current[currentIndexRef.current];
           if (user) {
             navigationRef.current.navigate('UserProfile', { userId: user.id });
@@ -519,14 +524,28 @@ export default function DiscoveryScreen({ navigation }: Props) {
               <ActivityIndicator size="large" color="#FF6B35" />
             </View>
           }>
-            <StoryViewerScreen
-              initialStories={viewingStory.stories}
-              initialIndex={viewingStory.initialIndex}
-              onClose={() => {
-                viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
-                setViewingStory(null);
-              }}
-            />
+            <ErrorBoundary fallback={
+              <View style={styles.storyErrorFallback}>
+                <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.5)" />
+                <Text style={styles.storyErrorText}>Não foi possível abrir este story.</Text>
+                <TouchableOpacity
+                  style={styles.storyErrorBtn}
+                  onPress={() => setViewingStory(null)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.storyErrorBtnText}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
+            }>
+              <StoryViewerScreen
+                initialStories={viewingStory.stories}
+                initialIndex={viewingStory.initialIndex}
+                onClose={() => {
+                  viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
+                  setViewingStory(null);
+                }}
+              />
+            </ErrorBoundary>
           </Suspense>
         </Modal>
       )}
@@ -539,13 +558,27 @@ export default function DiscoveryScreen({ navigation }: Props) {
               <ActivityIndicator size="large" color="#FF6B35" />
             </View>
           }>
-            <CreateStoryScreen
-              onClose={() => setCreatingStory(false)}
-              onSuccess={() => {
-                setCreatingStory(false);
-                setStoriesRefreshKey((k) => k + 1);
-              }}
-            />
+            <ErrorBoundary fallback={
+              <View style={[styles.storyErrorFallback, { backgroundColor: '#0A0A0F' }]}>
+                <Ionicons name="camera-outline" size={48} color="rgba(255,255,255,0.5)" />
+                <Text style={styles.storyErrorText}>Não foi possível abrir o criador de story.</Text>
+                <TouchableOpacity
+                  style={styles.storyErrorBtn}
+                  onPress={() => setCreatingStory(false)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.storyErrorBtnText}>Fechar</Text>
+                </TouchableOpacity>
+              </View>
+            }>
+              <CreateStoryScreen
+                onClose={() => setCreatingStory(false)}
+                onSuccess={() => {
+                  setCreatingStory(false);
+                  setStoriesRefreshKey((k) => k + 1);
+                }}
+              />
+            </ErrorBoundary>
           </Suspense>
         </Modal>
       )}
@@ -1262,5 +1295,32 @@ const styles = StyleSheet.create({
     fontSize: fontSize.md,
     color: colors.secondaryText,
     fontWeight: '500',
+  },
+  // Fallback de erro dos stories (evita tela branca)
+  storyErrorFallback: {
+    flex: 1,
+    backgroundColor: '#000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: spacing.xl,
+    gap: spacing.md,
+  },
+  storyErrorText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: fontSize.md,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  storyErrorBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: '#FF6B35',
+    paddingVertical: 12,
+    paddingHorizontal: spacing.xl,
+    borderRadius: borderRadius.full,
+  },
+  storyErrorBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: fontSize.md,
   },
 });

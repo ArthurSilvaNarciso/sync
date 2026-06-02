@@ -70,33 +70,47 @@ export default function PhotosScreen({ navigation }: Props) {
         }
       }
 
+      const remainingSlots = MAX_PHOTOS - photos.length;
+      if (remainingSlots <= 0) return;
+
+      // Seleção MÚLTIPLA: dá pra escolher várias fotos de uma vez (até preencher MAX_PHOTOS).
+      // allowsEditing/aspect são ignorados quando allowsMultipleSelection=true — então
+      // no web fazemos o crop quadrado via canvas (resizeForWeb).
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsMultipleSelection: true,
+        selectionLimit: remainingSlots,
         quality: 0.5,
         base64: true,
       });
 
-      if (result.canceled || !result.assets?.[0]) return;
-      const asset = result.assets[0];
+      if (result.canceled || !result.assets?.length) return;
 
       setUploading(true);
       // Mantém base64 no state (sem rede) — persistido só no final em handleFinish,
       // que tem fallback offline. Onboarding não pode travar por upload.
-      let base64: string;
-      if (Platform.OS === 'web') {
-        base64 = await resizeForWeb(asset.uri, 400);
-      } else {
-        const mime = asset.mimeType || 'image/jpeg';
-        base64 = asset.base64 ? `data:${mime};base64,${asset.base64}` : asset.uri;
+      const assets = result.assets.slice(0, remainingSlots);
+      const processed: string[] = [];
+      for (const asset of assets) {
+        try {
+          let base64: string;
+          if (Platform.OS === 'web') {
+            base64 = await resizeForWeb(asset.uri, 400);
+          } else {
+            const mime = asset.mimeType || 'image/jpeg';
+            base64 = asset.base64 ? `data:${mime};base64,${asset.base64}` : asset.uri;
+          }
+          processed.push(base64);
+        } catch {
+          // pula uma foto que falhou em processar, mas mantém as outras
+        }
       }
 
-      if (photos.length < MAX_PHOTOS) {
-        setPhotos((prev) => [...prev, base64]);
+      if (processed.length > 0) {
+        setPhotos((prev) => [...prev, ...processed].slice(0, MAX_PHOTOS));
       }
     } catch (e: any) {
-      Alert.alert('Erro', e?.message || 'Não foi possível carregar a foto');
+      Alert.alert('Erro', e?.message || 'Não foi possível carregar as fotos');
     } finally {
       setUploading(false);
     }
@@ -155,7 +169,7 @@ export default function PhotosScreen({ navigation }: Props) {
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         <Text style={styles.title}>Suas fotos</Text>
         <Text style={styles.subtitle}>
-          Adicione pelo menos {MIN_PHOTOS} fotos para que outros atletas possam te conhecer melhor
+          Adicione pelo menos {MIN_PHOTOS} fotos (você pode selecionar várias de uma vez) para que outros atletas possam te conhecer melhor
         </Text>
 
         {/* Progress indicator */}
@@ -216,7 +230,7 @@ export default function PhotosScreen({ navigation }: Props) {
                     <Ionicons name="add" size={28} color={ACCENT} />
                   </View>
                   <Text style={styles.addLabel}>
-                    {photos.length === 0 ? 'Adicionar foto' : 'Mais uma'}
+                    {photos.length === 0 ? 'Adicionar fotos' : 'Mais fotos'}
                   </Text>
                 </>
               )}

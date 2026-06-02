@@ -12,6 +12,7 @@ import {
   Share,
   Alert,
 } from 'react-native';
+import { Image as ExpoImage } from 'expo-image'; // recorta no círculo (contentFit) em web e nativo
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
 import { useAuthStore } from '../../store/authStore';
@@ -302,16 +303,21 @@ export default function MyProfileScreen({ navigation }: Props) {
         </TouchableOpacity>
         <View style={styles.headerContent}>
           <View style={styles.avatarContainer}>
-            <Image
-              source={
-                user.avatarUrl
-                  ? { uri: user.avatarUrl }
-                  : user.profilePhotos && user.profilePhotos.length > 0
-                  ? { uri: user.profilePhotos[0] }
-                  : require('../../assets/images/default-avatar.png')
-              }
-              style={styles.avatar}
-            />
+            <View style={styles.avatarRing}>
+              <ExpoImage
+                source={
+                  user.avatarUrl
+                    ? { uri: user.avatarUrl }
+                    : user.profilePhotos && user.profilePhotos.length > 0
+                    ? { uri: user.profilePhotos[0] }
+                    : require('../../assets/images/default-avatar.png')
+                }
+                style={styles.avatar}
+                contentFit="cover"
+                cachePolicy="memory-disk"
+                transition={150}
+              />
+            </View>
             <TouchableOpacity
               style={styles.editAvatarBtn}
               onPress={() => navigation.navigate('EditProfile')}
@@ -534,18 +540,25 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
-  },
-  avatar: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    borderWidth: 3,
-    borderColor: '#FF6B35',
+    // Glow fica no container (overflow visível) — o recorte circular vai no ring
     shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6,
     shadowRadius: 12,
     elevation: 8,
+  },
+  avatarRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    borderWidth: 3,
+    borderColor: '#FF6B35',
+    overflow: 'hidden', // recorta a foto dentro do círculo (corrige foto quadrada no web)
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  avatar: {
+    width: '100%',
+    height: '100%',
   },
   editAvatarBtn: {
     position: 'absolute',

@@ -20,6 +20,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { groupsApi, GroupSummary } from '../../services/groups.service';
 import Button from '../../components/ui/Button';
+import { showToast } from '../../components/ui/Toast';
+
+// Alert informativo que também funciona no web (Alert.alert é no-op no RN Web)
+const infoAlert = (title: string, message?: string) => {
+  if (Platform.OS === 'web') {
+    // eslint-disable-next-line no-alert
+    window.alert(message ? `${title}\n\n${message}` : title);
+  } else {
+    Alert.alert(title, message);
+  }
+};
 
 type Tab = 'mine' | 'discover' | 'ranking';
 
@@ -61,7 +72,7 @@ export default function GroupsScreen({ navigation }: any) {
 
   const handleCreate = async () => {
     if (form.name.trim().length < 3) {
-      Alert.alert('Nome muito curto', 'O nome do grupo precisa ter pelo menos 3 caracteres');
+      showToast('O nome do grupo precisa ter pelo menos 3 caracteres', 'error');
       return;
     }
     setCreating(true);
@@ -69,7 +80,7 @@ export default function GroupsScreen({ navigation }: any) {
       const created = await groupsApi.create(form);
       setShowCreate(false);
       setForm({ name: '', description: '', sport: 'Corrida', city: '', isPrivate: false });
-      Alert.alert(
+      infoAlert(
         'Grupo criado! 🎉',
         created.isPrivate
           ? `Código de convite: ${created.inviteCode}\nCompartilhe com quem você quer no grupo.`
@@ -77,7 +88,7 @@ export default function GroupsScreen({ navigation }: any) {
       );
       load();
     } catch (e: any) {
-      Alert.alert('Erro', e?.response?.data?.message || 'Não foi possível criar o grupo');
+      showToast(e?.response?.data?.message || 'Não foi possível criar o grupo', 'error');
     } finally {
       setCreating(false);
     }

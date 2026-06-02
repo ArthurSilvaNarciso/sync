@@ -8,10 +8,10 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   Platform,
   RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image'; // recorta avatar no círculo (web + nativo)
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';

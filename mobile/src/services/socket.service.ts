@@ -40,7 +40,9 @@ class SocketService {
       this.socket = io(SOCKET_URL, {
         // SECURITY: JWT no handshake.auth, nunca em query params (evita logging em proxies)
         auth: { token },
-        transports: ['websocket'],
+        // websocket primeiro; cai pra polling se o upgrade WS falhar atrás do
+        // proxy do Railway (evita "falha de conexão" no chat)
+        transports: ['websocket', 'polling'],
         reconnection: false, // gerenciamos manualmente com backoff exponencial
         timeout: 10000,
       });

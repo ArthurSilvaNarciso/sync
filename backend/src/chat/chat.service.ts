@@ -134,37 +134,27 @@ export class ChatService {
       .execute();
   }
 
-  // Listar conversas do usuário com última mensagem (JOIN único, sem N+1)
+  // Listar conversas do usuário com última mensagem.
+  // NOTA: usamos queries simples e independentes (sem subquery-join). A versão
+  // anterior montava um leftJoinAndSelect com subquery ('lastMsgSub') que o
+  // Postgres rejeitava com "missing FROM-clause entry for table lastmsgsub"
+  // → todo o chat dava 500 em produção. Aqui buscamos matches + relações e
+  // calculamos última mensagem / não-lidas em queries à parte (robusto e
+  // independente de dialeto SQL).
   async getConversations(userId: string) {
-    // Busca matches com a última mensagem via subquery (sem N+1)
     const conversations = await this.matchRepository
       .createQueryBuilder('match')
       .leftJoinAndSelect('match.user1', 'user1')
       .leftJoinAndSelect('match.user2', 'user2')
-      .leftJoinAndSelect(
-        (qb) =>
-          qb
-            .select('msg.match_id', 'match_id')
-            .addSelect('MAX(msg.createdAt)', 'lastDate')
-            .from('messages', 'msg')
-            .groupBy('msg.match_id'),
-        'lastMsgSub',
-        'lastMsgSub.match_id = match.id',
-      )
-      .leftJoinAndSelect(
-        'messages',
-        'lastMsg',
-        'lastMsg.match_id = match.id AND lastMsg.createdAt = lastMsgSub.lastDate',
-      )
       .where('match.user1_id = :userId OR match.user2_id = :userId', { userId })
-      .orderBy('lastMsgSub.lastDate', 'DESC')
       .getMany();
 
-    // Contar não lidas em batch (uma query só)
     const matchIds = conversations.map((m) => m.id);
     const unreadCounts: Record<string, number> = {};
+    const lastMessageMap: Record<string, Message> = {};
 
     if (matchIds.length > 0) {
+      // Não-lidas em batch (uma query só)
       const counts = await this.messageRepository
         .createQueryBuilder('msg')
         .select('msg.match_id', 'matchId')
@@ -178,23 +168,17 @@ export class ChatService {
       for (const row of counts) {
         unreadCounts[row.matchId] = parseInt(row.count, 10);
       }
-    }
 
-    // Busca última mensagem por match (uma query limitada)
-    const lastMessages = matchIds.length > 0
-      ? await this.messageRepository
-          .createQueryBuilder('msg')
-          .where('msg.match_id IN (:...matchIds)', { matchIds })
-          .orderBy('msg.createdAt', 'DESC')
-          .take(matchIds.length * 5) // No máximo 5 msgs/match — suficiente para pegar a última
-          .getMany()
-      : [];
-
-    const lastMessageMap: Record<string, typeof lastMessages[0]> = {};
-    for (const msg of lastMessages) {
-      if (!lastMessageMap[msg.match_id]) {
-        lastMessageMap[msg.match_id] = msg;
-      }
+      // Última mensagem por match — uma query por conversa (N pequeno, robusto)
+      await Promise.all(
+        matchIds.map(async (mid) => {
+          const last = await this.messageRepository.findOne({
+            where: { match_id: mid },
+            order: { createdAt: 'DESC' },
+          });
+          if (last) lastMessageMap[mid] = last;
+        }),
+      );
     }
 
     // Privacidade: expõe apenas campos públicos do parceiro de conversa (sem email, lat/long)
@@ -207,11 +191,18 @@ export class ChatService {
       level: u.level,
     } : null;
 
-    return conversations.map((match) => ({
-      matchId: match.id,
-      user: safeUser(match.user1_id === userId ? match.user2 : match.user1),
-      lastMessage: lastMessageMap[match.id] ?? null,
-      unreadCount: unreadCounts[match.id] ?? 0,
-    }));
+    return conversations
+      .map((match) => ({
+        matchId: match.id,
+        user: safeUser(match.user1_id === userId ? match.user2 : match.user1),
+        lastMessage: lastMessageMap[match.id] ?? null,
+        unreadCount: unreadCounts[match.id] ?? 0,
+      }))
+      // Ordena: conversas com mensagem mais recente primeiro; sem mensagem por último
+      .sort((a, b) => {
+        const ta = a.lastMessage ? new Date(a.lastMessage.createdAt).getTime() : 0;
+        const tb = b.lastMessage ? new Date(b.lastMessage.createdAt).getTime() : 0;
+        return tb - ta;
+      });
   }
 }
