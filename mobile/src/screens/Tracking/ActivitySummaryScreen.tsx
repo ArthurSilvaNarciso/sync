@@ -28,6 +28,8 @@ import api from '../../services/api';
 import { feedApi } from '../../services/feed.service';
 import { generateWorkoutSummary } from '../../utils/workout-summary';
 import { showToast } from '../../components/ui/Toast';
+import ErrorBoundary from '../../components/ErrorBoundary';
+import { computeSplits, formatPace, type Split } from '../../utils/splits';
 import { useHaptic } from '../../hooks/useHaptic';
 import PostWorkoutRatingModal from '../../components/PostWorkoutRatingModal';
 
@@ -60,7 +62,32 @@ interface PRResult {
   value: string;
 }
 
-export default function ActivitySummaryScreen({ navigation, route }: Props) {
+// Wrapper com ErrorBoundary: garante que a tela NUNCA fique branca por um erro
+// de render (ex.: mapa no web). Mostra um fallback com botão de voltar.
+export default function ActivitySummaryScreen(props: Props) {
+  return (
+    <ErrorBoundary
+      fallback={
+        <View style={styles.loadingScreen}>
+          <Ionicons name="checkmark-circle-outline" size={52} color="#22C55E" />
+          <Text style={[styles.loadingText, { color: colors.dark.text, marginTop: spacing.md, fontWeight: '700' }]}>
+            Treino salvo com sucesso!
+          </Text>
+          <Text style={[styles.loadingText, { fontSize: fontSize.sm, marginTop: 4 }]}>
+            Não foi possível exibir o resumo completo aqui.
+          </Text>
+          <TouchableOpacity style={styles.backFallback} onPress={() => props.navigation.popToTop()}>
+            <Text style={{ color: ACCENT, fontWeight: '700' }}>Voltar ao início</Text>
+          </TouchableOpacity>
+        </View>
+      }
+    >
+      <ActivitySummaryInner {...props} />
+    </ErrorBoundary>
+  );
+}
+
+function ActivitySummaryInner({ navigation, route }: Props) {
   const haptic = useHaptic();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
@@ -291,6 +318,9 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
   const elevGain = estimateElevation(activity);
   const sportIcon = SPORT_ICONS[activity.sport] || 'fitness';
   const sportLabel = SPORT_LABELS[activity.sport] || activity.sport;
+  // Splits por km (estilo Strava/Adidas) — calculados dos pontos GPS
+  const splits = computeSplits(activity.points as any);
+  const maxSplitPace = splits.length ? Math.max(...splits.map((s) => s.paceMinPerKm)) : 0;
 
   return (
     <View style={styles.container}>
@@ -341,33 +371,43 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
           <Text style={styles.heroUnit}>km</Text>
         </Animated.View>
 
-        {/* ── Map ── */}
+        {/* ── Map (envolto em ErrorBoundary: no web o Leaflet pode falhar e
+              não pode derrubar a tela inteira) ── */}
         {coordinates.length > 1 && (
           <Animated.View style={[styles.mapContainer, { opacity: headerFade }]}>
-            <MapView
-              style={styles.map}
-              initialRegion={{
-                latitude: coordinates[0].latitude,
-                longitude: coordinates[0].longitude,
-                latitudeDelta: 0.018,
-                longitudeDelta: 0.018,
-              }}
-              scrollEnabled={false}
-              userInterfaceStyle="dark"
-              customMapStyle={darkMapStyle}
+            <ErrorBoundary
+              fallback={
+                <View style={[styles.map, styles.mapFallback]}>
+                  <Ionicons name="map-outline" size={28} color="rgba(255,255,255,0.3)" />
+                  <Text style={styles.mapFallbackText}>Rota gravada · {coordinates.length} pontos</Text>
+                </View>
+              }
             >
-              <Polyline coordinates={coordinates} strokeColor={ACCENT} strokeWidth={4} />
-              <Marker coordinate={coordinates[0]}>
-                <View style={[styles.mapDot, { backgroundColor: '#22C55E' }]}>
-                  <Ionicons name="flag" size={9} color="#fff" />
-                </View>
-              </Marker>
-              <Marker coordinate={coordinates[coordinates.length - 1]}>
-                <View style={[styles.mapDot, { backgroundColor: ACCENT }]}>
-                  <Ionicons name="checkmark" size={9} color="#fff" />
-                </View>
-              </Marker>
-            </MapView>
+              <MapView
+                style={styles.map}
+                initialRegion={{
+                  latitude: coordinates[0].latitude,
+                  longitude: coordinates[0].longitude,
+                  latitudeDelta: 0.018,
+                  longitudeDelta: 0.018,
+                }}
+                scrollEnabled={false}
+                userInterfaceStyle="dark"
+                customMapStyle={darkMapStyle}
+              >
+                <Polyline coordinates={coordinates} strokeColor={ACCENT} strokeWidth={4} />
+                <Marker coordinate={coordinates[0]}>
+                  <View style={[styles.mapDot, { backgroundColor: '#22C55E' }]}>
+                    <Ionicons name="flag" size={9} color="#fff" />
+                  </View>
+                </Marker>
+                <Marker coordinate={coordinates[coordinates.length - 1]}>
+                  <View style={[styles.mapDot, { backgroundColor: ACCENT }]}>
+                    <Ionicons name="checkmark" size={9} color="#fff" />
+                  </View>
+                </Marker>
+              </MapView>
+            </ErrorBoundary>
           </Animated.View>
         )}
 
@@ -394,6 +434,39 @@ export default function ActivitySummaryScreen({ navigation, route }: Props) {
             )}
           </View>
         </Animated.View>
+
+        {/* ── Splits por km (estilo Strava/Adidas) ── */}
+        {splits.length > 0 && (
+          <Animated.View style={[styles.splitsCard, { opacity: headerFade }]}>
+            <View style={styles.splitsHeader}>
+              <Ionicons name="stats-chart" size={16} color={ACCENT} />
+              <Text style={styles.splitsTitle}>Splits por km</Text>
+            </View>
+            {splits.map((s) => {
+              const widthPct = maxSplitPace > 0 ? Math.max(18, (s.paceMinPerKm / maxSplitPace) * 100) : 100;
+              return (
+                <View key={s.km} style={styles.splitRow}>
+                  <Text style={styles.splitKm}>
+                    {s.distanceKm >= 0.999 ? `${s.km}` : `${s.km}·${(s.distanceKm).toFixed(2)}`}
+                  </Text>
+                  <View style={styles.splitBarTrack}>
+                    <View
+                      style={[
+                        styles.splitBarFill,
+                        { width: `${widthPct}%`, backgroundColor: s.isFastest ? '#FCD34D' : ACCENT },
+                      ]}
+                    />
+                  </View>
+                  <Text style={[styles.splitPace, s.isFastest && { color: '#FCD34D', fontWeight: '800' }]}>
+                    {formatPace(s.paceMinPerKm)}
+                    {s.isFastest ? '  🏆' : ''}
+                  </Text>
+                </View>
+              );
+            })}
+            <Text style={styles.splitsHint}>min/km · 🏆 = km mais rápido</Text>
+          </Animated.View>
+        )}
 
         {/* ── AI Summary ── */}
         <Animated.View style={[styles.summaryCard, { opacity: headerFade }]}>
@@ -702,11 +775,41 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   map: { flex: 1 },
+  mapFallback: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  mapFallbackText: { color: 'rgba(255,255,255,0.45)', fontSize: 13, fontWeight: '600' },
   mapDot: {
     width: 22, height: 22, borderRadius: 11,
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: 'rgba(0,0,0,0.4)',
   },
+
+  // Splits por km
+  splitsCard: {
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.lg,
+    backgroundColor: 'rgba(255,255,255,0.045)',
+    borderRadius: borderRadius.lg,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)',
+    padding: spacing.md,
+  },
+  splitsHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: spacing.sm },
+  splitsTitle: { fontSize: 15, fontWeight: '800', color: colors.dark.text },
+  splitRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 3 },
+  splitKm: { width: 38, fontSize: 12, fontWeight: '700', color: colors.dark.secondaryText },
+  splitBarTrack: {
+    flex: 1, height: 14, borderRadius: 7,
+    backgroundColor: 'rgba(255,255,255,0.06)', overflow: 'hidden',
+    justifyContent: 'center',
+  },
+  splitBarFill: { height: '100%', borderRadius: 7 },
+  splitPace: { width: 64, textAlign: 'right', fontSize: 12, fontWeight: '700', color: colors.dark.text, fontVariant: ['tabular-nums'] },
+  splitsHint: { fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 8, textAlign: 'center' },
 
   // Stats grid
   statsSection: {
