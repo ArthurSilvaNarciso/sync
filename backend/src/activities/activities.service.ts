@@ -16,6 +16,7 @@ import { NotificationType } from '../notifications/entities/notification.entity'
 import { sanitizeText } from '../common/security/sanitize.util';
 import { extractMentions } from '../common/utils/mentions.util';
 import { User } from '../users/entities/user.entity';
+import { GroupsService } from '../groups/groups.service';
 import { ILike, In } from 'typeorm';
 
 // Lista branca de emoji-reaction permitidas (curto, validado)
@@ -40,6 +41,7 @@ export class ActivitiesService {
     private readonly userRepository: Repository<User>,
     private readonly notificationsService: NotificationsService,
     private readonly pushService: PushService,
+    private readonly groupsService: GroupsService,
   ) {}
 
   // ===== MENTIONS HELPERS =====
@@ -336,6 +338,11 @@ export class ActivitiesService {
       avgSpeed: Math.round(avgSpeed * 100) / 100,
       isCompleted: true,
     });
+
+    // Credita os km nos grupos do usuário (soma contínua) — fire-and-forget
+    if (distanceKm > 0) {
+      this.groupsService.creditActivity(userId, distanceKm).catch(() => {});
+    }
 
     return this.activityRepository.findOne({
       where: { id: activityId },

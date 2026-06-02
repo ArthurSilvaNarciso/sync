@@ -12,12 +12,14 @@ import { CommentReaction } from './entities/comment-reaction.entity';
 import { User } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
+import { GroupsModule } from '../groups/groups.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Activity, ActivityPoint, ActivityComment, ActivityKudos, ActivityRating, CommentReaction, User]),
     NotificationsModule,
     AuthModule, // pra JwtService no gateway
+    GroupsModule, // creditar km nos grupos ao finalizar treino
   ],
   controllers: [ActivitiesController],
   providers: [ActivitiesService, ActivitiesGateway],

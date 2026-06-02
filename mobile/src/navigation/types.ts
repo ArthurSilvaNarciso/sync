@@ -33,6 +33,7 @@ export type MainTabParamList = {
 
 export type GroupsStackParamList = {
   GroupsHome: undefined;
+  GroupDetail: { groupId: string; groupName?: string };
 };
 
 // Stacks dentro das tabs

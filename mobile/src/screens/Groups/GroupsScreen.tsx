@@ -87,7 +87,7 @@ export default function GroupsScreen({ navigation }: any) {
     <TouchableOpacity
       key={g.id}
       style={styles.card}
-      onPress={() => navigation?.navigate?.('GroupDetail', { groupId: g.id }) || Alert.alert(g.name, g.description || 'Sem descrição')}
+      onPress={() => navigation?.navigate?.('GroupDetail', { groupId: g.id, groupName: g.name })}
       activeOpacity={0.7}
     >
       {g.position != null && (
@@ -117,7 +117,39 @@ export default function GroupsScreen({ navigation }: any) {
     </TouchableOpacity>
   );
 
-  const data = tab === 'mine' ? mine : tab === 'discover' ? discover : ranking;
+  // Pódio top 3 do ranking de grupos (estilo ranking mensal)
+  const renderPodium = () => {
+    const top3 = ranking.slice(0, 3);
+    if (top3.length === 0) return null;
+    // ordem visual: 2º, 1º, 3º
+    const order = [top3[1], top3[0], top3[2]].filter(Boolean) as (GroupSummary & { position: number })[];
+    const heights: Record<number, number> = { 1: 110, 2: 86, 3: 70 };
+    const medals: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' };
+    return (
+      <View style={styles.podium}>
+        {order.map((g) => (
+          <TouchableOpacity
+            key={g.id}
+            style={styles.podiumCol}
+            activeOpacity={0.8}
+            onPress={() => navigation?.navigate?.('GroupDetail', { groupId: g.id, groupName: g.name })}
+          >
+            <Text style={styles.podiumMedal}>{medals[g.position]}</Text>
+            <LinearGradient colors={['#FF6B35', '#FF4500']} style={styles.podiumAvatar} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}>
+              <Text style={styles.podiumLetter}>{g.name[0]?.toUpperCase() || 'G'}</Text>
+            </LinearGradient>
+            <Text style={styles.podiumName} numberOfLines={1}>{g.name}</Text>
+            <Text style={styles.podiumKm}>{Math.round(g.totalDistanceKm)} km</Text>
+            <View style={[styles.podiumBar, { height: heights[g.position], backgroundColor: g.position === 1 ? '#FCD34D' : 'rgba(255,107,53,0.5)' }]}>
+              <Text style={styles.podiumPos}>{g.position}º</Text>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
+  const data = tab === 'mine' ? mine : tab === 'discover' ? discover : ranking.slice(3);
   const emptyMsg =
     tab === 'mine' ? 'Você ainda não está em nenhum grupo. Crie um ou entre num grupo público!'
     : tab === 'discover' ? 'Nenhum grupo público encontrado.'
@@ -161,6 +193,7 @@ export default function GroupsScreen({ navigation }: any) {
         data={data as any}
         keyExtractor={(item: any) => item.id}
         renderItem={({ item }: any) => renderGroup(item)}
+        ListHeaderComponent={tab === 'ranking' ? renderPodium() : null}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />}
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
@@ -301,6 +334,22 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 3,
   },
+  // Pódio
+  podium: {
+    flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'center',
+    gap: spacing.sm, paddingVertical: spacing.lg, paddingHorizontal: spacing.sm,
+  },
+  podiumCol: { flex: 1, alignItems: 'center', maxWidth: 110 },
+  podiumMedal: { fontSize: 22, marginBottom: 2 },
+  podiumAvatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  podiumLetter: { color: '#fff', fontWeight: '900', fontSize: 20 },
+  podiumName: { color: colors.dark.text, fontSize: 12, fontWeight: '700', marginTop: 4, maxWidth: 100, textAlign: 'center' },
+  podiumKm: { color: '#FCD34D', fontSize: 11, fontWeight: '800', marginBottom: 6 },
+  podiumBar: {
+    width: '90%', borderTopLeftRadius: 8, borderTopRightRadius: 8,
+    alignItems: 'center', justifyContent: 'flex-start', paddingTop: 6,
+  },
+  podiumPos: { color: '#0A0A0F', fontWeight: '900', fontSize: 14 },
   positionBadge: {
     position: 'absolute', top: 6, right: 6,
     backgroundColor: 'rgba(255,107,53,0.18)',
