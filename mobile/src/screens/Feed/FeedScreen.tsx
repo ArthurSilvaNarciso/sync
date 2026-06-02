@@ -13,7 +13,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { Image } from 'expo-image'; // cache em disco + blurhash-ready
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { feedApi, FeedPost } from '../../services/feed.service';
@@ -288,6 +288,15 @@ export default function FeedScreen() {
   }, []);
 
   useEffect(() => { load(1); }, [load]);
+
+  // Recarrega ao focar a aba — assim um treino recém-publicado aparece na hora
+  const firstFocus = useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) { firstFocus.current = false; return; }
+      load(1);
+    }, [load]),
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);

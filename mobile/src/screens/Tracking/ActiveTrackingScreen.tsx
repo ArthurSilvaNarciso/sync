@@ -18,7 +18,7 @@ import * as ExpoLocation from 'expo-location';
 import api from '../../services/api';
 import { trackingSocket } from '../../services/tracking-socket.service';
 import { Share } from 'react-native';
-import { announce, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
+import { announce, speak, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
 import { AutoPauseDetector } from '../../utils/auto-pause';
 // HoldToFinishButton and ConfirmModal replaced by simple tap + Alert
 
@@ -59,12 +59,39 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
   const autoPauseRef = useRef<AutoPauseDetector>(new AutoPauseDetector());
   const lastAnnouncedKmRef = useRef(0);
 
-  useEffect(() => {
+  // ── Contagem regressiva de 10s antes de começar (com voz, pulável) ─────────
+  const [countdown, setCountdown] = useState<number | null>(10);
+  const startedRef = useRef(false);
+
+  const beginWorkout = () => {
+    if (startedRef.current) return;
+    startedRef.current = true;
+    if (audioOn) speak('Vai!');
     startTracking();
     startTimer();
     trackingSocket.startBroadcasting(activityId);
-    // Anúncio inicial
     if (audioOn) announce.start();
+  };
+
+  // Driver da contagem regressiva
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown <= 0) {
+      setCountdown(null);
+      beginWorkout();
+      return;
+    }
+    if (audioOn) speak(String(countdown));
+    const t = setTimeout(() => {
+      setCountdown((c) => (c === null ? null : c - 1));
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [countdown]);
+
+  const skipCountdown = () => setCountdown(0);
+
+  // Cleanup ao desmontar
+  useEffect(() => {
     return () => {
       locationSub.current?.remove();
       if (timerRef.current) clearInterval(timerRef.current);
@@ -371,6 +398,26 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
   const altitudeM = currentAltitude != null ? Math.round(currentAltitude) : '--';
   const elevationGainStr = elevationGain > 0 ? `+${Math.round(elevationGain)}` : '0';
 
+  // Overlay de contagem regressiva — cobre tudo até começar
+  if (countdown !== null && countdown > 0) {
+    return (
+      <TouchableOpacity
+        style={styles.countdownOverlay}
+        activeOpacity={1}
+        onPress={skipCountdown}
+        accessibilityRole="button"
+        accessibilityLabel="Toque para começar agora"
+      >
+        <Text style={styles.countdownLabel}>Preparar…</Text>
+        <Text style={styles.countdownNumber}>{countdown}</Text>
+        <View style={styles.countdownSkip}>
+          <Ionicons name="play-skip-forward" size={16} color="#FF6B35" />
+          <Text style={styles.countdownSkipText}>Toque para começar agora</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* Full-screen map */}
@@ -565,6 +612,43 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colors.dark.background,
   },
+  // Countdown
+  countdownOverlay: {
+    flex: 1,
+    backgroundColor: '#0A0A0F',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 12,
+  },
+  countdownLabel: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  countdownNumber: {
+    fontSize: 140,
+    fontWeight: '900',
+    color: '#FF6B35',
+    fontVariant: ['tabular-nums'],
+    textShadowColor: 'rgba(255,107,53,0.5)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 30,
+  },
+  countdownSkip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 24,
+    paddingHorizontal: 18,
+    paddingVertical: 12,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(255,107,53,0.35)',
+    backgroundColor: 'rgba(255,107,53,0.08)',
+  },
+  countdownSkipText: { color: '#FF6B35', fontSize: 14, fontWeight: '700' },
   map: {
     flex: 1,
   },

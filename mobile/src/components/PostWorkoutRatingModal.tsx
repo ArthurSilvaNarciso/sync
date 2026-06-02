@@ -1,6 +1,6 @@
 // Modal pós-treino estilo Adidas Running Club.
 // Pergunta: como se sentiu, satisfação, esforço, dor, tipo de treino.
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   ScrollView,
   TextInput,
   Platform,
+  Animated,
+  PanResponder,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -109,11 +111,36 @@ export default function PostWorkoutRatingModal({ visible, activityId, onClose, o
     onClose();
   };
 
+  // Arrastar pra baixo fecha (gesto opcional — avaliar nunca é obrigatório)
+  const dragY = useRef(new Animated.Value(0)).current;
+  useEffect(() => { if (visible) dragY.setValue(0); }, [visible]);
+  const panResponder = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_, g) => g.dy > 8 && Math.abs(g.dy) > Math.abs(g.dx),
+      onPanResponderMove: (_, g) => { if (g.dy > 0) dragY.setValue(g.dy); },
+      onPanResponderRelease: (_, g) => {
+        if (g.dy > 120) {
+          Animated.timing(dragY, { toValue: 600, duration: 200, useNativeDriver: true }).start(() => skip());
+        } else {
+          Animated.spring(dragY, { toValue: 0, useNativeDriver: true, friction: 8 }).start();
+        }
+      },
+    }),
+  ).current;
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={skip}>
-      <View style={styles.backdrop}>
-        <View style={styles.sheet}>
-          <View style={styles.handle} />
+      {/* Tap no fundo também fecha */}
+      <TouchableOpacity style={styles.backdrop} activeOpacity={1} onPress={skip}>
+        <Animated.View
+          style={[styles.sheet, { transform: [{ translateY: dragY }] }]}
+          onStartShouldSetResponder={() => true}
+          onTouchEnd={(e) => e.stopPropagation()}
+        >
+          {/* Área de arraste (handle) — arraste pra baixo pra fechar */}
+          <View {...panResponder.panHandlers} style={styles.dragArea}>
+            <View style={styles.handle} />
+          </View>
           <ScrollView showsVerticalScrollIndicator={false}>
             <Text style={styles.title}>Como foi seu treino?</Text>
             <Text style={styles.subtitle}>Avalie pra acompanhar sua evolução</Text>
@@ -294,8 +321,8 @@ export default function PostWorkoutRatingModal({ visible, activityId, onClose, o
               </TouchableOpacity>
             </View>
           </ScrollView>
-        </View>
-      </View>
+        </Animated.View>
+      </TouchableOpacity>
     </Modal>
   );
 }
@@ -310,6 +337,7 @@ const styles = StyleSheet.create({
     paddingBottom: Platform.OS === 'ios' ? 40 : 24,
     maxHeight: '92%',
   },
+  dragArea: { paddingTop: 6, paddingBottom: 4 },
   handle: {
     width: 40,
     height: 4,
