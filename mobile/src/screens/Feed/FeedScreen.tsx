@@ -17,6 +17,8 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { feedApi, FeedPost } from '../../services/feed.service';
+import { useAuthStore } from '../../store/authStore';
+import { confirmAsync } from '../../utils/confirm';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { heroImages } from '../../theme/images';
 import { showToast } from '../../components/ui/Toast';
@@ -70,9 +72,10 @@ interface FeedCardProps {
   likesCount: number;
   onLike: (id: string, currentlyLiked: boolean) => void;
   onComment: (post: FeedPost) => void;
+  onMenu: (post: FeedPost) => void;
 }
 
-function FeedCardComponent({ post, liked, likesCount, onLike, onComment }: FeedCardProps) {
+function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu }: FeedCardProps) {
   const heartScale = useRef(new Animated.Value(1)).current;
   const haptic = useHaptic();
 
@@ -106,11 +109,11 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment }: FeedC
         <View style={styles.cardHeader}>
           <View style={styles.avatarRingWrap}>
             <Image
-              source={
-                post.user?.avatarUrl
-                  ? { uri: post.user.avatarUrl }
-                  : require('../../assets/images/default-avatar.png')
-              }
+              source={(() => {
+                const u: any = post.user || {};
+                const uri = u.avatarUrl || u.profilePhotos?.[0];
+                return uri ? { uri } : require('../../assets/images/default-avatar.png');
+              })()}
               style={styles.avatar}
               contentFit="cover"
               cachePolicy="memory-disk"
@@ -125,7 +128,12 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment }: FeedC
               </Text>
             </View>
           </View>
-          <TouchableOpacity hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}>
+          <TouchableOpacity
+            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
+            onPress={() => onMenu(post)}
+            accessibilityRole="button"
+            accessibilityLabel="Opções do post"
+          >
             <Ionicons name="ellipsis-horizontal" size={20} color={colors.dark.secondaryText} />
           </TouchableOpacity>
         </View>
@@ -231,6 +239,7 @@ const FeedCard = React.memo(
 export default function FeedScreen() {
   const navigation = useNavigation<any>();
   const insets = useSafeAreaInsets();
+  const currentUser = useAuthStore((s) => s.user);
   const [posts, setPosts] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
@@ -336,6 +345,28 @@ export default function FeedScreen() {
     navigation.navigate('Comments', { postId: post.id, postAuthorName: post.user?.name || 'Atleta' });
   };
 
+  const handleMenu = async (post: FeedPost) => {
+    const isOwn = currentUser?.id && post.user_id === currentUser.id;
+    if (isOwn) {
+      const ok = await confirmAsync('Apagar publicação?', 'Esta ação não pode ser desfeita.', {
+        confirmText: 'Apagar', destructive: true,
+      });
+      if (!ok) return;
+      try {
+        await feedApi.remove(post.id);
+        setPosts((prev) => prev.filter((p) => p.id !== post.id));
+        showToast('Publicação removida', 'success');
+      } catch {
+        showToast('Erro ao remover', 'error');
+      }
+    } else {
+      const ok = await confirmAsync('Denunciar publicação?', `Reportar o post de ${post.user?.name || 'usuário'}?`, {
+        confirmText: 'Denunciar', destructive: true,
+      });
+      if (ok) showToast('Denúncia enviada. Obrigado!', 'success');
+    }
+  };
+
   const ListFooter = () => {
     if (!loadingMore) return null;
     return (
@@ -396,6 +427,7 @@ export default function FeedScreen() {
               likesCount={countMap[item.id] ?? item.likesCount ?? 0}
               onLike={handleLike}
               onComment={handleComment}
+              onMenu={handleMenu}
             />
           )}
           extraData={{ likedMap, countMap }}

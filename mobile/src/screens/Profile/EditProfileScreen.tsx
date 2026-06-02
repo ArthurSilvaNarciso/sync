@@ -83,20 +83,34 @@ export default function EditProfileScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [1, 1],
-        quality: 0.6,
+        quality: 0.5,
+        base64: true, // mantém base64 como fallback se o /media/upload não existir no backend
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
 
       setUploadingAvatar(true);
-      // Upload do arquivo → URL pública (não mais base64 no banco)
-      const { url } = await uploadMedia(asset.uri, {
-        name: `avatar-${Date.now()}.jpg`,
-        mimeType: asset.mimeType || 'image/jpeg',
-      });
+      // 1ª opção: upload do arquivo → URL pública (backend novo, sem base64 no banco)
+      // Fallback: se /media/upload falhar (backend antigo), envia base64 direto
+      // pro /me/avatar (que aceita os dois formatos).
+      let avatarValue: string;
+      try {
+        const { url } = await uploadMedia(asset.uri, {
+          name: `avatar-${Date.now()}.jpg`,
+          mimeType: asset.mimeType || 'image/jpeg',
+        });
+        avatarValue = url;
+      } catch {
+        if (asset.base64) {
+          avatarValue = `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
+        } else if (Platform.OS === 'web') {
+          avatarValue = await resizeAvatarForWeb(asset.uri, 300);
+        } else {
+          throw new Error('Falha no upload e sem base64 disponível');
+        }
+      }
 
-      // O backend aceita URL ou base64 no mesmo campo (compat retroativa)
-      const { data } = await api.post('/users/me/avatar', { avatarBase64: url });
+      const { data } = await api.post('/users/me/avatar', { avatarBase64: avatarValue });
       setUser(data);
       Alert.alert('Foto atualizada!', 'Seu avatar foi salvo com sucesso.');
     } catch (error: any) {

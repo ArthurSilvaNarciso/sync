@@ -20,6 +20,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 import ChangePasswordModal from '../../components/ChangePasswordModal';
 import FeedbackModal from '../../components/FeedbackModal';
 
@@ -90,27 +91,28 @@ export default function SettingsScreen({ navigation }: any) {
     }
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
+  const handleDeleteAccount = async () => {
+    const ok = await confirmAsync(
       'Apagar conta?',
-      'Sua conta será anonimizada. Atividades públicas preservadas com nome anônimo. Irreversível.',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Apagar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete('/users/me');
-              showToast('Conta anonimizada', 'success');
-              await logout();
-            } catch {
-              showToast('Erro ao apagar', 'error');
-            }
-          },
-        },
-      ],
+      'Sua conta será anonimizada e excluída (LGPD). Irreversível.',
+      { confirmText: 'Apagar', destructive: true },
     );
+    if (!ok) return;
+    try {
+      await api.delete('/users/me');
+      showToast('Conta excluída', 'success');
+      await logout();
+    } catch {
+      showToast('Erro ao apagar', 'error');
+    }
+  };
+
+  const handleLogout = async () => {
+    const ok = await confirmAsync('Sair', 'Deseja encerrar sua sessão?', {
+      confirmText: 'Sair',
+      destructive: true,
+    });
+    if (ok) await logout();
   };
 
   const handleUpgrade = async () => {
@@ -341,12 +343,7 @@ export default function SettingsScreen({ navigation }: any) {
         <Row
           icon="log-out-outline"
           label="Sair"
-          onPress={() => {
-            Alert.alert('Sair', 'Deseja encerrar sua sessão?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Sair', style: 'destructive', onPress: logout },
-            ]);
-          }}
+          onPress={handleLogout}
           color="#F87171"
           danger
         />
