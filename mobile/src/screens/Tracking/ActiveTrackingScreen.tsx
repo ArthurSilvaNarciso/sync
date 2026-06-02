@@ -277,26 +277,31 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
       isPausedRef.current = true;
       if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
     }
+
+    const resume = () => {
+      if (wasRunning) {
+        isPausedRef.current = false;
+        startTimer();
+      }
+    };
+
+    const message = `Você percorreu ${(distance / 1000).toFixed(2)} km em ${Math.floor(elapsed / 60)}min. Deseja encerrar?`;
+
+    // No WEB o Alert.alert do RN ignora os botões (vira window.alert), então o
+    // callback nunca dispara. Usamos window.confirm, que funciona de verdade.
+    if (Platform.OS === 'web') {
+      const ok = typeof window !== 'undefined' && window.confirm(`Finalizar treino?\n\n${message}`);
+      if (ok) doFinish();
+      else resume();
+      return;
+    }
+
     Alert.alert(
       'Finalizar treino?',
-      `Você percorreu ${(distance / 1000).toFixed(2)} km em ${Math.floor(elapsed / 60)}min. Deseja encerrar?`,
+      message,
       [
-        {
-          text: 'Não, continuar',
-          style: 'cancel',
-          onPress: () => {
-            // Resume if it was running before
-            if (wasRunning) {
-              isPausedRef.current = false;
-              startTimer();
-            }
-          },
-        },
-        {
-          text: 'Sim, finalizar',
-          style: 'destructive',
-          onPress: doFinish,
-        },
+        { text: 'Não, continuar', style: 'cancel', onPress: resume },
+        { text: 'Sim, finalizar', style: 'destructive', onPress: doFinish },
       ],
     );
   };
