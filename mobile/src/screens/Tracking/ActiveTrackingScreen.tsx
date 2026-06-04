@@ -146,12 +146,13 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         const id = navigator.geolocation.watchPosition(
           (pos) => {
             const now = Date.now();
-            if (now - lastWebGPS < 2000) return; // throttle: no more than 1 update/2s
+            if (now - lastWebGPS < 1500) return; // throttle leve; filtro fino em handleNewPoint
             lastWebGPS = now;
             handleNewPoint({
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
               altitude: pos.coords.altitude ?? undefined,
+              accuracy: pos.coords.accuracy ?? undefined,
             });
           },
           (err) => {
@@ -178,13 +179,17 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
       locationSub.current = await ExpoLocation.watchPositionAsync(
         {
           accuracy: ExpoLocation.Accuracy.BestForNavigation,
-          distanceInterval: 5,
-          timeInterval: 3000,
+          // Captação mais fina (estilo Strava/Adidas): pega ponto a cada ~3m / 1s.
+          // A filtragem de precisão/jitter acontece em handleNewPoint.
+          distanceInterval: 3,
+          timeInterval: 1000,
+          mayShowUserSettingsDialog: true,
         },
         (location) => handleNewPoint({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
           altitude: location.coords.altitude ?? undefined,
+          accuracy: location.coords.accuracy ?? undefined,
         }),
       );
     } catch (e) {
@@ -192,8 +197,15 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleNewPoint = (newPoint: { latitude: number; longitude: number; altitude?: number }) => {
-    const stampedPoint = { ...newPoint, timestamp: Date.now() };
+  const handleNewPoint = (newPoint: { latitude: number; longitude: number; altitude?: number; accuracy?: number }) => {
+    // ── Filtro de precisão (estilo Strava): descarta fixes ruins do GPS ──
+    // accuracy = raio de erro em metros. Acima de ~35m o ponto é lixo e
+    // distorce a rota/distância. Descarta ANTES de contar distância ou desenhar.
+    if (newPoint.accuracy != null && newPoint.accuracy > 35) {
+      return;
+    }
+
+    const stampedPoint = { latitude: newPoint.latitude, longitude: newPoint.longitude, altitude: newPoint.altitude, timestamp: Date.now() };
 
     // Auto-pause detector
     if (autoPauseOn) {
@@ -206,32 +218,42 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         if (audioOn) announce.resume();
       }
     }
+
+    let accepted = true;
     setPoints((prev) => {
       if (prev.length > 0) {
         const last = prev[prev.length - 1];
         const d = haversine(last.latitude, last.longitude, newPoint.latitude, newPoint.longitude);
-        // Filtro de ruído: ignora saltos absurdos (>50m em 3s)
-        if (d < 50) {
-          setDistance((prevDist) => prevDist + d);
-          // Ganho de elevação acumulado
-          if (last.altitude != null && newPoint.altitude != null) {
-            const diff = newPoint.altitude - last.altitude;
-            if (diff > 0.5 && diff < 30) {
-              setElevationGain((prev) => prev + diff);
-            }
+        // Anti-jitter: ignora micro-movimentos (<2.5m) — GPS oscila parado e
+        // isso inflava a distância. Anti-salto: ignora teleportes (>60m/tick).
+        if (d < 2.5 || d > 60) {
+          accepted = false;
+          return prev; // não adiciona o ponto (evita serrilhado na rota)
+        }
+        setDistance((prevDist) => prevDist + d);
+        // Ganho de elevação acumulado (suavizado)
+        if (last.altitude != null && newPoint.altitude != null) {
+          const diff = newPoint.altitude - last.altitude;
+          if (diff > 0.5 && diff < 30) {
+            setElevationGain((prevGain) => prevGain + diff);
           }
         }
       }
       return [...prev, stampedPoint];
     });
+
     if (newPoint.altitude != null) setCurrentAltitude(newPoint.altitude);
 
+    // Sempre centraliza o mapa no usuário (mesmo em ponto rejeitado por jitter)
     setRegion({
       latitude: newPoint.latitude,
       longitude: newPoint.longitude,
       latitudeDelta: 0.005,
       longitudeDelta: 0.005,
     });
+
+    // Só streama pontos aceitos pro servidor (rota limpa)
+    if (!accepted) return;
 
     // Streama via WebSocket (não bloqueia se falhar)
     try {

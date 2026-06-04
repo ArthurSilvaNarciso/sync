@@ -15,6 +15,9 @@ import {
   Easing,
 } from 'react-native';
 import MapView, { Polyline, Marker } from '../../components/map/SyncMap';
+import { Image as ExpoImage } from 'expo-image';
+import * as ImagePicker from 'expo-image-picker';
+import { uploadMedia } from '../../services/media.service';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -93,6 +96,10 @@ function ActivitySummaryInner({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
+  // Foto opcional pra anexar na publicação do feed
+  const [photoUri, setPhotoUri] = useState<string | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [newPRs, setNewPRs] = useState<PRResult[]>([]);
   // Start hidden — show only after the user has seen the summary (2.5s delay)
   const [ratingModal, setRatingModal] = useState(false);
@@ -268,13 +275,63 @@ function ActivitySummaryInner({ navigation, route }: Props) {
     }
   };
 
+  // Escolhe uma foto pra anexar no post e já faz upload (URL pública)
+  const pickPostPhoto = async () => {
+    if (uploadingPhoto) return;
+    try {
+      if (Platform.OS !== 'web') {
+        const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!perm.granted) {
+          showToast('Libere o acesso à galeria', 'error');
+          return;
+        }
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [4, 3],
+        quality: 0.6,
+        base64: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      setPhotoUri(asset.uri);
+      setUploadingPhoto(true);
+      try {
+        const { url } = await uploadMedia(asset.uri, {
+          name: `post-${Date.now()}.jpg`,
+          mimeType: asset.mimeType || 'image/jpeg',
+        });
+        setPhotoUrl(url);
+      } catch {
+        // Fallback: manda base64 (backend aceita) — não trava a publicação
+        if (asset.base64) {
+          setPhotoUrl(`data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`);
+        } else {
+          showToast('Não foi possível enviar a foto', 'error');
+          setPhotoUri(null);
+        }
+      } finally {
+        setUploadingPhoto(false);
+      }
+    } catch {
+      setUploadingPhoto(false);
+      showToast('Erro ao escolher foto', 'error');
+    }
+  };
+
   const handlePostToFeed = async () => {
     if (!activity || posting) return;
+    if (uploadingPhoto) {
+      showToast('Aguarde a foto terminar de enviar…', 'info');
+      return;
+    }
     setPosting(true);
     try {
       await feedApi.publish({
         activityId: activity.id,
         caption: `Mais um treino concluído! 🔥`,
+        photoUrl: photoUrl || undefined,
         distanceKm: activity.distance / 1000,
         durationSeconds: activity.duration,
         avgPace: activity.avgPace,
@@ -511,6 +568,32 @@ function ActivitySummaryInner({ navigation, route }: Props) {
 
         {/* ── Actions ── */}
         <Animated.View style={[styles.actions, { opacity: headerFade }]}>
+          {/* Foto opcional pra publicação */}
+          {!posted && (
+            photoUri ? (
+              <View style={styles.photoPreviewWrap}>
+                <ExpoImage source={{ uri: photoUri }} style={styles.photoPreview} contentFit="cover" />
+                {uploadingPhoto && (
+                  <View style={styles.photoUploading}>
+                    <ActivityIndicator size="small" color="#fff" />
+                  </View>
+                )}
+                <TouchableOpacity
+                  style={styles.photoRemove}
+                  onPress={() => { setPhotoUri(null); setPhotoUrl(null); }}
+                  hitSlop={8}
+                >
+                  <Ionicons name="close" size={16} color="#fff" />
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.addPhotoBtn} onPress={pickPostPhoto} activeOpacity={0.8}>
+                <Ionicons name="camera-outline" size={20} color={ACCENT} />
+                <Text style={styles.addPhotoText}>Adicionar foto à publicação</Text>
+              </TouchableOpacity>
+            )
+          )}
+
           {/* Primary: Post to feed */}
           {!posted ? (
             <Pressable
@@ -897,6 +980,44 @@ const styles = StyleSheet.create({
     color: '#22C55E',
     fontSize: fontSize.md,
     fontWeight: '700',
+  },
+  addPhotoBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    paddingVertical: 13,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1,
+    borderStyle: 'dashed',
+    borderColor: ACCENT + '55',
+  },
+  addPhotoText: { color: ACCENT, fontSize: fontSize.sm, fontWeight: '700' },
+  photoPreviewWrap: {
+    position: 'relative',
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  photoPreview: { width: '100%', aspectRatio: 4 / 3, backgroundColor: 'rgba(255,255,255,0.06)' },
+  photoUploading: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoRemove: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   secondaryBtn: {
     flexDirection: 'row',

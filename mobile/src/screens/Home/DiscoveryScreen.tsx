@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -23,17 +23,10 @@ import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQ
 import { getCurrentLocation } from '../../services/location.service';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
-import StoriesBar from '../../components/StoriesBar';
 import { matchingApi } from '../../services/matching.service';
-import type { Story } from '../../services/stories.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHaptic } from '../../hooks/useHaptic';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
-import ErrorBoundary from '../../components/ErrorBoundary';
-
-// Lazy-load heavy story modals — defers parse + init until first user interaction
-const StoryViewerScreen = lazy(() => import('../Stories/StoryViewerScreen'));
-const CreateStoryScreen = lazy(() => import('../Stories/CreateStoryScreen'));
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
@@ -77,9 +70,6 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [weather, setWeather] = useState<WeatherData | null>(null);
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
   const [weatherCardDismissed, setWeatherCardDismissed] = useState(false);
-  const [creatingStory, setCreatingStory] = useState(false);
-  const [viewingStory, setViewingStory] = useState<{ stories: Story[]; initialIndex: number; markSeen?: (userId: string) => void } | null>(null);
-  const [storiesRefreshKey, setStoriesRefreshKey] = useState(0);
   const [deckH, setDeckH] = useState(0);
   const position = useRef(new Animated.ValueXY()).current;
   const emptyPulse = useRef(new Animated.Value(1)).current;
@@ -91,13 +81,6 @@ export default function DiscoveryScreen({ navigation }: Props) {
     loadMatchCount();
     loadWeather();
     setQuote(getRandomQuote());
-    // Prefetch lazy Story modules in the background after initial render
-    // so they're warm by the time the user first taps a story ring
-    const t = setTimeout(() => {
-      import('../Stories/StoryViewerScreen').catch(() => {});
-      import('../Stories/CreateStoryScreen').catch(() => {});
-    }, 1500);
-    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -501,87 +484,6 @@ export default function DiscoveryScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
       </LinearGradient>
-
-      {/* Cards */}
-      {/* Stories Bar */}
-      <StoriesBar
-        key={storiesRefreshKey}
-        onAddStory={() => setCreatingStory(true)}
-        onOpenStory={(_id, stories, markSeen) => {
-          // markSeen will be called when viewer closes so ring turns gray
-          setViewingStory({ stories, initialIndex: 0, markSeen });
-        }}
-      />
-
-      {/* Story Viewer Modal — lazy loaded on first interaction */}
-      {viewingStory && (
-        <Modal visible animationType="fade" transparent onRequestClose={() => {
-          viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
-          setViewingStory(null);
-        }}>
-          <Suspense fallback={
-            <View style={{ flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#FF6B35" />
-            </View>
-          }>
-            <ErrorBoundary fallback={
-              <View style={styles.storyErrorFallback}>
-                <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.5)" />
-                <Text style={styles.storyErrorText}>Não foi possível abrir este story.</Text>
-                <TouchableOpacity
-                  style={styles.storyErrorBtn}
-                  onPress={() => setViewingStory(null)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.storyErrorBtnText}>Fechar</Text>
-                </TouchableOpacity>
-              </View>
-            }>
-              <StoryViewerScreen
-                initialStories={viewingStory.stories}
-                initialIndex={viewingStory.initialIndex}
-                onClose={() => {
-                  viewingStory.markSeen?.(viewingStory.stories[0]?.user_id || '');
-                  setViewingStory(null);
-                }}
-              />
-            </ErrorBoundary>
-          </Suspense>
-        </Modal>
-      )}
-
-      {/* Create Story Modal — lazy loaded on first interaction */}
-      {creatingStory && (
-        <Modal visible animationType="slide" onRequestClose={() => setCreatingStory(false)}>
-          <Suspense fallback={
-            <View style={{ flex: 1, backgroundColor: '#0A0A0F', justifyContent: 'center', alignItems: 'center' }}>
-              <ActivityIndicator size="large" color="#FF6B35" />
-            </View>
-          }>
-            <ErrorBoundary fallback={
-              <View style={[styles.storyErrorFallback, { backgroundColor: '#0A0A0F' }]}>
-                <Ionicons name="camera-outline" size={48} color="rgba(255,255,255,0.5)" />
-                <Text style={styles.storyErrorText}>Não foi possível abrir o criador de story.</Text>
-                <TouchableOpacity
-                  style={styles.storyErrorBtn}
-                  onPress={() => setCreatingStory(false)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.storyErrorBtnText}>Fechar</Text>
-                </TouchableOpacity>
-              </View>
-            }>
-              <CreateStoryScreen
-                onClose={() => setCreatingStory(false)}
-                onSuccess={() => {
-                  setCreatingStory(false);
-                  setStoriesRefreshKey((k) => k + 1);
-                }}
-              />
-            </ErrorBoundary>
-          </Suspense>
-        </Modal>
-      )}
 
       {/* Weather workout suggestion card — shown when data is available and not dismissed */}
       {weather && recommendation && !weatherCardDismissed && (
