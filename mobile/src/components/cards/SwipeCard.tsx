@@ -221,6 +221,18 @@ function SwipeCardInner({ user, cardHeight }: SwipeCardProps) {
             </Text>
           )}
 
+          {/* Frases estilo Tinder — mostra até 2 no card */}
+          {user.prompts && user.prompts.length > 0 && (
+            <View style={styles.prompts}>
+              {user.prompts.slice(0, 2).map((p, i) => (
+                <View key={i} style={styles.promptChip}>
+                  <Text style={styles.promptQ}>{p.q}</Text>
+                  <Text style={styles.promptA} numberOfLines={1}>{p.a}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
           {/* Photo count hint if multiple photos */}
           {photos.length > 1 && (
             <Text style={styles.photoHint}>
@@ -405,4 +417,13 @@ const styles = StyleSheet.create({
     marginTop: spacing.xs,
     fontWeight: '500',
   },
+  prompts: { marginTop: spacing.sm, gap: 6 },
+  promptChip: {
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    borderRadius: borderRadius.sm,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  promptQ: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '700' },
+  promptA: { color: '#fff', fontSize: 13, fontWeight: '600', marginTop: 1 },
 });

@@ -41,6 +41,7 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
       bannerUrl: user.bannerUrl,
       profilePhotos: user.profilePhotos,
+      prompts: user.prompts,
       sports: user.sports,
       level: user.level,
       objectives: user.objectives,
@@ -117,12 +118,21 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, dto: UpdateProfileDto): Promise<User> {
-    const sanitized: UpdateProfileDto = {
+    const sanitized: any = {
       ...dto,
       ...(dto.name !== undefined && { name: sanitizeText(dto.name, 100) }),
       ...(dto.bio !== undefined && { bio: sanitizeText(dto.bio, 500) || undefined }),
       ...(dto.city !== undefined && { city: sanitizeText(dto.city, 100) || undefined }),
     };
+    // Frases estilo Tinder: máx 5, pergunta ≤ 60, resposta ≤ 150, sanitizadas.
+    if (dto.prompts !== undefined) {
+      sanitized.prompts = Array.isArray(dto.prompts)
+        ? dto.prompts
+            .filter((p) => p && typeof p.q === 'string' && typeof p.a === 'string' && p.a.trim().length > 0)
+            .slice(0, 5)
+            .map((p) => ({ q: sanitizeText(p.q, 60), a: sanitizeText(p.a, 150) }))
+        : null;
+    }
     await this.userRepository.update(userId, sanitized);
     return this.findById(userId);
   }

@@ -11,6 +11,8 @@ export interface User {
   name: string;
   email: string;
   bio?: string;
+  prompts?: { q: string; a: string }[] | null;  // frases estilo Tinder
+  territoryColor?: string | null;
   avatarUrl?: string;
   bannerUrl?: string;
   profilePhotos?: string[] | null;  // min 3 fotos de perfil (base64 data URLs)

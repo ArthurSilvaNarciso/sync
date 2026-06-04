@@ -54,6 +54,7 @@ export type MapStackParamList = {
   EventDetail: { eventId: string };
   CreateEvent: undefined;
   MyEvents: undefined;
+  Territory: undefined;
 };
 
 export type TrackingStackParamList = {

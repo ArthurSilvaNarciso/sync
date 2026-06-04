@@ -38,6 +38,15 @@ export class User {
   @Column({ type: 'text', nullable: true })
   bio: string | null;
 
+  // Frases/prompts estilo Tinder: [{ q: 'Meu esporte favorito', a: 'Corrida' }]
+  // Armazenado como JSON. select:false NÃO é usado — precisa aparecer no card.
+  @Column({ type: 'simple-json', nullable: true })
+  prompts: { q: string; a: string }[] | null;
+
+  // Cor do território do usuário no mapa de conquista (hsl). Atribuída no 1º claim.
+  @Column({ type: 'varchar', length: 30, nullable: true })
+  territoryColor: string | null;
+
   @Column({ type: 'varchar', nullable: true })
   avatarUrl: string | null;
 

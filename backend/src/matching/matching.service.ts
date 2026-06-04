@@ -20,6 +20,7 @@ function safeDiscoverUser(u: any) {
     bannerUrl: u.bannerUrl,
     profilePhotos: u.profilePhotos,
     bio: u.bio,
+    prompts: u.prompts,   // frases estilo Tinder
     city: u.city,     // cidade sem coordenadas precisas
     sports: u.sports,
     level: u.level,

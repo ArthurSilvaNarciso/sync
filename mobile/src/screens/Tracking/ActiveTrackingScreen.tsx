@@ -16,6 +16,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import * as ExpoLocation from 'expo-location';
 import api from '../../services/api';
+import { territoryApi } from '../../services/territory.service';
 import { trackingSocket } from '../../services/tracking-socket.service';
 import { Share } from 'react-native';
 import { announce, speak, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
@@ -308,6 +309,12 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
     if (audioOn) announce.finish(distance / 1000, elapsed / 60);
     try {
       await api.put(`/activities/${activityId}/finish`);
+      // Jogo de territórios: conquista as células da rota percorrida (fire-and-forget)
+      if (points.length > 0) {
+        territoryApi
+          .claim(points.map((p) => ({ lat: p.latitude, lng: p.longitude })))
+          .catch(() => {});
+      }
       navigation.replace('ActivitySummary', { activityId });
     } catch (e: any) {
       setFinishing(false);

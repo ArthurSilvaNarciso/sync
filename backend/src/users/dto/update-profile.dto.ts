@@ -84,4 +84,10 @@ export class UpdateProfileDto {
   @IsIn(['male', 'female', 'other'])
   @IsOptional()
   gender?: string;
+
+  // Frases estilo Tinder. Validação fina (texto/limites) é feita no service.
+  @ApiPropertyOptional({ example: [{ q: 'Meu esporte favorito', a: 'Corrida de rua' }] })
+  @IsArray()
+  @IsOptional()
+  prompts?: { q: string; a: string }[];
 }

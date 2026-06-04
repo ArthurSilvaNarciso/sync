@@ -31,6 +31,15 @@ type Props = {
 
 const ACCENT = '#FF6B35';
 
+// Perguntas estilo Tinder pra deixar o perfil mais atraente
+const PROMPT_QUESTIONS = [
+  'Meu esporte favorito é',
+  'Procuro um parceiro pra',
+  'Meu objetivo esse ano',
+  'Lugar que amo treinar',
+  'Minha maior conquista',
+];
+
 /** Web-only: usa canvas para redimensionar a imagem para quadrado de `size`px e retornar data URL */
 function resizeAvatarForWeb(uri: string, size: number): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -57,6 +66,11 @@ export default function EditProfileScreen({ navigation }: Props) {
   const [name, setName] = useState(user?.name || '');
   const [bio, setBio] = useState(user?.bio || '');
   const [sports, setSports] = useState<string[]>(user?.sports || []);
+  const [promptAnswers, setPromptAnswers] = useState<Record<string, string>>(() => {
+    const m: Record<string, string> = {};
+    ((user as any)?.prompts || []).forEach((p: { q: string; a: string }) => { if (p?.q) m[p.q] = p.a; });
+    return m;
+  });
   const [loading, setLoading] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
 
@@ -128,7 +142,10 @@ export default function EditProfileScreen({ navigation }: Props) {
     }
     setLoading(true);
     try {
-      const { data } = await api.put('/users/me', { name: name.trim(), bio, sports });
+      const prompts = PROMPT_QUESTIONS
+        .filter((q) => (promptAnswers[q] || '').trim().length > 0)
+        .map((q) => ({ q, a: promptAnswers[q].trim() }));
+      const { data } = await api.put('/users/me', { name: name.trim(), bio, sports, prompts });
       setUser(data);
       Alert.alert('Sucesso', 'Perfil atualizado!');
       navigation.goBack();
@@ -186,6 +203,20 @@ export default function EditProfileScreen({ navigation }: Props) {
             placeholder="Conte sobre voce..."
             maxLength={300}
           />
+
+          <Text style={styles.label}>Frases pra atrair (estilo Tinder)</Text>
+          <Text style={styles.promptHint}>Responda o que quiser — aparece no seu card no Descobrir.</Text>
+          {PROMPT_QUESTIONS.map((q) => (
+            <View key={q} style={styles.promptBlock}>
+              <Text style={styles.promptQ}>{q}</Text>
+              <Input
+                value={promptAnswers[q] || ''}
+                onChangeText={(v) => setPromptAnswers((prev) => ({ ...prev, [q]: v }))}
+                placeholder="Sua resposta..."
+                maxLength={150}
+              />
+            </View>
+          ))}
 
           <Text style={styles.label}>Esportes</Text>
           <View style={styles.chips}>
@@ -287,4 +318,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   chips: { flexDirection: 'row', flexWrap: 'wrap' },
+  promptHint: { color: colors.secondaryText, fontSize: fontSize.xs, marginBottom: spacing.sm, marginTop: -spacing.xs },
+  promptBlock: { marginBottom: spacing.xs },
+  promptQ: { color: ACCENT, fontSize: fontSize.xs, fontWeight: '700', marginBottom: 2 },
 });

@@ -19,6 +19,7 @@ import { AchievementsModule } from './achievements/achievements.module';
 import { StatsModule } from './stats/stats.module';
 import { StoriesModule } from './stories/stories.module';
 import { GroupsModule } from './groups/groups.module';
+import { TerritoryModule } from './territory/territory.module';
 import { ActivityFeedModule } from './activity-feed/activity-feed.module';
 import { SecurityModule } from './common/security/security.module';
 import { SeedModule } from './common/seed/seed.module';
@@ -66,6 +67,7 @@ import { HealthController } from './health.controller';
     StatsModule,
     StoriesModule,
     GroupsModule,
+    TerritoryModule,
     ActivityFeedModule,
     SeedModule,
     SubscriptionsModule,

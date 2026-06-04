@@ -232,12 +232,14 @@ export const Circle = ({
   strokeColor,
   fillColor,
   strokeWidth = 1,
+  fillOpacity = 0.08,
 }: {
   center: { latitude: number; longitude: number };
   radius: number;
   strokeColor?: string;
   fillColor?: string;
   strokeWidth?: number;
+  fillOpacity?: number;
 }) => {
   const map = React.useContext(MapContext);
   useEffect(() => {
@@ -247,12 +249,12 @@ export const Circle = ({
       color: strokeColor || '#FF6B35',
       weight: strokeWidth,
       fillColor: fillColor || '#FF6B35',
-      fillOpacity: 0.08,
+      fillOpacity,
     }).addTo(map);
     return () => {
       circle.remove();
     };
-  }, [map, center.latitude, center.longitude, radius, strokeColor, fillColor, strokeWidth]);
+  }, [map, center.latitude, center.longitude, radius, strokeColor, fillColor, strokeWidth, fillOpacity]);
   return null;
 };
 

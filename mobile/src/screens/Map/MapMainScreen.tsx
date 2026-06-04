@@ -440,6 +440,16 @@ export default function MapMainScreen({ navigation }: Props) {
           </Text>
         </TouchableOpacity>
 
+        {/* Territórios — jogo de conquista */}
+        <TouchableOpacity
+          style={[styles.locationChip, { borderColor: '#FCD34D' }]}
+          onPress={() => navigation.navigate('Territory')}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="flag" size={14} color="#FCD34D" />
+          <Text style={[styles.locationText, { color: '#FCD34D' }]}>Territórios</Text>
+        </TouchableOpacity>
+
         {/* Weather chip */}
         {weather && (
           <TouchableOpacity
