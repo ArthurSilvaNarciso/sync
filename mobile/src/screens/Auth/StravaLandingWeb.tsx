@@ -144,6 +144,8 @@ interface Props {
 export default function StravaLandingWeb({ onStart, onLogin, onDemo }: Props) {
   const { width } = useWindowDimensions();
   const fade = useRef(new Animated.Value(0)).current;
+  const scrollRef = useRef<ScrollView>(null);
+  const sectionY = useRef<Record<string, number>>({});
 
   useEffect(() => {
     Animated.timing(fade, {
@@ -154,21 +156,33 @@ export default function StravaLandingWeb({ onStart, onLogin, onDemo }: Props) {
     }).start();
   }, []);
 
+  const scrollToSection = (key: string) => {
+    const y = sectionY.current[key];
+    if (y != null) scrollRef.current?.scrollTo({ y: Math.max(y - 70, 0), animated: true });
+  };
+
   const isWide = width >= 1100;
   const cardWidth = isWide ? 380 : Math.min(width - 80, 360);
 
   return (
-    <ScrollView style={styles.root} contentContainerStyle={{ paddingBottom: 0 }}>
+    <ScrollView ref={scrollRef} style={styles.root} contentContainerStyle={{ paddingBottom: 0 }}>
       {/* ============ NAV BAR ============ */}
       <View style={styles.nav}>
-        <View style={styles.navLogo}>
+        <TouchableOpacity
+          style={styles.navLogo}
+          onPress={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
+        >
           <Logo size={36} variant="filled" />
           <Text style={styles.navBrand}>SYNC</Text>
-        </View>
+        </TouchableOpacity>
         <View style={styles.navLinks}>
-          {['Features', 'Planos', 'Comunidade'].map((l) => (
-            <TouchableOpacity key={l}>
-              <Text style={styles.navLink}>{l}</Text>
+          {[
+            { label: 'Features', key: 'Features' },
+            { label: 'Planos', key: 'Planos' },
+            { label: 'Comunidade', key: 'Comunidade' },
+          ].map((l) => (
+            <TouchableOpacity key={l.key} onPress={() => scrollToSection(l.key)}>
+              <Text style={styles.navLink}>{l.label}</Text>
             </TouchableOpacity>
           ))}
           <TouchableOpacity onPress={onLogin}>
@@ -249,7 +263,10 @@ export default function StravaLandingWeb({ onStart, onLogin, onDemo }: Props) {
       </View>
 
       {/* ============ FEATURES GRID ============ */}
-      <View style={styles.featuresSection}>
+      <View
+        style={styles.featuresSection}
+        onLayout={(e) => { sectionY.current.Features = e.nativeEvent.layout.y; }}
+      >
         <Text style={styles.sectionEyebrow}>POR QUE SYNC</Text>
         <Text style={styles.sectionTitle}>
           Tudo o que você precisa para{'\n'}
@@ -290,7 +307,10 @@ export default function StravaLandingWeb({ onStart, onLogin, onDemo }: Props) {
       </View>
 
       {/* ============ PLANOS (Strava-inspired) ============ */}
-      <View style={styles.plansSection}>
+      <View
+        style={styles.plansSection}
+        onLayout={(e) => { sectionY.current.Planos = e.nativeEvent.layout.y; }}
+      >
         <Text style={styles.sectionEyebrow}>PLANOS</Text>
         <Text style={styles.sectionTitle}>
           Comece grátis.{'\n'}
@@ -343,7 +363,10 @@ export default function StravaLandingWeb({ onStart, onLogin, onDemo }: Props) {
       </View>
 
       {/* ============ TESTIMONIALS ============ */}
-      <View style={styles.testSection}>
+      <View
+        style={styles.testSection}
+        onLayout={(e) => { sectionY.current.Comunidade = e.nativeEvent.layout.y; }}
+      >
         <Text style={styles.sectionEyebrow}>COMUNIDADE</Text>
         <Text style={styles.sectionTitle}>
           Atletas de verdade,{'\n'}
