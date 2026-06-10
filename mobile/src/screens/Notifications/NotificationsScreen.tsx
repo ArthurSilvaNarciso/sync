@@ -58,13 +58,16 @@ export default function NotificationsScreen({ navigation }: any) {
   const [list, setList] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError(false);
     try {
       const { data } = await api.get('/notifications');
       setList(data || []);
     } catch {
+      setError(true);
       setList([]);
     } finally {
       setLoading(false);
@@ -125,6 +128,8 @@ export default function NotificationsScreen({ navigation }: any) {
         <TouchableOpacity
           onPress={() => navigation?.goBack?.()}
           style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
         >
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
@@ -138,6 +143,8 @@ export default function NotificationsScreen({ navigation }: any) {
           <TouchableOpacity
             onPress={markAllAsRead}
             style={styles.markAllBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Marcar todas as notificações como lidas"
           >
             <Text style={styles.markAll}>Marcar todas</Text>
           </TouchableOpacity>
@@ -152,7 +159,22 @@ export default function NotificationsScreen({ navigation }: any) {
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
         }
         ListEmptyComponent={
-          loading ? null : (
+          loading ? null : error ? (
+            <View style={styles.empty}>
+              <Ionicons name="cloud-offline-outline" size={64} color={colors.dark.secondaryText} />
+              <Text style={styles.emptyTitle}>Erro ao carregar</Text>
+              <Text style={styles.emptyText}>Não foi possível buscar suas notificações.</Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={() => load()}
+                accessibilityRole="button"
+                accessibilityLabel="Tentar novamente"
+              >
+                <Ionicons name="refresh" size={16} color="#fff" />
+                <Text style={styles.retryText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
             <View style={styles.empty}>
               <Ionicons name="notifications-outline" size={64} color={colors.dark.secondaryText} />
               <Text style={styles.emptyTitle}>Sem notificações</Text>
@@ -235,6 +257,12 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: spacing.lg, backgroundColor: '#FF6B35',
+    paddingVertical: 12, paddingHorizontal: spacing.xl, borderRadius: 12,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   empty: { alignItems: 'center', marginTop: 100, paddingHorizontal: spacing.xl },
   emptyTitle: { color: colors.dark.text, fontSize: 18, fontWeight: '700', marginTop: spacing.md },
   emptyText: {
