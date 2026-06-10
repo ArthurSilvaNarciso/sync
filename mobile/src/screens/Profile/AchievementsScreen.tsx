@@ -27,12 +27,15 @@ export default function AchievementsScreen({ navigation }: Props) {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [xpData, setXpData] = useState<UserXP | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
   const loadData = async () => {
+    setLoading(true);
+    setError(false);
     try {
       const [achievementsData, xp] = await Promise.all([
         achievementsService.getAchievements(),
@@ -41,7 +44,7 @@ export default function AchievementsScreen({ navigation }: Props) {
       setAchievements(achievementsData);
       setXpData(xp);
     } catch {
-      // sem dados em caso de erro
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -107,7 +110,12 @@ export default function AchievementsScreen({ navigation }: Props) {
         end={{ x: 0, y: 1 }}
         style={[styles.header, { paddingTop: Math.max(insets.top + 12, 56) }]}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Conquistas</Text>
@@ -154,9 +162,35 @@ export default function AchievementsScreen({ navigation }: Props) {
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={
-          <Text style={styles.sectionLabel}>
-            {unlockedCount} de {totalCount} conquistas desbloqueadas
-          </Text>
+          achievements.length > 0 ? (
+            <Text style={styles.sectionLabel}>
+              {unlockedCount} de {totalCount} conquistas desbloqueadas
+            </Text>
+          ) : null
+        }
+        ListEmptyComponent={
+          error ? (
+            <View style={styles.emptyWrap}>
+              <Ionicons name="cloud-offline-outline" size={56} color="rgba(255,255,255,0.2)" />
+              <Text style={styles.emptyTitle}>Erro ao carregar</Text>
+              <Text style={styles.emptyText}>Não foi possível buscar suas conquistas.</Text>
+              <TouchableOpacity
+                style={styles.retryBtn}
+                onPress={loadData}
+                accessibilityRole="button"
+                accessibilityLabel="Tentar novamente"
+              >
+                <Ionicons name="refresh" size={16} color="#fff" />
+                <Text style={styles.retryText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.emptyWrap}>
+              <Ionicons name="trophy-outline" size={56} color="rgba(255,255,255,0.2)" />
+              <Text style={styles.emptyTitle}>Sem conquistas ainda</Text>
+              <Text style={styles.emptyText}>Complete treinos pra desbloquear medalhas e XP.</Text>
+            </View>
+          )
         }
       />
     </View>
@@ -174,6 +208,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#0A0A0F',
   },
+  emptyWrap: { alignItems: 'center', paddingTop: 70, paddingHorizontal: spacing.xl },
+  emptyTitle: { color: colors.dark.text, fontSize: 18, fontWeight: '700', marginTop: spacing.md },
+  emptyText: { color: colors.dark.secondaryText, textAlign: 'center', marginTop: spacing.sm, fontSize: 13, lineHeight: 20 },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: spacing.lg, backgroundColor: '#FF6B35',
+    paddingVertical: 12, paddingHorizontal: spacing.xl, borderRadius: 12,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
