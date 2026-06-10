@@ -22,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import Button from '../../components/ui/Button';
 import Logo from '../../components/Logo';
 import StravaLandingWeb from './StravaLandingWeb';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 
 type Props = {
   navigation: NativeStackNavigationProp<AuthStackParamList, 'Welcome'>;
@@ -100,6 +101,7 @@ const ACCENT = '#FF6B35';
 export default function WelcomeScreen({ navigation }: Props) {
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = Platform.OS === 'web' && windowWidth >= 900;
+  const reduceMotion = useReduceMotion();
 
   const [slideIdx, setSlideIdx] = useState(0);
   const fade = useRef(new Animated.Value(0)).current;
@@ -107,13 +109,16 @@ export default function WelcomeScreen({ navigation }: Props) {
   const imgOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
+    if (reduceMotion) { fade.setValue(1); slideY.setValue(0); return; }
     Animated.parallel([
       Animated.timing(fade, { toValue: 1, duration: 700, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
       Animated.timing(slideY, { toValue: 0, duration: 700, useNativeDriver: true, easing: Easing.out(Easing.cubic) }),
     ]).start();
-  }, []);
+  }, [reduceMotion]);
 
   useEffect(() => {
+    // Reduzir movimento: mantém uma imagem fixa, sem troca automática
+    if (reduceMotion) return;
     let t: ReturnType<typeof setInterval> | null = null;
 
     const startSlideshow = () => {
@@ -142,7 +147,7 @@ export default function WelcomeScreen({ navigation }: Props) {
       stopSlideshow();
       sub.remove();
     };
-  }, []);
+  }, [reduceMotion]);
 
   const slide = SLIDES[slideIdx];
 

@@ -613,6 +613,8 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
             style={[styles.sideBtn, isPaused && { opacity: 0.4 }]}
             onPress={handleLap}
             disabled={isPaused}
+            accessibilityRole="button"
+            accessibilityLabel={`Marcar volta ${laps.length + 1}`}
           >
             <Ionicons name="flag-outline" size={22} color={colors.dark.text} />
             <Text style={styles.sideBtnLabel}>{isPaused ? `${laps.length} voltas` : `Volta ${laps.length + 1}`}</Text>
@@ -622,7 +624,8 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={[styles.mainControlBtn, isPaused ? styles.resumeBtn : styles.pauseBtn]}
             onPress={togglePause}
-            accessibilityLabel={isPaused ? 'Retomar' : 'Pausar'}
+            accessibilityRole="button"
+            accessibilityLabel={isPaused ? 'Retomar treino' : 'Pausar treino'}
           >
             <Ionicons name={isPaused ? 'play' : 'pause'} size={34} color="#fff" />
           </TouchableOpacity>
@@ -633,6 +636,8 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
             onPress={requestFinish}
             disabled={finishing}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={finishing ? 'Salvando treino' : 'Finalizar treino'}
           >
             <Ionicons name="stop-circle" size={38} color={finishing ? '#888' : '#F87171'} />
             <Text style={[styles.sideBtnLabel, { color: finishing ? '#888' : '#F87171' }]}>
