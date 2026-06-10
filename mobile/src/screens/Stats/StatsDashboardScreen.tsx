@@ -51,16 +51,21 @@ export default function StatsDashboardScreen({ navigation }: any) {
   const [period, setPeriod] = useState<Period>('week');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  const loadData = () => {
+    setLoading(true);
+    setError(false);
     api.get('/activities/history')
       .then((r) => {
         const list = Array.isArray(r.data) ? r.data[0] : r.data;
         setActivities(Array.isArray(list) ? list : (list?.activities || []));
       })
-      .catch(() => setActivities([]))
+      .catch(() => { setError(true); setActivities([]); })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadData(); }, []);
 
   const filtered = activities.filter((a) => isInPeriod(new Date(a.startTime), period));
   const totalKm = filtered.reduce((sum, a) => sum + (a.distance || 0) / 1000, 0);
@@ -125,12 +130,31 @@ export default function StatsDashboardScreen({ navigation }: any) {
         end={{ x: 0, y: 1 }}
         style={styles.header}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation?.goBack?.()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation?.goBack?.()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Estatísticas</Text>
         <View style={{ width: 38 }} />
       </LinearGradient>
+
+      {/* Banner de erro de carregamento */}
+      {error && (
+        <TouchableOpacity
+          style={styles.errorBanner}
+          onPress={loadData}
+          accessibilityRole="button"
+          accessibilityLabel="Erro ao carregar. Tocar para tentar novamente."
+        >
+          <Ionicons name="cloud-offline-outline" size={16} color="#F87171" />
+          <Text style={styles.errorBannerText}>Erro ao carregar. Toque para tentar de novo.</Text>
+          <Ionicons name="refresh" size={16} color="#F87171" />
+        </TouchableOpacity>
+      )}
 
       {/* Period selector */}
       <View style={styles.periodRow}>
@@ -139,6 +163,9 @@ export default function StatsDashboardScreen({ navigation }: any) {
             key={p}
             style={[styles.periodBtn, period === p && styles.periodBtnActive]}
             onPress={() => setPeriod(p)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: period === p }}
+            accessibilityLabel={p === 'week' ? 'Semana' : p === 'month' ? 'Mês' : 'Ano'}
           >
             <Text style={[styles.periodLabel, period === p && styles.periodLabelActive]}>
               {p === 'week' ? 'Semana' : p === 'month' ? 'Mês' : 'Ano'}
@@ -271,6 +298,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   title: { fontSize: fontSize.xl, fontWeight: '800', color: '#fff', letterSpacing: 0.3 },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.lg, marginTop: spacing.md,
+    backgroundColor: 'rgba(248,113,113,0.10)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.25)',
+    borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  errorBannerText: { flex: 1, color: '#F87171', fontSize: 13, fontWeight: '600' },
   periodRow: {
     flexDirection: 'row',
     paddingHorizontal: spacing.lg,
