@@ -121,6 +121,7 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu 
               style={styles.avatar}
               contentFit="cover"
               cachePolicy="memory-disk"
+              accessibilityLabel={`Foto de ${post.user?.name || 'atleta'}`}
             />
           </View>
           <View style={{ flex: 1, marginLeft: spacing.sm }}>
@@ -176,7 +177,14 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu 
         </View>
 
         {post.photoUrl && (
-          <Image source={{ uri: post.photoUrl }} style={styles.photo} contentFit="cover" cachePolicy="memory-disk" transition={150} />
+          <Image
+            source={{ uri: post.photoUrl }}
+            style={styles.photo}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            transition={150}
+            accessibilityLabel={`Foto do treino de ${post.user?.name || 'atleta'}`}
+          />
         )}
 
         {/* Actions */}
@@ -443,6 +451,9 @@ export default function FeedScreen() {
           ListFooterComponent={<ListFooter />}
           contentContainerStyle={{ paddingBottom: TAB_BAR_HEIGHT + insets.bottom + spacing.md }}
           removeClippedSubviews={true}
+          initialNumToRender={6}
+          maxToRenderPerBatch={6}
+          windowSize={9}
           ListEmptyComponent={
             loadError ? (
               <View style={styles.empty}>
