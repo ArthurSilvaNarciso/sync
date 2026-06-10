@@ -4,10 +4,11 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+// NOTA: este componente é montado na RAIZ do app (fora do SafeAreaProvider que
+// o react-navigation injeta por tela), então NÃO usa useSafeAreaInsets — usaria
+// um provider inexistente e quebraria o boot. Só renderiza no web (sem notch).
 export default function ConnectionBanner() {
-  const insets = useSafeAreaInsets();
   const [offline, setOffline] = useState(false);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function ConnectionBanner() {
 
   return (
     <View
-      style={[styles.banner, { paddingTop: Math.max(insets.top, 6) + 6 }]}
+      style={styles.banner}
       accessibilityRole="alert"
       accessibilityLabel="Sem conexão com a internet"
       pointerEvents="none"
@@ -51,7 +52,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingBottom: 8,
+    paddingVertical: 8,
     paddingHorizontal: 12,
   },
   text: { color: '#fff', fontSize: 13, fontWeight: '700' },
