@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 
 interface BlockedUser {
   id: string;
@@ -46,29 +47,24 @@ export default function BlockedUsersScreen({ navigation }: any) {
 
   useEffect(() => { load(); }, [load]);
 
-  const handleUnblock = (user: BlockedUser) => {
-    Alert.alert(
+  const handleUnblock = async (user: BlockedUser) => {
+    // confirmAsync funciona no web (Alert.alert ignora os botões lá)
+    const ok = await confirmAsync(
       'Desbloquear usuário?',
       `${user.name} poderá ver seu perfil e interagir com você novamente.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Desbloquear',
-          onPress: async () => {
-            setUnblocking(user.id);
-            try {
-              await api.delete(`/users/${user.id}/block`);
-              setBlocked((prev) => prev.filter((u) => u.id !== user.id));
-              showToast(`${user.name} desbloqueado`, 'success');
-            } catch {
-              showToast('Erro ao desbloquear', 'error');
-            } finally {
-              setUnblocking(null);
-            }
-          },
-        },
-      ],
+      { confirmText: 'Desbloquear' },
     );
+    if (!ok) return;
+    setUnblocking(user.id);
+    try {
+      await api.delete(`/users/${user.id}/block`);
+      setBlocked((prev) => prev.filter((u) => u.id !== user.id));
+      showToast(`${user.name} desbloqueado`, 'success');
+    } catch {
+      showToast('Erro ao desbloquear', 'error');
+    } finally {
+      setUnblocking(null);
+    }
   };
 
   const renderItem = ({ item }: { item: BlockedUser }) => (
@@ -97,6 +93,8 @@ export default function BlockedUsersScreen({ navigation }: any) {
         onPress={() => handleUnblock(item)}
         disabled={unblocking === item.id}
         activeOpacity={0.7}
+        accessibilityRole="button"
+        accessibilityLabel={`Desbloquear ${item.name}`}
       >
         {unblocking === item.id ? (
           <ActivityIndicator size="small" color="#FF6B35" />
@@ -128,7 +126,12 @@ export default function BlockedUsersScreen({ navigation }: any) {
         end={{ x: 0, y: 1 }}
         style={styles.header}
       >
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation?.goBack?.()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Usuários bloqueados</Text>
