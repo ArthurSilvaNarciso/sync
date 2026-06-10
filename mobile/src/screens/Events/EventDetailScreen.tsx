@@ -25,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation } from '../../services/external-apis';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
+import { confirmAsync } from '../../utils/confirm';
 
 type Props = {
   navigation: NativeStackNavigationProp<MapStackParamList, 'EventDetail'>;
@@ -129,24 +130,19 @@ export default function EventDetailScreen({ navigation, route }: Props) {
   };
 
   const handleLeave = async () => {
-    Alert.alert('Sair do evento', 'Deseja sair deste evento?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Sair',
-        style: 'destructive',
-        onPress: async () => {
-          setLeaving(true);
-          try {
-            await api.delete(`/events/${route.params.eventId}/leave`);
-          } catch {}
-          setIsJoined(false);
-          if (event) {
-            setEvent({ ...event, participantCount: Math.max(0, (event.participantCount || 1) - 1) });
-          }
-          setLeaving(false);
-        },
-      },
-    ]);
+    const ok = await confirmAsync('Sair do evento', 'Deseja sair deste evento?', {
+      confirmText: 'Sair', destructive: true,
+    });
+    if (!ok) return;
+    setLeaving(true);
+    try {
+      await api.delete(`/events/${route.params.eventId}/leave`);
+    } catch {}
+    setIsJoined(false);
+    if (event) {
+      setEvent({ ...event, participantCount: Math.max(0, (event.participantCount || 1) - 1) });
+    }
+    setLeaving(false);
   };
 
   const handleShare = async () => {

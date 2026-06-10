@@ -20,6 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getSportImage, emptyImages } from '../../theme/images';
 import EmptyState from '../../components/ui/EmptyState';
 import api from '../../services/api';
+import { confirmAsync } from '../../utils/confirm';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<MapStackParamList, 'MyEvents'>;
@@ -79,49 +81,33 @@ export default function MyEventsScreen({ navigation }: Props) {
     setRefreshing(false);
   };
 
-  const handleCancelEvent = (eventId: string, title: string) => {
-    Alert.alert(
+  const handleCancelEvent = async (eventId: string, title: string) => {
+    const ok = await confirmAsync(
       'Cancelar evento',
       `Deseja cancelar o evento "${title}"? Esta ação não pode ser desfeita.`,
-      [
-        { text: 'Não', style: 'cancel' },
-        {
-          text: 'Cancelar evento',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/events/${eventId}`);
-              setCreated((prev) => prev.filter((e) => e.id !== eventId));
-              Alert.alert('Pronto', 'Evento cancelado com sucesso.');
-            } catch {
-              Alert.alert('Erro', 'Nao foi possivel cancelar o evento.');
-            }
-          },
-        },
-      ],
+      { confirmText: 'Cancelar evento', destructive: true },
     );
+    if (!ok) return;
+    try {
+      await api.delete(`/events/${eventId}`);
+      setCreated((prev) => prev.filter((e) => e.id !== eventId));
+      showToast('Evento cancelado com sucesso', 'success');
+    } catch {
+      showToast('Não foi possível cancelar o evento', 'error');
+    }
   };
 
-  const handleLeaveEvent = (eventId: string, title: string) => {
-    Alert.alert(
-      'Sair do evento',
-      `Deseja sair do evento "${title}"?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Sair',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.delete(`/events/${eventId}/leave`);
-              setParticipating((prev) => prev.filter((e) => e.id !== eventId));
-            } catch {
-              Alert.alert('Erro', 'Nao foi possivel sair do evento.');
-            }
-          },
-        },
-      ],
-    );
+  const handleLeaveEvent = async (eventId: string, title: string) => {
+    const ok = await confirmAsync('Sair do evento', `Deseja sair do evento "${title}"?`, {
+      confirmText: 'Sair', destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/events/${eventId}/leave`);
+      setParticipating((prev) => prev.filter((e) => e.id !== eventId));
+    } catch {
+      showToast('Não foi possível sair do evento', 'error');
+    }
   };
 
   const renderEvent = ({ item }: { item: EventType }) => {
