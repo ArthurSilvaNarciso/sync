@@ -37,6 +37,7 @@ export default function RankingScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [scope, setScope] = useState<Scope>('monthly');
 
   useEffect(() => {
@@ -45,6 +46,7 @@ export default function RankingScreen({ navigation }: Props) {
 
   const loadRanking = async () => {
     setLoading(true);
+    setError(false);
     try {
       const endpoint =
         scope === 'monthly' ? '/ranking/monthly'
@@ -52,8 +54,9 @@ export default function RankingScreen({ navigation }: Props) {
         : '/ranking/friends';
       const { data } = await api.get(endpoint);
       setRanking(data);
-    } catch (error) {
-      console.log('Error:', error);
+    } catch (err) {
+      console.log('Error:', err);
+      setError(true);
       setRanking([]);
     } finally {
       setLoading(false);
@@ -151,6 +154,8 @@ export default function RankingScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
         >
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
@@ -166,6 +171,9 @@ export default function RankingScreen({ navigation }: Props) {
             style={[styles.tab, scope === s.id && styles.tabActive]}
             onPress={() => setScope(s.id)}
             activeOpacity={0.7}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: scope === s.id }}
+            accessibilityLabel={`Ranking ${s.label}`}
           >
             <Ionicons
               name={s.icon}
@@ -190,14 +198,30 @@ export default function RankingScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="trophy-outline" size={48} color="rgba(255,255,255,0.20)" />
-              <Text style={styles.empty}>
-                {scope === 'friends'
-                  ? 'Você ainda não tem amigos no app. Vá pro Descobrir!'
-                  : 'Nenhum dado de ranking ainda'}
-              </Text>
-            </View>
+            error ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="cloud-offline-outline" size={48} color="rgba(255,255,255,0.20)" />
+                <Text style={styles.empty}>Não foi possível carregar o ranking.</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={loadRanking}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tentar novamente"
+                >
+                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Text style={styles.retryText}>Tentar novamente</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="trophy-outline" size={48} color="rgba(255,255,255,0.20)" />
+                <Text style={styles.empty}>
+                  {scope === 'friends'
+                    ? 'Você ainda não tem amigos no app. Vá pro Descobrir!'
+                    : 'Nenhum dado de ranking ainda'}
+                </Text>
+              </View>
+            )
           }
         />
       )}
@@ -391,6 +415,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 60,
   },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: spacing.lg, backgroundColor: '#FF6B35',
+    paddingVertical: 12, paddingHorizontal: spacing.xl, borderRadius: 12,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   empty: {
     textAlign: 'center',
     color: colors.dark.secondaryText,
