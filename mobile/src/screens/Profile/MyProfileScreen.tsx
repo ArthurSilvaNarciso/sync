@@ -27,6 +27,7 @@ import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, getRandomQ
 import { getCurrentLocation } from '../../services/location.service';
 import api from '../../services/api';
 import { uploadMedia } from '../../services/media.service';
+import { territoryApi } from '../../services/territory.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 
@@ -73,12 +74,14 @@ export default function MyProfileScreen({ navigation }: Props) {
   const [quote, setQuote] = useState<MotivationalQuote | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [territory, setTerritory] = useState<{ cells: number; position: number | null; color: string } | null>(null);
 
   useEffect(() => {
     let mounted = true;
     loadStats(() => mounted);
     loadWeather(() => mounted);
     setQuote(getRandomQuote());
+    territoryApi.me().then((t) => { if (mounted) setTerritory(t); }).catch(() => {});
     return () => { mounted = false; };
   }, []);
 
@@ -368,6 +371,25 @@ export default function MyProfileScreen({ navigation }: Props) {
       <View style={{ paddingHorizontal: spacing.lg, marginTop: -spacing.md, marginBottom: spacing.md }}>
         <StreakBadge days={stats.currentStreak} bestDays={stats.bestStreak} />
       </View>
+
+      {/* Território conquistado (jogo de conquista) */}
+      {territory && territory.cells > 0 && (
+        <TouchableOpacity
+          style={styles.territoryChip}
+          activeOpacity={0.85}
+          onPress={() => navigation.getParent()?.navigate('MapTab', { screen: 'Territory' })}
+          accessibilityRole="button"
+          accessibilityLabel={`Você conquistou ${territory.cells} áreas de território${territory.position ? `, posição ${territory.position} no ranking` : ''}. Toque para ver o mapa.`}
+        >
+          <View style={[styles.territoryDot, { backgroundColor: territory.color }]} />
+          <Ionicons name="flag" size={16} color="#FCD34D" />
+          <Text style={styles.territoryText}>
+            <Text style={styles.territoryStrong}>{territory.cells}</Text> áreas conquistadas
+            {territory.position ? `  ·  ${territory.position}º no ranking` : ''}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.secondaryText} />
+        </TouchableOpacity>
+      )}
 
       {/* Stats cards */}
       <View style={styles.statsRow}>
@@ -763,6 +785,22 @@ const styles = StyleSheet.create({
     color: colors.primary,
     fontWeight: '500',
   },
+  territoryChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginHorizontal: spacing.lg,
+    marginBottom: spacing.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    backgroundColor: 'rgba(252,211,77,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(252,211,77,0.25)',
+    borderRadius: borderRadius.md,
+  },
+  territoryDot: { width: 12, height: 12, borderRadius: 6 },
+  territoryText: { flex: 1, color: colors.text, fontSize: fontSize.sm, fontWeight: '600' },
+  territoryStrong: { color: '#FCD34D', fontWeight: '800' },
   menu: {
     paddingHorizontal: spacing.lg,
     marginTop: spacing.lg,

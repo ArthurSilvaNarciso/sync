@@ -15,6 +15,7 @@ import { getFocusedRouteNameFromRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { MainTabParamList } from './types';
 import { colors } from '../theme';
+import { useReduceMotion } from '../hooks/useReduceMotion';
 
 import FeedStack from './stacks/FeedStack';
 import HomeStack from './stacks/HomeStack';
@@ -57,10 +58,17 @@ function TabItem({
   badgeCount?: number;
 }) {
   const config = TABS[routeName];
+  const reduceMotion = useReduceMotion();
   const scale = useRef(new Animated.Value(1)).current;
   const pillWidth = useRef(new Animated.Value(focused ? 1 : 0)).current;
 
   useEffect(() => {
+    if (reduceMotion) {
+      // Sem animação: vai direto pro estado final
+      scale.setValue(focused ? 1.08 : 1);
+      pillWidth.setValue(focused ? 1 : 0);
+      return;
+    }
     Animated.parallel([
       Animated.spring(scale, {
         toValue: focused ? 1.08 : 1,
@@ -75,7 +83,7 @@ function TabItem({
         useNativeDriver: false,
       }),
     ]).start();
-  }, [focused]);
+  }, [focused, reduceMotion]);
 
   return (
     <Pressable
