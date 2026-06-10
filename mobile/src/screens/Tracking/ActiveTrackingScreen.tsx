@@ -487,12 +487,18 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={[styles.lockBtn, audioOn && styles.lockBtnActive]}
             onPress={() => { const next = !audioOn; setAudioOn(next); setCoachEnabled(next); }}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: audioOn }}
+            accessibilityLabel={audioOn ? 'Narração por voz ligada' : 'Narração por voz desligada'}
           >
             <Ionicons name={audioOn ? 'volume-high' : 'volume-mute'} size={18} color={audioOn ? '#fff' : colors.dark.text} />
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.lockBtn, autoPauseOn && styles.lockBtnActive]}
             onPress={() => setAutoPauseOn((v) => !v)}
+            accessibilityRole="switch"
+            accessibilityState={{ checked: autoPauseOn }}
+            accessibilityLabel={autoPauseOn ? 'Pausa automática ligada' : 'Pausa automática desligada'}
           >
             <Ionicons name={autoPauseOn ? 'pause-circle' : 'pause-circle-outline'} size={18} color={autoPauseOn ? '#fff' : colors.dark.text} />
           </TouchableOpacity>
@@ -500,6 +506,8 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
             style={[styles.lockBtn, liveUrl && styles.lockBtnActive]}
             onPress={handleShareLive}
             disabled={sharing}
+            accessibilityRole="button"
+            accessibilityLabel={liveUrl ? 'Treino sendo transmitido ao vivo' : 'Transmitir treino ao vivo'}
           >
             <Ionicons
               name={liveUrl ? 'radio' : 'share-social-outline'}
@@ -510,6 +518,8 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
           <TouchableOpacity
             style={styles.lockBtn}
             onPress={() => setIsLocked(!isLocked)}
+            accessibilityRole="button"
+            accessibilityLabel={isLocked ? 'Desbloquear a tela' : 'Bloquear a tela contra toques'}
           >
             <Ionicons
               name={isLocked ? 'lock-closed' : 'lock-open-outline'}
@@ -531,19 +541,32 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
       {/* Bottom metrics panel — Strava-style hero stats */}
       <View style={styles.bottomPanel}>
         {/* HERO: Distância grande (foco principal) */}
-        <View style={styles.heroBlock}>
+        <View
+          style={styles.heroBlock}
+          accessible
+          accessibilityRole="text"
+          accessibilityLabel={`Distância: ${distanceKm} quilômetros`}
+        >
           <Text style={styles.heroValue}>{distanceKm}</Text>
           <Text style={styles.heroLabel}>QUILÔMETROS</Text>
         </View>
 
         {/* Secondary row: Tempo + Pace */}
         <View style={styles.secondaryRow}>
-          <View style={styles.secondaryBox}>
+          <View
+            style={styles.secondaryBox}
+            accessible
+            accessibilityLabel={`Tempo: ${formatTime(elapsed)}`}
+          >
             <Text style={styles.secondaryValue}>{formatTime(elapsed)}</Text>
             <Text style={styles.secondaryLabel}>Tempo</Text>
           </View>
           <View style={styles.secondaryDivider} />
-          <View style={styles.secondaryBox}>
+          <View
+            style={styles.secondaryBox}
+            accessible
+            accessibilityLabel={`Ritmo: ${pace} por quilômetro`}
+          >
             <Text style={styles.secondaryValue}>{pace}</Text>
             <Text style={styles.secondaryLabel}>Pace /km</Text>
           </View>
