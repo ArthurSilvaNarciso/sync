@@ -63,6 +63,7 @@ function computePRMap(acts: Activity[]): Map<string, { distPR: boolean; pacePR: 
 export default function ActivityHistoryScreen({ navigation }: Props) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [prMap, setPrMap] = useState<Map<string, { distPR: boolean; pacePR: boolean }>>(new Map());
 
   useEffect(() => {
@@ -70,13 +71,16 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
   }, []);
 
   const loadActivities = async () => {
+    setLoading(true);
+    setError(false);
     try {
       const { data } = await api.get('/activities/history');
       const list: Activity[] = Array.isArray(data) ? (Array.isArray(data[0]) ? data[0] : data) : [];
       setActivities(list);
       setPrMap(computePRMap(list));
-    } catch (error) {
-      console.log('Error:', error);
+    } catch (err) {
+      console.log('Error:', err);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -188,6 +192,8 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
         <TouchableOpacity
           style={styles.backBtn}
           onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
         >
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
@@ -235,13 +241,30 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
           ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="fitness-outline" size={48} color="rgba(255,255,255,0.20)" />
-              <Text style={styles.emptyTitle}>Nenhuma atividade</Text>
-              <Text style={styles.emptyText}>
-                Comece a treinar para ver seu historico aqui
-              </Text>
-            </View>
+            error ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="cloud-offline-outline" size={48} color="rgba(255,255,255,0.20)" />
+                <Text style={styles.emptyTitle}>Erro ao carregar</Text>
+                <Text style={styles.emptyText}>Não foi possível buscar seu histórico.</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={loadActivities}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tentar novamente"
+                >
+                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Text style={styles.retryText}>Tentar novamente</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="fitness-outline" size={48} color="rgba(255,255,255,0.20)" />
+                <Text style={styles.emptyTitle}>Nenhuma atividade</Text>
+                <Text style={styles.emptyText}>
+                  Comece a treinar para ver seu historico aqui
+                </Text>
+              </View>
+            )
           }
         />
       )}
@@ -399,6 +422,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingTop: 80,
   },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: spacing.lg, backgroundColor: '#FF6B35',
+    paddingVertical: 12, paddingHorizontal: spacing.xl, borderRadius: 12,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   emptyTitle: {
     fontSize: fontSize.lg,
     fontWeight: '600',
