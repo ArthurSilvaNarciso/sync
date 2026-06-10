@@ -47,17 +47,20 @@ const sportColors: Record<string, string> = {
 export default function StatsScreen({ navigation }: Props) {
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     loadStats();
   }, []);
 
   const loadStats = async () => {
+    setLoading(true);
+    setError(false);
     try {
       const data = await statsService.getUserStats();
       setStats(data);
     } catch {
-      // sem dados
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -87,15 +90,33 @@ export default function StatsScreen({ navigation }: Props) {
           end={{ x: 0, y: 1 }}
           style={styles.header}
         >
-          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <TouchableOpacity
+            style={styles.backBtn}
+            onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Estatísticas</Text>
           <View style={{ width: 38 }} />
         </LinearGradient>
         <View style={styles.center}>
-          <Ionicons name="bar-chart-outline" size={48} color={colors.dark.border} />
-          <Text style={styles.emptyText}>Nenhuma atividade registrada ainda</Text>
+          <Ionicons name={error ? 'cloud-offline-outline' : 'bar-chart-outline'} size={48} color={colors.dark.border} />
+          <Text style={styles.emptyText}>
+            {error ? 'Não foi possível carregar suas estatísticas.' : 'Nenhuma atividade registrada ainda'}
+          </Text>
+          {error && (
+            <TouchableOpacity
+              style={styles.retryBtn}
+              onPress={loadStats}
+              accessibilityRole="button"
+              accessibilityLabel="Tentar novamente"
+            >
+              <Ionicons name="refresh" size={16} color="#fff" />
+              <Text style={styles.retryText}>Tentar novamente</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     );
@@ -114,7 +135,12 @@ export default function StatsScreen({ navigation }: Props) {
         end={{ x: 0, y: 1 }}
         style={styles.header}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Estatísticas</Text>
@@ -283,7 +309,16 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: fontSize.md,
     color: colors.dark.secondaryText,
+    textAlign: 'center',
+    marginTop: spacing.md,
+    paddingHorizontal: spacing.xl,
   },
+  retryBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginTop: spacing.lg, backgroundColor: '#FF6B35',
+    paddingVertical: 12, paddingHorizontal: spacing.xl, borderRadius: 12,
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
