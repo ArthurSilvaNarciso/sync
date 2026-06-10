@@ -11,6 +11,7 @@ import { feedApi, FeedComment } from '../../services/feed.service';
 import { useAuthStore } from '../../store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 
 // Generic params — Comments can be reached from multiple stacks
 type CommentsParams = {
@@ -83,25 +84,22 @@ export default function CommentsScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleDelete = (comment: FeedComment) => {
+  const handleDelete = async (comment: FeedComment) => {
     if (comment.user_id !== user?.id) return;
-    Alert.alert('Apagar comentário?', undefined, [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Apagar', style: 'destructive',
-        onPress: async () => {
-          setComments((prev) => prev.filter((c) => c.id !== comment.id));
-          try {
-            await feedApi.deleteComment(postId, comment.id);
-          } catch {
-            setComments((prev) => [...prev, comment].sort(
-              (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-            ));
-            showToast('Erro ao apagar', 'error');
-          }
-        },
-      },
-    ]);
+    // confirmAsync funciona no web (Alert.alert ignora os botões lá)
+    const ok = await confirmAsync('Apagar comentário?', undefined, {
+      confirmText: 'Apagar', destructive: true,
+    });
+    if (!ok) return;
+    setComments((prev) => prev.filter((c) => c.id !== comment.id));
+    try {
+      await feedApi.deleteComment(postId, comment.id);
+    } catch {
+      setComments((prev) => [...prev, comment].sort(
+        (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      ));
+      showToast('Erro ao apagar', 'error');
+    }
   };
 
   const renderItem = ({ item }: { item: FeedComment }) => (

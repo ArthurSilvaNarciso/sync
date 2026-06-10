@@ -13,6 +13,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 
 type Props = {
   navigation: NativeStackNavigationProp<any>;
@@ -50,72 +51,34 @@ export default function UserProfileScreen({ navigation, route }: Props) {
     }
   };
 
-  const handleMoreOptions = () => {
-    Alert.alert(
-      'Opções',
-      undefined,
-      [
-        {
-          text: 'Bloquear usuário',
-          style: 'destructive',
-          onPress: confirmBlock,
-        },
-        {
-          text: 'Denunciar usuário',
-          style: 'destructive',
-          onPress: handleReport,
-        },
-        { text: 'Cancelar', style: 'cancel' },
-      ],
-    );
-  };
-
-  const confirmBlock = () => {
-    Alert.alert(
+  // Menu de opções via confirmAsync (Alert.alert não mostra botões no RN Web).
+  // Sequência: bloquear? → senão denunciar?
+  const handleMoreOptions = async () => {
+    const block = await confirmAsync(
       'Bloquear usuário?',
       `Você não verá mais ${user?.name || 'este usuário'} no app e eles não poderão te contatar.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Bloquear',
-          style: 'destructive',
-          onPress: async () => {
-            setBlocking(true);
-            try {
-              await api.post(`/users/${userId}/block`);
-              showToast('Usuário bloqueado', 'success');
-              navigation.goBack();
-            } catch {
-              showToast('Erro ao bloquear usuário', 'error');
-            } finally {
-              setBlocking(false);
-            }
-          },
-        },
-      ],
+      { confirmText: 'Bloquear', destructive: true },
     );
+    if (block) { await doBlock(); return; }
+    const report = await confirmAsync(
+      'Denunciar usuário?',
+      `Reportar ${user?.name || 'este usuário'} por conteúdo inadequado ou comportamento abusivo?`,
+      { confirmText: 'Denunciar', destructive: true },
+    );
+    if (report) await submitReport('inappropriate');
   };
 
-  const handleReport = () => {
-    Alert.alert(
-      'Denunciar usuário',
-      'Qual é o motivo da denúncia?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Spam ou fraude',
-          onPress: () => submitReport('spam'),
-        },
-        {
-          text: 'Conteúdo inadequado',
-          onPress: () => submitReport('inappropriate'),
-        },
-        {
-          text: 'Assédio',
-          onPress: () => submitReport('harassment'),
-        },
-      ],
-    );
+  const doBlock = async () => {
+    setBlocking(true);
+    try {
+      await api.post(`/users/${userId}/block`);
+      showToast('Usuário bloqueado', 'success');
+      navigation.goBack();
+    } catch {
+      showToast('Erro ao bloquear usuário', 'error');
+    } finally {
+      setBlocking(false);
+    }
   };
 
   const submitReport = async (reason: string) => {
