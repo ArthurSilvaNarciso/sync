@@ -34,6 +34,7 @@ import { showToast } from '../../components/ui/Toast';
 import ErrorBoundary from '../../components/ErrorBoundary';
 import { computeSplits, formatPace, type Split } from '../../utils/splits';
 import { useHaptic } from '../../hooks/useHaptic';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import PostWorkoutRatingModal from '../../components/PostWorkoutRatingModal';
 
 type Props = {
@@ -92,6 +93,7 @@ export default function ActivitySummaryScreen(props: Props) {
 
 function ActivitySummaryInner({ navigation, route }: Props) {
   const haptic = useHaptic();
+  const reduceMotion = useReduceMotion();
   const [activity, setActivity] = useState<Activity | null>(null);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -123,6 +125,15 @@ function ActivitySummaryInner({ navigation, route }: Props) {
   useEffect(() => {
     if (!loading && activity) {
       haptic.success(); // celebração tátil ao concluir o treino
+      if (reduceMotion) {
+        // Sem animações: mostra tudo no estado final e agenda o rating
+        checkScale.setValue(1);
+        checkOpacity.setValue(1);
+        headerFade.setValue(1);
+        statsSlide.setValue(0);
+        ratingTimerRef.current = setTimeout(() => setRatingModal(true), 2500);
+        return;
+      }
       Animated.sequence([
         Animated.parallel([
           Animated.spring(checkScale, { toValue: 1, tension: 70, friction: 7, useNativeDriver: true }),
@@ -195,7 +206,11 @@ function ActivitySummaryInner({ navigation, route }: Props) {
 
       if (prs.length > 0) {
         setNewPRs(prs);
-        Animated.spring(prBannerAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }).start();
+        if (reduceMotion) {
+          prBannerAnim.setValue(1); // sem animação, mas visível
+        } else {
+          Animated.spring(prBannerAnim, { toValue: 1, tension: 60, friction: 7, useNativeDriver: true }).start();
+        }
       }
     } catch { /* non-critical */ }
   };
