@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { uploadMedia } from '../../services/media.service';
 
@@ -357,54 +358,38 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   };
 
   // ── Block / Report ─────────────────────────────────────────────────────────
-  const confirmBlock = () => {
-    Alert.alert(
-      'Bloquear usuário?',
-      `Você não verá mais ${userName} no app.`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Bloquear',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post(`/users/${otherUserId}/block`);
-              showToast(`${userName} bloqueado`, 'success');
-              navigation.goBack();
-            } catch {
-              showToast('Erro ao bloquear', 'error');
-            }
-          },
-        },
-      ],
-    );
+  const confirmBlock = async () => {
+    const ok = await confirmAsync('Bloquear usuário?', `Você não verá mais ${userName} no app.`, {
+      confirmText: 'Bloquear', destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.post(`/users/${otherUserId}/block`);
+      showToast(`${userName} bloqueado`, 'success');
+      navigation.goBack();
+    } catch {
+      showToast('Erro ao bloquear', 'error');
+    }
   };
 
-  const handleReport = (reason: string) => {
-    Alert.alert(
-      'Confirmar denúncia?',
-      `Motivo: ${reason}`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Denunciar',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.post(`/users/${otherUserId}/report`, { reason });
-              showToast('Denúncia enviada. Obrigado!', 'success');
-            } catch {
-              showToast('Erro ao enviar denúncia', 'error');
-            }
-          },
-        },
-      ],
-    );
+  const handleReport = async (reason: string) => {
+    const ok = await confirmAsync('Confirmar denúncia?', `Motivo: ${reason}`, {
+      confirmText: 'Denunciar', destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.post(`/users/${otherUserId}/report`, { reason });
+      showToast('Denúncia enviada. Obrigado!', 'success');
+    } catch {
+      showToast('Erro ao enviar denúncia', 'error');
+    }
   };
 
-  const handleMoreOptions = () => {
-    const options = ['Cancelar', 'Bloquear usuário', 'Spam ou fraude', 'Assédio', 'Conteúdo inadequado'];
+  const handleMoreOptions = async () => {
+    // iOS: ActionSheet nativo. Demais (Android/web): confirmAsync em sequência
+    // (Alert.alert ignora os botões no RN Web).
     if (Platform.OS === 'ios') {
+      const options = ['Cancelar', 'Bloquear usuário', 'Spam ou fraude', 'Assédio', 'Conteúdo inadequado'];
       ActionSheetIOS.showActionSheetWithOptions(
         { options, destructiveButtonIndex: 1, cancelButtonIndex: 0 },
         (idx) => {
@@ -414,14 +399,33 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
           if (idx === 4) handleReport('inappropriate');
         },
       );
-    } else {
-      Alert.alert('Opções', '', [
-        { text: 'Bloquear usuário', style: 'destructive', onPress: confirmBlock },
-        { text: 'Spam ou fraude', onPress: () => handleReport('spam') },
-        { text: 'Assédio', onPress: () => handleReport('harassment') },
-        { text: 'Conteúdo inadequado', onPress: () => handleReport('inappropriate') },
-        { text: 'Cancelar', style: 'cancel' },
-      ]);
+      return;
+    }
+    const block = await confirmAsync('Bloquear usuário?', `Você não verá mais ${userName} no app.`, {
+      confirmText: 'Bloquear', destructive: true,
+    });
+    if (block) { await confirmBlockDirect(); return; }
+    const report = await confirmAsync('Denunciar usuário?', `Reportar ${userName} por conteúdo inadequado ou abuso?`, {
+      confirmText: 'Denunciar', destructive: true,
+    });
+    if (report) {
+      try {
+        await api.post(`/users/${otherUserId}/report`, { reason: 'inappropriate' });
+        showToast('Denúncia enviada. Obrigado!', 'success');
+      } catch {
+        showToast('Erro ao enviar denúncia', 'error');
+      }
+    }
+  };
+
+  // Bloqueio direto (sem reconfirmar — já confirmado no menu)
+  const confirmBlockDirect = async () => {
+    try {
+      await api.post(`/users/${otherUserId}/block`);
+      showToast(`${userName} bloqueado`, 'success');
+      navigation.goBack();
+    } catch {
+      showToast('Erro ao bloquear', 'error');
     }
   };
 
