@@ -155,6 +155,42 @@ export default function AccessibilityScreen({ navigation }: any) {
           </View>
         ))}
 
+        {/* Filtro pra daltonismo */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Ionicons name="color-filter" size={15} color={colors.secondaryText} />
+            <Text style={styles.sectionTitle}>Daltonismo</Text>
+          </View>
+          <View style={styles.cbRow}>
+            {([
+              { id: 'off', label: 'Desligado' },
+              { id: 'protanopia', label: 'Protanopia' },
+              { id: 'deuteranopia', label: 'Deuteranopia' },
+              { id: 'tritanopia', label: 'Tritanopia' },
+            ] as const).map((opt) => {
+              const active = store.colorBlindMode === opt.id;
+              return (
+                <TouchableOpacity
+                  key={opt.id}
+                  style={[styles.cbChip, active && styles.cbChipActive]}
+                  onPress={() => {
+                    store.set({ colorBlindMode: opt.id });
+                    AccessibilityInfo.announceForAccessibility?.(`Filtro de daltonismo: ${opt.label}`);
+                  }}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: active }}
+                  accessibilityLabel={`Filtro ${opt.label}`}
+                >
+                  <Text style={[styles.cbChipText, active && styles.cbChipTextActive]}>{opt.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {Platform.OS !== 'web' && (
+            <Text style={styles.cbHint}>O filtro de cor é aplicado na versão web.</Text>
+          )}
+        </View>
+
         <Text style={styles.footnote}>
           Dica: no celular, o Sync também funciona com o leitor de tela do sistema
           (TalkBack no Android, VoiceOver no iOS) e com o tamanho de fonte do aparelho.
@@ -203,4 +239,13 @@ const styles = StyleSheet.create({
     color: colors.secondaryText, fontSize: fontSize.xs, lineHeight: 18,
     marginTop: spacing.md, textAlign: 'center',
   },
+  cbRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  cbChip: {
+    paddingHorizontal: spacing.md, paddingVertical: 10, borderRadius: borderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.10)',
+  },
+  cbChipActive: { backgroundColor: ACCENT, borderColor: ACCENT },
+  cbChipText: { color: colors.text, fontSize: fontSize.sm, fontWeight: '600' },
+  cbChipTextActive: { color: '#fff', fontWeight: '800' },
+  cbHint: { color: colors.secondaryText, fontSize: fontSize.xs, marginTop: spacing.sm },
 });

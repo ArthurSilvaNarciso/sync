@@ -7,21 +7,51 @@ import { Platform, AccessibilityInfo } from 'react-native';
 import { useAccessibilityStore } from '../store/accessibilityStore';
 
 const CONTRAST_STYLE_ID = 'sync-a11y-contrast';
+const CB_DEFS_ID = 'sync-a11y-cb-defs';
 
-function applyWebEffects(opts: { highContrast: boolean; largeText: boolean }) {
+// Matrizes feColorMatrix de daltonização (ajudam a distinguir cores).
+const CB_MATRIX: Record<string, string> = {
+  protanopia: '0.567 0.433 0 0 0  0.558 0.442 0 0 0  0 0.242 0.758 0 0  0 0 0 1 0',
+  deuteranopia: '0.625 0.375 0 0 0  0.7 0.3 0 0 0  0 0.3 0.7 0 0  0 0 0 1 0',
+  tritanopia: '0.95 0.05 0 0 0  0 0.433 0.567 0 0  0 0.475 0.525 0 0  0 0 0 1 0',
+};
+
+// Injeta os filtros SVG uma vez (escondidos) pra usar via filter: url(#id)
+function ensureColorBlindDefs() {
+  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
+  if (document.getElementById(CB_DEFS_ID)) return;
+  const ns = 'http://www.w3.org/2000/svg';
+  const svg = document.createElementNS(ns, 'svg');
+  svg.setAttribute('id', CB_DEFS_ID);
+  svg.setAttribute('aria-hidden', 'true');
+  svg.style.position = 'absolute';
+  svg.style.width = '0';
+  svg.style.height = '0';
+  let defs = '';
+  for (const [name, matrix] of Object.entries(CB_MATRIX)) {
+    defs += `<filter id="sync-cb-${name}"><feColorMatrix type="matrix" values="${matrix}"/></filter>`;
+  }
+  svg.innerHTML = `<defs>${defs}</defs>`;
+  document.body.appendChild(svg);
+}
+
+function applyWebEffects(opts: { highContrast: boolean; largeText: boolean; colorBlindMode: string }) {
   if (Platform.OS !== 'web' || typeof document === 'undefined') return;
   const root = document.getElementById('root') || document.body;
+  ensureColorBlindDefs();
 
-  // Alto contraste — filtro global no conteúdo
+  // Combina alto contraste + filtro de daltonismo num só `filter`
+  const filters: string[] = [];
+  if (opts.highContrast) filters.push('contrast(1.25) brightness(1.08) saturate(1.1)');
+  if (opts.colorBlindMode && opts.colorBlindMode !== 'off') filters.push(`url(#sync-cb-${opts.colorBlindMode})`);
+
   let style = document.getElementById(CONTRAST_STYLE_ID) as HTMLStyleElement | null;
   if (!style) {
     style = document.createElement('style');
     style.id = CONTRAST_STYLE_ID;
     document.head.appendChild(style);
   }
-  style.textContent = opts.highContrast
-    ? `#root, body { filter: contrast(1.25) brightness(1.08) saturate(1.1); }`
-    : '';
+  style.textContent = filters.length ? `#root, body { filter: ${filters.join(' ')}; }` : '';
 
   // Texto grande — zoom do conteúdo (Chromium suporta bem; escala layout junto)
   try {
@@ -82,6 +112,7 @@ export default function AccessibilityEffects() {
   const highContrast = useAccessibilityStore((s) => s.highContrast);
   const largeText = useAccessibilityStore((s) => s.largeText);
   const libras = useAccessibilityStore((s) => s.libras);
+  const colorBlindMode = useAccessibilityStore((s) => s.colorBlindMode);
   const hydrate = useAccessibilityStore((s) => s.hydrate);
   const setStore = useAccessibilityStore((s) => s.set);
 
@@ -96,8 +127,8 @@ export default function AccessibilityEffects() {
   }, []);
 
   useEffect(() => {
-    applyWebEffects({ highContrast, largeText });
-  }, [highContrast, largeText]);
+    applyWebEffects({ highContrast, largeText, colorBlindMode });
+  }, [highContrast, largeText, colorBlindMode]);
 
   useEffect(() => {
     applyLibras(libras);

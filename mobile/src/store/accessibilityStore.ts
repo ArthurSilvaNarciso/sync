@@ -16,6 +16,8 @@ export interface AccessibilityState {
   audioCues: boolean;
   /** Widget VLibras (tradução para Língua Brasileira de Sinais) — só web. */
   libras: boolean;
+  /** Filtro de cor pra daltonismo (web). */
+  colorBlindMode: ColorBlindMode;
   /** Já carregou as preferências salvas? */
   hydrated: boolean;
 
@@ -23,6 +25,8 @@ export interface AccessibilityState {
   toggle: (key: BoolKey) => void;
   hydrate: () => Promise<void>;
 }
+
+export type ColorBlindMode = 'off' | 'protanopia' | 'deuteranopia' | 'tritanopia';
 
 type BoolKey = 'highContrast' | 'largeText' | 'reduceMotion' | 'hapticsEnabled' | 'audioCues' | 'libras';
 
@@ -33,6 +37,7 @@ const DEFAULTS = {
   hapticsEnabled: true,
   audioCues: true,
   libras: false,
+  colorBlindMode: 'off' as ColorBlindMode,
 };
 
 function persist(state: AccessibilityState) {
@@ -43,6 +48,7 @@ function persist(state: AccessibilityState) {
     hapticsEnabled: state.hapticsEnabled,
     audioCues: state.audioCues,
     libras: state.libras,
+    colorBlindMode: state.colorBlindMode,
   };
   AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(data)).catch(() => {});
 }
