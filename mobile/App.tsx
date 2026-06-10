@@ -6,6 +6,7 @@ import { Platform } from 'react-native';
 import RootNavigator from './src/navigation/RootNavigator';
 import LiveViewScreen from './src/screens/Live/LiveViewScreen';
 import ToastHost from './src/components/ui/Toast';
+import AccessibilityEffects from './src/components/AccessibilityEffects';
 
 // PWA: registra service worker no web
 function registerServiceWorker() {
@@ -47,6 +48,7 @@ export default function App() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <NavigationContainer>
         <StatusBar style="auto" />
+        <AccessibilityEffects />
         <RootNavigator />
         <ToastHost />
       </NavigationContainer>

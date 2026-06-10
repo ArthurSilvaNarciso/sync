@@ -1,10 +1,12 @@
 import { Platform } from 'react-native';
+import { hapticsAllowed } from '../store/accessibilityStore';
 
 /**
  * Haptic feedback simples, cross-platform.
  *
  * - Native: usa expo-haptics se disponível
  * - Web: navigator.vibrate (Android Chrome) ou no-op
+ * - Respeita a preferência de Acessibilidade (vibração on/off).
  *
  * Hook retorna funções nomeadas e idempotentes.
  */
@@ -29,11 +31,11 @@ export function useHaptic() {
   }
 
   return {
-    light: () => { tryNativeHaptic('light'); tryWebHaptic(15); },
-    medium: () => { tryNativeHaptic('medium'); tryWebHaptic(30); },
-    heavy: () => { tryNativeHaptic('heavy'); tryWebHaptic(50); },
-    success: () => { tryNativeHaptic('success'); tryWebHaptic([20, 40, 20]); },
-    warning: () => { tryNativeHaptic('warning'); tryWebHaptic([30, 30]); },
-    error: () => { tryNativeHaptic('error'); tryWebHaptic([60, 40, 60]); },
+    light: () => { if (!hapticsAllowed()) return; tryNativeHaptic('light'); tryWebHaptic(15); },
+    medium: () => { if (!hapticsAllowed()) return; tryNativeHaptic('medium'); tryWebHaptic(30); },
+    heavy: () => { if (!hapticsAllowed()) return; tryNativeHaptic('heavy'); tryWebHaptic(50); },
+    success: () => { if (!hapticsAllowed()) return; tryNativeHaptic('success'); tryWebHaptic([20, 40, 20]); },
+    warning: () => { if (!hapticsAllowed()) return; tryNativeHaptic('warning'); tryWebHaptic([30, 30]); },
+    error: () => { if (!hapticsAllowed()) return; tryNativeHaptic('error'); tryWebHaptic([60, 40, 60]); },
   };
 }

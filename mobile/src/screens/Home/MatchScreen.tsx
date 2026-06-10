@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Dimensions, SafeAreaView } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing, Dimensions, SafeAreaView, AccessibilityInfo } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { RouteProp, CommonActions } from '@react-navigation/native';
 import { HomeStackParamList } from '../../navigation/types';
@@ -17,6 +18,7 @@ type Props = {
 
 export default function MatchScreen({ navigation, route }: Props) {
   const { matchId, userName, userId } = route.params;
+  const reduceMotion = useReduceMotion();
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartRotate = useRef(new Animated.Value(0)).current;
   const titleOpacity = useRef(new Animated.Value(0)).current;
@@ -33,6 +35,18 @@ export default function MatchScreen({ navigation, route }: Props) {
   const heartRotateLoopRef = useRef<Animated.CompositeAnimation | null>(null);
 
   useEffect(() => {
+    // Anuncia o match pra leitores de tela (acessibilidade)
+    AccessibilityInfo.announceForAccessibility?.(`Deu match com ${userName}! Vocês querem treinar juntos.`);
+
+    // Reduzir movimento: mostra tudo no estado final, sem animações
+    if (reduceMotion) {
+      heartScale.setValue(1);
+      titleOpacity.setValue(1);
+      subtitleOpacity.setValue(1);
+      buttonsOpacity.setValue(1);
+      return;
+    }
+
     // Entrance animation sequence
     Animated.sequence([
       // Heart bounce in

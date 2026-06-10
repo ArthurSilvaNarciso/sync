@@ -21,6 +21,7 @@ import HelpScreen from '../../screens/Legal/HelpScreen';
 import PremiumScreen from '../../screens/Premium/PremiumScreen';
 import BlockedUsersScreen from '../../screens/Profile/BlockedUsersScreen';
 import ChallengesScreen from '../../screens/Challenges/ChallengesScreen';
+import AccessibilityScreen from '../../screens/Settings/AccessibilityScreen';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -47,6 +48,7 @@ export default function ProfileStack() {
       <Stack.Screen name="Premium" component={PremiumScreen as any} />
       <Stack.Screen name="BlockedUsers" component={BlockedUsersScreen as any} />
       <Stack.Screen name="Challenges" component={ChallengesScreen as any} />
+      <Stack.Screen name="Accessibility" component={AccessibilityScreen as any} />
     </Stack.Navigator>
   );
 }

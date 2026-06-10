@@ -585,6 +585,9 @@ export default function DiscoveryScreen({ navigation }: Props) {
           style={[styles.actionBtn, styles.dislikeBtn]}
           onPress={() => handleSwipe('left')}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Passar ${currentUser?.name || ''}`}
+          accessibilityHint="Não tenho interesse, ver próximo perfil"
         >
           <Ionicons name="close" size={30} color={colors.dislikeRed} />
         </TouchableOpacity>
@@ -593,6 +596,8 @@ export default function DiscoveryScreen({ navigation }: Props) {
           style={[styles.actionBtn, styles.superBtn]}
           onPress={() => handleSwipe('right', true)}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Super like em ${currentUser?.name || ''}`}
         >
           <LinearGradient
             colors={['#2E7BFF', '#5B2EFF']}
@@ -606,6 +611,9 @@ export default function DiscoveryScreen({ navigation }: Props) {
           style={[styles.actionBtn, styles.likeBtn]}
           onPress={() => handleSwipe('right')}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Curtir ${currentUser?.name || ''}`}
+          accessibilityHint="Demonstrar interesse"
         >
           <Ionicons name="heart" size={28} color={colors.likeGreen} />
         </TouchableOpacity>
@@ -617,6 +625,8 @@ export default function DiscoveryScreen({ navigation }: Props) {
             if (user) navigation.navigate('UserProfile', { userId: user.id });
           }}
           activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver perfil completo de ${currentUser?.name || ''}`}
         >
           <Ionicons name="person-outline" size={20} color={colors.primary} />
         </TouchableOpacity>

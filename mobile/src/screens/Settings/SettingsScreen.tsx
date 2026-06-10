@@ -259,6 +259,12 @@ export default function SettingsScreen({ navigation }: any) {
           onPress={() => navigation?.navigate?.('BlockedUsers')}
           color="#6B7280"
         />
+        <Row
+          icon="accessibility-outline"
+          label="Acessibilidade"
+          onPress={() => navigation?.navigate?.('Accessibility')}
+          color="#10B981"
+        />
       </View>
 
       <SectionTitle label="NOTIFICAÇÕES" />

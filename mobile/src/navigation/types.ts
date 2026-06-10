@@ -86,6 +86,7 @@ export type ProfileStackParamList = {
   Premium: undefined;
   BlockedUsers: undefined;
   Challenges: undefined;
+  Accessibility: undefined;
 };
 
 // Root navigator
