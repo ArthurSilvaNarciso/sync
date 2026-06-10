@@ -23,6 +23,7 @@ import { challengesService, Challenge } from '../../services/challenges.service'
 import { useHaptic } from '../../hooks/useHaptic';
 import { useAuthStore } from '../../store/authStore';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 const STATUS_META: Record<string, { label: string; color: string; icon: string }> = {
@@ -134,29 +135,21 @@ export default function ChallengesScreen({ navigation }: any) {
   };
 
   // ── Complete a challenge ───────────────────────────────────────────────────
-  const handleComplete = (challenge: Challenge) => {
-    Alert.alert(
-      'Marcar como concluído?',
-      `Confirmar conclusão do desafio de ${challenge.sport}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Concluído ✓',
-          onPress: async () => {
-            setCompleting(challenge.id);
-            try {
-              await challengesService.complete(challenge.id);
-              showToast('Desafio concluído! 🏆', 'success');
-              await load(true);
-            } catch {
-              showToast('Erro ao concluir', 'error');
-            } finally {
-              setCompleting(null);
-            }
-          },
-        },
-      ],
-    );
+  const handleComplete = async (challenge: Challenge) => {
+    const ok = await confirmAsync('Marcar como concluído?', `Confirmar conclusão do desafio de ${challenge.sport}?`, {
+      confirmText: 'Concluído ✓',
+    });
+    if (!ok) return;
+    setCompleting(challenge.id);
+    try {
+      await challengesService.complete(challenge.id);
+      showToast('Desafio concluído! 🏆', 'success');
+      await load(true);
+    } catch {
+      showToast('Erro ao concluir', 'error');
+    } finally {
+      setCompleting(null);
+    }
   };
 
   // ── Create challenge ───────────────────────────────────────────────────────

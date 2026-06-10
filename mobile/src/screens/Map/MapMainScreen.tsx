@@ -24,6 +24,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { getCurrentLocation } from '../../services/location.service';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation, reverseGeocode } from '../../services/external-apis';
 import api from '../../services/api';
+import { confirmAsync } from '../../utils/confirm';
+import { showToast } from '../../components/ui/Toast';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -615,39 +617,32 @@ export default function MapMainScreen({ navigation }: Props) {
         style={styles.flashBtn}
         onPress={async () => {
           if (!userCoords) {
-            return Alert.alert('Localização', 'Aguarde sua localização carregar.');
+            showToast('Aguarde sua localização carregar.', 'info');
+            return;
           }
           // confirmação rápida: usa o filtro de esporte atual ou 'running' como default
           const sport = filter || 'running';
-          Alert.alert(
+          // confirmAsync funciona no web (Alert.alert ignora os botões lá)
+          const ok = await confirmAsync(
             '⚡ Evento relâmpago',
             `Criar ${sport} começando em 15min e notificar atletas em 5km?`,
-            [
-              { text: 'Cancelar', style: 'cancel' },
-              {
-                text: 'Criar',
-                onPress: async () => {
-                  try {
-                    const { data } = await api.post('/events/flash', {
-                      sport,
-                      latitude: userCoords.latitude,
-                      longitude: userCoords.longitude,
-                      address: locationName || undefined,
-                      startsInMinutes: 15,
-                      radiusKm: 5,
-                    });
-                    Alert.alert(
-                      '⚡ Criado!',
-                      `${data.notifiedCount} atletas próximos foram notificados.`,
-                    );
-                    loadEvents(userCoords.latitude, userCoords.longitude);
-                  } catch (e: any) {
-                    Alert.alert('Erro', e.response?.data?.message || 'Falha ao criar relâmpago');
-                  }
-                },
-              },
-            ],
+            { confirmText: 'Criar' },
           );
+          if (!ok) return;
+          try {
+            const { data } = await api.post('/events/flash', {
+              sport,
+              latitude: userCoords.latitude,
+              longitude: userCoords.longitude,
+              address: locationName || undefined,
+              startsInMinutes: 15,
+              radiusKm: 5,
+            });
+            showToast(`⚡ Criado! ${data.notifiedCount} atletas notificados.`, 'success');
+            loadEvents(userCoords.latitude, userCoords.longitude);
+          } catch (e: any) {
+            showToast(e.response?.data?.message || 'Falha ao criar relâmpago', 'error');
+          }
         }}
         activeOpacity={0.8}
       >
