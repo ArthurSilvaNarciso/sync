@@ -61,6 +61,43 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const micPressAnim = useRef(new Animated.Value(1)).current;
 
+  // Acessibilidade: legenda automática do áudio (web, via Web Speech API).
+  // Transcreve enquanto você grava e envia a transcrição junto pra quem é surdo
+  // ou prefere ler. Grátis, sem servidor.
+  const recognitionRef = useRef<any>(null);
+  const transcriptRef = useRef<string>('');
+
+  const startSpeechCaption = () => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    if (!SR) return;
+    try {
+      transcriptRef.current = '';
+      const rec = new SR();
+      rec.lang = 'pt-BR';
+      rec.continuous = true;
+      rec.interimResults = true;
+      rec.onresult = (e: any) => {
+        let finalText = '';
+        for (let i = 0; i < e.results.length; i++) {
+          if (e.results[i].isFinal) finalText += e.results[i][0].transcript;
+        }
+        if (finalText) transcriptRef.current = finalText.trim();
+      };
+      rec.onerror = () => {};
+      rec.start();
+      recognitionRef.current = rec;
+    } catch { /* navegador sem suporte */ }
+  };
+
+  const stopSpeechCaption = (): string => {
+    try { recognitionRef.current?.stop?.(); } catch {}
+    recognitionRef.current = null;
+    const t = transcriptRef.current;
+    transcriptRef.current = '';
+    return t;
+  };
+
   useEffect(() => {
     loadMessages(1, true);
     setupSocket();
@@ -68,6 +105,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       socketService.leaveChat?.(matchId);
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (recordingTimer.current) clearInterval(recordingTimer.current);
+      try { recognitionRef.current?.stop?.(); } catch {}
       recording?.stopAndUnloadAsync().catch(() => {});
       soundRef.current?.unloadAsync().catch(() => {});
     };
@@ -212,6 +250,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       const rec = new Audio.Recording();
       await rec.prepareToRecordAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       await rec.startAsync();
+      startSpeechCaption(); // legenda automática (web) — acessibilidade
       setRecording(rec);
       setIsRecording(true);
       setRecordDuration(0);
@@ -237,6 +276,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     micPressAnim.stopAnimation();
     micPressAnim.setValue(1);
     setIsRecording(false);
+    const caption = stopSpeechCaption(); // legenda transcrita (web)
 
     try {
       await recording.stopAndUnloadAsync();
@@ -267,6 +307,22 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       } as any;
       setMessages((prev) => [...prev, optimistic]);
       socketService.sendAudioMessage(matchId, url);
+
+      // Acessibilidade: envia a transcrição como legenda (mensagem de texto
+      // logo após o áudio) — quem é surdo ou prefere ler consegue acompanhar.
+      if (caption && caption.length > 1) {
+        const capText = `🗣️ "${caption}"`;
+        const capMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          match_id: matchId,
+          sender_id: user!.id,
+          content: capText,
+          isRead: false,
+          createdAt: new Date().toISOString(),
+        } as any;
+        setMessages((prev) => [...prev, capMsg]);
+        socketService.sendMessage(matchId, capText);
+      }
     } catch {
       showToast('Erro ao enviar áudio', 'error');
     } finally {
@@ -278,6 +334,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   const cancelRecording = async () => {
     if (!recording) return;
     if (recordingTimer.current) clearInterval(recordingTimer.current);
+    stopSpeechCaption(); // descarta a transcrição
     micPressAnim.stopAnimation();
     micPressAnim.setValue(1);
     setIsRecording(false);

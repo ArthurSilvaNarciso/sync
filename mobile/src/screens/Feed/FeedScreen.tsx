@@ -23,6 +23,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { heroImages } from '../../theme/images';
 import { showToast } from '../../components/ui/Toast';
 import { useHaptic } from '../../hooks/useHaptic';
+import { useReduceMotion } from '../../hooks/useReduceMotion';
 import Logo from '../../components/Logo';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
@@ -78,14 +79,17 @@ interface FeedCardProps {
 function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu }: FeedCardProps) {
   const heartScale = useRef(new Animated.Value(1)).current;
   const haptic = useHaptic();
+  const reduceMotion = useReduceMotion();
 
   const handleLike = () => {
     if (!liked) {
       haptic.light(); // feedback tátil ao curtir
-      Animated.sequence([
-        Animated.timing(heartScale, { toValue: 1.4, duration: 150, useNativeDriver: true }),
-        Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, friction: 4 }),
-      ]).start();
+      if (!reduceMotion) {
+        Animated.sequence([
+          Animated.timing(heartScale, { toValue: 1.4, duration: 150, useNativeDriver: true }),
+          Animated.spring(heartScale, { toValue: 1, useNativeDriver: true, friction: 4 }),
+        ]).start();
+      }
     }
     onLike(post.id, liked);
   };
