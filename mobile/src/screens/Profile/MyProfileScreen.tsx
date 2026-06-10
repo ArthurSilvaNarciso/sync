@@ -540,6 +540,11 @@ const styles = StyleSheet.create({
   },
   avatarContainer: {
     position: 'relative',
+    width: 96,
+    height: 96,
+    // borderRadius no container faz a sombra (glow) ficar CIRCULAR no web —
+    // sem isso o box-shadow vira um quadrado em volta da foto redonda.
+    borderRadius: 48,
     // Glow fica no container (overflow visível) — o recorte circular vai no ring
     shadowColor: '#FF6B35',
     shadowOffset: { width: 0, height: 0 },

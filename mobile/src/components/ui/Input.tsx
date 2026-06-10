@@ -6,9 +6,36 @@ import {
   StyleSheet,
   TouchableOpacity,
   TextInputProps,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, borderRadius, fontSize, spacing } from '../../theme';
+
+// WEB: remove o outline de foco do navegador (a "borda branca" extra) e o
+// fundo branco/amarelo do autofill — eles ignoram o CSS do React Native.
+// Injetado uma única vez no <head>.
+if (Platform.OS === 'web' && typeof document !== 'undefined') {
+  const STYLE_ID = 'sync-input-web-fix';
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = `
+      input, textarea, select { outline: none !important; box-shadow: none; }
+      input:focus, textarea:focus { outline: none !important; }
+      input:-webkit-autofill,
+      input:-webkit-autofill:hover,
+      input:-webkit-autofill:focus,
+      input:-webkit-autofill:active {
+        -webkit-text-fill-color: #F0F0FF !important;
+        caret-color: #F0F0FF !important;
+        -webkit-box-shadow: 0 0 0px 1000px #20202E inset !important;
+        box-shadow: 0 0 0px 1000px #20202E inset !important;
+        transition: background-color 9999s ease-in-out 0s;
+      }
+    `;
+    document.head.appendChild(style);
+  }
+}
 
 interface InputProps extends TextInputProps {
   label?: string;
@@ -36,7 +63,7 @@ export default function Input({
         ]}
       >
         <TextInput
-          style={styles.input}
+          style={[styles.input, Platform.OS === 'web' ? ({ outlineStyle: 'none', outlineWidth: 0 } as any) : null]}
           placeholderTextColor={colors.secondaryText}
           onFocus={() => setIsFocused(true)}
           onBlur={() => setIsFocused(false)}
