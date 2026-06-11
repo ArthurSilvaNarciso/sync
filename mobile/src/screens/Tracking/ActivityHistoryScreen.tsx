@@ -7,6 +7,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TrackingStackParamList } from '../../navigation/types';
@@ -63,6 +64,7 @@ function computePRMap(acts: Activity[]): Map<string, { distPR: boolean; pacePR: 
 export default function ActivityHistoryScreen({ navigation }: Props) {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [prMap, setPrMap] = useState<Map<string, { distPR: boolean; pacePR: boolean }>>(new Map());
 
@@ -70,8 +72,14 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
     loadActivities();
   }, []);
 
-  const loadActivities = async () => {
-    setLoading(true);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadActivities(true);
+    setRefreshing(false);
+  };
+
+  const loadActivities = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const { data } = await api.get('/activities/history');
@@ -240,6 +248,9 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
           renderItem={renderItem}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+          }
           ListEmptyComponent={
             error ? (
               <View style={styles.emptyContainer}>
@@ -248,7 +259,7 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
                 <Text style={styles.emptyText}>Não foi possível buscar seu histórico.</Text>
                 <TouchableOpacity
                   style={styles.retryBtn}
-                  onPress={loadActivities}
+                  onPress={() => loadActivities()}
                   accessibilityRole="button"
                   accessibilityLabel="Tentar novamente"
                 >

@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
@@ -37,6 +38,7 @@ export default function RankingScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [ranking, setRanking] = useState<RankingItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
   const [scope, setScope] = useState<Scope>('monthly');
 
@@ -44,8 +46,14 @@ export default function RankingScreen({ navigation }: Props) {
     loadRanking();
   }, [scope]);
 
-  const loadRanking = async () => {
-    setLoading(true);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadRanking(true);
+    setRefreshing(false);
+  };
+
+  const loadRanking = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const endpoint =
@@ -197,6 +205,9 @@ export default function RankingScreen({ navigation }: Props) {
           ListHeaderComponent={renderTop3}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.list}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+          }
           ListEmptyComponent={
             error ? (
               <View style={styles.emptyContainer}>
@@ -204,7 +215,7 @@ export default function RankingScreen({ navigation }: Props) {
                 <Text style={styles.empty}>Não foi possível carregar o ranking.</Text>
                 <TouchableOpacity
                   style={styles.retryBtn}
-                  onPress={loadRanking}
+                  onPress={() => loadRanking()}
                   accessibilityRole="button"
                   accessibilityLabel="Tentar novamente"
                 >

@@ -7,6 +7,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   Platform,
+  RefreshControl,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ProfileStackParamList } from '../../navigation/types';
@@ -27,14 +28,21 @@ export default function AchievementsScreen({ navigation }: Props) {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [xpData, setXpData] = useState<UserXP | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(false);
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const loadData = async () => {
-    setLoading(true);
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadData(true);
+    setRefreshing(false);
+  };
+
+  const loadData = async (silent = false) => {
+    if (!silent) setLoading(true);
     setError(false);
     try {
       const [achievementsData, xp] = await Promise.all([
@@ -161,6 +169,9 @@ export default function AchievementsScreen({ navigation }: Props) {
         renderItem={renderAchievement}
         contentContainerStyle={styles.list}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+        }
         ListHeaderComponent={
           achievements.length > 0 ? (
             <Text style={styles.sectionLabel}>
@@ -176,7 +187,7 @@ export default function AchievementsScreen({ navigation }: Props) {
               <Text style={styles.emptyText}>Não foi possível buscar suas conquistas.</Text>
               <TouchableOpacity
                 style={styles.retryBtn}
-                onPress={loadData}
+                onPress={() => loadData()}
                 accessibilityRole="button"
                 accessibilityLabel="Tentar novamente"
               >
