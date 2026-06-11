@@ -8,6 +8,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { PLANS, TrainingPlan, WeekPlan, getCurrentWeek } from '../../utils/training-plans';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const STORAGE_KEY = '@sync:training-plan';
 
@@ -17,6 +18,7 @@ const WORKOUT_ICONS: Record<string, string> = {
 };
 
 export default function TrainingPlanScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [selectedPlan, setSelectedPlan] = useState<TrainingPlan | null>(null);
   const [startedAt, setStartedAt] = useState<Date | null>(null);
   const [currentWeek, setCurrentWeek] = useState<WeekPlan | null>(null);
@@ -58,13 +60,23 @@ export default function TrainingPlanScreen({ navigation }: any) {
           colors={['#15152E', '#0E0E1E', '#0A0A0F']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
         >
-          <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={() => navigation?.goBack?.()}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Voltar"
+          >
             <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
           </TouchableOpacity>
           <Text style={styles.title}>{selectedPlan.name}</Text>
-          <TouchableOpacity onPress={stopPlan} style={styles.backBtn}>
+          <TouchableOpacity
+            onPress={stopPlan}
+            style={styles.backBtn}
+            accessibilityRole="button"
+            accessibilityLabel="Encerrar plano de treino"
+          >
             <Ionicons name="close-circle-outline" size={22} color={colors.dark.secondaryText} />
           </TouchableOpacity>
         </LinearGradient>
@@ -121,9 +133,14 @@ export default function TrainingPlanScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation?.goBack?.()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Treinos programados</Text>
@@ -160,7 +177,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0A0A0F' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44, paddingHorizontal: spacing.lg, paddingBottom: spacing.md,
+    paddingHorizontal: spacing.lg, paddingBottom: spacing.md, // paddingTop dinâmico via insets no JSX
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,255,255,0.06)',
   },
