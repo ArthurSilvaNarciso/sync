@@ -22,6 +22,7 @@ import EmptyState from '../../components/ui/EmptyState';
 import api from '../../services/api';
 import { confirmAsync } from '../../utils/confirm';
 import { showToast } from '../../components/ui/Toast';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   navigation: NativeStackNavigationProp<MapStackParamList, 'MyEvents'>;
@@ -53,6 +54,7 @@ const sportColors: Record<string, string> = {
 type Tab = 'created' | 'participating';
 
 export default function MyEventsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [tab, setTab] = useState<Tab>('created');
   const [created, setCreated] = useState<EventType[]>([]);
   const [participating, setParticipating] = useState<EventType[]>([]);
@@ -186,15 +188,22 @@ export default function MyEventsScreen({ navigation }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Meus Eventos</Text>
         <TouchableOpacity
           style={styles.addBtn}
           onPress={() => navigation.navigate('CreateEvent')}
+          accessibilityRole="button"
+          accessibilityLabel="Criar novo evento"
         >
           <Ionicons name="add" size={22} color="#fff" />
         </TouchableOpacity>
@@ -297,7 +306,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,

@@ -18,6 +18,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
 import { confirmAsync } from '../../utils/confirm';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface BlockedUser {
   id: string;
@@ -27,6 +28,7 @@ interface BlockedUser {
 }
 
 export default function BlockedUsersScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -124,7 +126,7 @@ export default function BlockedUsersScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
         <TouchableOpacity
           onPress={() => navigation?.goBack?.()}
@@ -183,7 +185,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },
