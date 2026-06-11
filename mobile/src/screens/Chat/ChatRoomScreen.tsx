@@ -27,6 +27,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
 import { confirmAsync } from '../../utils/confirm';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { uploadMedia } from '../../services/media.service';
 
@@ -36,6 +37,7 @@ type Props = {
 };
 
 export default function ChatRoomScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
   const { matchId, userName, userId: otherUserId } = route.params as any;
   const { user } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([]);
@@ -510,12 +512,22 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 8, 44) }]}
       >
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity
+          style={styles.backBtn}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerInfo} activeOpacity={0.7}>
+        <TouchableOpacity
+          style={styles.headerInfo}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={`Conversa com ${userName}`}
+        >
           <View style={styles.headerAvatar}>
             <Image
               source={require('../../assets/images/default-avatar.png')}
@@ -528,7 +540,12 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             <Text style={styles.headerSubtitle}>Online agora</Text>
           </View>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.headerAction} onPress={handleMoreOptions}>
+        <TouchableOpacity
+          style={styles.headerAction}
+          onPress={handleMoreOptions}
+          accessibilityRole="button"
+          accessibilityLabel="Mais opções: bloquear ou denunciar"
+        >
           <Ionicons name="ellipsis-vertical" size={20} color="rgba(255,255,255,0.8)" />
         </TouchableOpacity>
       </LinearGradient>
@@ -657,7 +674,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 50 : 38,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.md,
     paddingBottom: spacing.md,
     gap: spacing.sm,
