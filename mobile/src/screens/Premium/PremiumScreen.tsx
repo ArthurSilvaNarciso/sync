@@ -15,6 +15,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Plan {
   id: string;
@@ -49,6 +50,7 @@ const TIER_BADGE_COLORS: Record<string, string> = {
 };
 
 export default function PremiumScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
@@ -135,9 +137,14 @@ export default function PremiumScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation?.goBack?.()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Planos</Text>
@@ -295,7 +302,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },
