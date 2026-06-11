@@ -18,6 +18,7 @@ import { matchingApi, LikeReceivedItem } from '../../services/matching.service';
 import EmptyState from '../../components/ui/EmptyState';
 import Skeleton from '../../components/ui/Skeleton';
 import { useHaptic } from '../../hooks/useHaptic';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const ACCENT = '#FF6B35';
 
@@ -34,6 +35,7 @@ function relativeDate(iso: string): string {
 }
 
 export default function LikesReceivedScreen() {
+  const insets = useSafeAreaInsets();
   const navigation = useNavigation<any>();
   const haptic = useHaptic();
   const [items, setItems] = useState<LikeReceivedItem[]>([]);
@@ -94,9 +96,15 @@ export default function LikesReceivedScreen() {
       colors={['#15152E', '#0E0E1E', '#0A0A0F']}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={styles.header}
+      style={[styles.header, { paddingTop: Math.max(insets.top + 10, 44) }]}
     >
-      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} hitSlop={10}>
+      <TouchableOpacity
+        onPress={() => navigation.goBack()}
+        style={styles.backBtn}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Voltar"
+      >
         <Ionicons name="arrow-back" size={22} color="#fff" />
       </TouchableOpacity>
       <View style={{ flex: 1, alignItems: 'center' }}>
@@ -218,7 +226,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingTop: Platform.OS === 'ios' ? 56 : 36,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingBottom: spacing.md,
     paddingHorizontal: spacing.lg,
     borderBottomWidth: 1,

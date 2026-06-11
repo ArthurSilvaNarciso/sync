@@ -12,6 +12,7 @@ import { useAuthStore } from '../../store/authStore';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { showToast } from '../../components/ui/Toast';
 import { confirmAsync } from '../../utils/confirm';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 // Generic params — Comments can be reached from multiple stacks
 type CommentsParams = {
@@ -35,6 +36,7 @@ function timeAgo(iso: string): string {
 }
 
 export default function CommentsScreen({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
   const { postId, postAuthorName } = route.params;
   const { user } = useAuthStore();
   const [comments, setComments] = useState<FeedComment[]>([]);
@@ -142,9 +144,14 @@ export default function CommentsScreen({ navigation, route }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -218,7 +225,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,

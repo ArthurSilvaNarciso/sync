@@ -23,6 +23,7 @@ import { showToast } from '../../components/ui/Toast';
 import { confirmAsync } from '../../utils/confirm';
 import ChangePasswordModal from '../../components/ChangePasswordModal';
 import FeedbackModal from '../../components/FeedbackModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Session {
   familyId: string;
@@ -32,6 +33,7 @@ interface Session {
 }
 
 export default function SettingsScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
   const [sessions, setSessions] = useState<Session[]>([]);
@@ -155,9 +157,14 @@ export default function SettingsScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation?.goBack?.()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={20} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.title}>Configurações</Text>
@@ -378,7 +385,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.lg,
   },
