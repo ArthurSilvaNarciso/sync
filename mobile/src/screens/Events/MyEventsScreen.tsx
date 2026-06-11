@@ -58,18 +58,20 @@ export default function MyEventsScreen({ navigation }: Props) {
   const [participating, setParticipating] = useState<EventType[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
     loadMyEvents();
   }, []);
 
   const loadMyEvents = async () => {
+    setError(false);
     try {
       const { data } = await api.get('/events/my');
       setCreated(data.created || []);
       setParticipating(data.participating || []);
     } catch {
-      // sem dados
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -218,6 +220,19 @@ export default function MyEventsScreen({ navigation }: Props) {
         </TouchableOpacity>
       </View>
 
+      {error && !loading && (
+        <TouchableOpacity
+          style={styles.errorBanner}
+          onPress={() => { setLoading(true); loadMyEvents(); }}
+          accessibilityRole="button"
+          accessibilityLabel="Erro ao carregar. Tocar para tentar novamente."
+        >
+          <Ionicons name="cloud-offline-outline" size={16} color="#F87171" />
+          <Text style={styles.errorBannerText}>Erro ao carregar seus eventos. Toque pra tentar de novo.</Text>
+          <Ionicons name="refresh" size={16} color="#F87171" />
+        </TouchableOpacity>
+      )}
+
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.primary} />
@@ -271,6 +286,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    marginHorizontal: spacing.lg, marginBottom: spacing.sm,
+    backgroundColor: 'rgba(248,113,113,0.10)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.25)',
+    borderRadius: borderRadius.md, paddingHorizontal: spacing.md, paddingVertical: spacing.sm,
+  },
+  errorBannerText: { flex: 1, color: '#F87171', fontSize: 13, fontWeight: '600' },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
