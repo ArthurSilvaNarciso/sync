@@ -21,6 +21,7 @@ import { trackingSocket } from '../../services/tracking-socket.service';
 import { Share } from 'react-native';
 import { announce, speak, setCoachEnabled, getCoachEnabled } from '../../services/audio-coach.service';
 import { AutoPauseDetector } from '../../utils/auto-pause';
+import { showToast } from '../../components/ui/Toast';
 // HoldToFinishButton and ConfirmModal replaced by simple tap + Alert
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
@@ -130,7 +131,7 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
       // Web: usa navigator.geolocation com throttle de 2s para evitar re-renders excessivos
       if (Platform.OS === 'web') {
         if (typeof navigator === 'undefined' || !navigator.geolocation) {
-          Alert.alert('GPS indisponível', 'Seu navegador não suporta geolocalização.');
+          showToast('Seu navegador não suporta geolocalização.', 'error');
           return;
         }
         // Get current position first to center the map immediately
@@ -158,7 +159,7 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
           },
           (err) => {
             if (err.code === err.PERMISSION_DENIED) {
-              Alert.alert('Permissão negada', 'Libere a localização no cadeado da barra de endereço.');
+              showToast('Libere a localização no cadeado da barra de endereço.', 'error');
             }
           },
           { enableHighAccuracy: true, maximumAge: 3000, timeout: 30000 },
@@ -322,7 +323,7 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
       isPausedRef.current = false;
       startTimer();
       const msg = e?.response?.data?.message || 'Não foi possível finalizar. Tente novamente.';
-      Alert.alert('Erro ao finalizar', Array.isArray(msg) ? msg.join(' • ') : msg);
+      showToast(Array.isArray(msg) ? msg.join(' • ') : msg, 'error');
     }
   };
 
@@ -384,7 +385,7 @@ export default function ActiveTrackingScreen({ navigation, route }: Props) {
         // Web não suporta Share.share — só guardamos a URL no estado
       }
     } catch (e: any) {
-      Alert.alert('Erro', e?.response?.data?.message || 'Não foi possível gerar o link');
+      showToast(e?.response?.data?.message || 'Não foi possível gerar o link', 'error');
     } finally {
       setSharing(false);
     }

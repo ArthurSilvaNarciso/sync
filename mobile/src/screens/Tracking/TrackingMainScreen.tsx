@@ -8,7 +8,6 @@ import {
   Switch,
   Dimensions,
   Platform,
-  Alert,
   Animated,
   Easing,
 } from 'react-native';
@@ -25,6 +24,8 @@ import BestTimeWidget from '../../components/BestTimeWidget';
 import TodayBriefWidget from '../../components/TodayBriefWidget';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
+import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -132,7 +133,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
       navigation.navigate('ActiveTracking', { activityId: data.id });
     } catch (error: any) {
       const msg = error?.response?.data?.message || 'Não foi possível iniciar o treino. Verifique sua conexão e tente novamente.';
-      Alert.alert('Erro ao iniciar', Array.isArray(msg) ? msg.join(' • ') : msg);
+      showToast(Array.isArray(msg) ? msg.join(' • ') : msg, 'error');
     } finally {
       setLoading(false);
     }
@@ -335,7 +336,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
             onPress={() => {
               setLiveShare(!liveShare);
               if (!liveShare) {
-                Alert.alert('Localizacao ao vivo', 'Seus amigos poderao ver sua localizacao em tempo real durante o treino.');
+                showToast('Amigos poderão ver sua localização em tempo real durante o treino.', 'info');
               }
             }}
           >
@@ -349,7 +350,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
               value={liveShare}
               onValueChange={(v) => {
                 setLiveShare(v);
-                if (v) Alert.alert('Ativado', 'Amigos poderao ver sua localizacao durante o treino.');
+                if (v) showToast('Compartilhamento de localização ativado.', 'success');
               }}
               trackColor={{ false: '#2A2A40', true: '#FF6B35' }}
               thumbColor={colors.white}
@@ -374,7 +375,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
 
           <TouchableOpacity
             style={styles.optionItem}
-            onPress={() => Alert.alert('Sensores', 'Bluetooth sera ativado para buscar sensores de frequencia cardiaca, cadencia e outros.')}
+            onPress={() => showToast('Bluetooth será ativado para buscar sensores de frequência cardíaca, cadência e outros.', 'info')}
           >
             <View style={styles.optionLeft}>
               <Ionicons name="bluetooth-outline" size={22} color={colors.dark.secondaryText} />
@@ -385,15 +386,7 @@ export default function TrackingMainScreen({ navigation }: Props) {
 
           <TouchableOpacity
             style={styles.optionItem}
-            onPress={() => Alert.alert(
-              'Configuracoes de treino',
-              'Personalize seus treinos:',
-              [
-                { text: 'OK' },
-                { text: 'Pausa automatica', onPress: () => Alert.alert('Pausa automatica ativada') },
-                { text: 'Avisos de audio', onPress: () => Alert.alert('Avisos de audio: a cada 1km') },
-              ],
-            )}
+            onPress={() => showToast('Avisos de áudio a cada 1km e pausa automática estão ativos.', 'info')}
           >
             <View style={styles.optionLeft}>
               <Ionicons name="settings-outline" size={22} color={colors.dark.secondaryText} />
@@ -418,14 +411,14 @@ export default function TrackingMainScreen({ navigation }: Props) {
                 <TouchableOpacity
                   key={i}
                   style={styles.goalChip}
-                  onPress={() => Alert.alert(
-                    `Meta: ${g.dist}`,
-                    `Sua meta para esta atividade sera ${g.dist}. Voce recebera um aviso ao atingir a distancia.`,
-                    [
-                      { text: 'Cancelar', style: 'cancel' },
-                      { text: 'Definir e iniciar', onPress: startActivity },
-                    ],
-                  )}
+                  onPress={async () => {
+                    const ok = await confirmAsync(
+                      `Meta: ${g.dist}`,
+                      `Sua meta para esta atividade será ${g.dist}. Você receberá um aviso ao atingir a distância.`,
+                      { confirmText: 'Definir e iniciar' },
+                    );
+                    if (ok) startActivity();
+                  }}
                   activeOpacity={0.7}
                 >
                   <Ionicons name={g.icon} size={14} color={colors.dark.accent} />
