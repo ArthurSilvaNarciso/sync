@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   Image,
   ActivityIndicator,
   Platform,
@@ -24,6 +23,7 @@ import Chip from '../../components/ui/Chip';
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { uploadMedia } from '../../services/media.service';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, 'EditProfile'>;
@@ -89,7 +89,7 @@ export default function EditProfileScreen({ navigation }: Props) {
       if (Platform.OS !== 'web') {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert('Permissão negada', 'Libere o acesso à galeria para escolher uma foto.');
+          showToast('Libere o acesso à galeria para escolher uma foto.', 'error');
           return;
         }
       }
@@ -126,10 +126,10 @@ export default function EditProfileScreen({ navigation }: Props) {
 
       const { data } = await api.post('/users/me/avatar', { avatarBase64: avatarValue });
       setUser(data);
-      Alert.alert('Foto atualizada!', 'Seu avatar foi salvo com sucesso.');
+      showToast('Seu avatar foi salvo com sucesso.', 'success');
     } catch (error: any) {
       console.log('avatar upload error', error?.response?.data || error?.message);
-      Alert.alert('Erro', error?.response?.data?.message || 'Não foi possível enviar a foto');
+      showToast(error?.response?.data?.message || 'Não foi possível enviar a foto', 'error');
     } finally {
       setUploadingAvatar(false);
     }
@@ -137,7 +137,7 @@ export default function EditProfileScreen({ navigation }: Props) {
 
   const handleSave = async () => {
     if (!name.trim()) {
-      Alert.alert('Campo obrigatório', 'O nome não pode ser vazio.');
+      showToast('O nome não pode ser vazio.', 'error');
       return;
     }
     setLoading(true);
@@ -147,10 +147,10 @@ export default function EditProfileScreen({ navigation }: Props) {
         .map((q) => ({ q, a: promptAnswers[q].trim() }));
       const { data } = await api.put('/users/me', { name: name.trim(), bio, sports, prompts });
       setUser(data);
-      Alert.alert('Sucesso', 'Perfil atualizado!');
+      showToast('Perfil atualizado!', 'success');
       navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Erro', error.response?.data?.message || 'Erro ao atualizar');
+      showToast(error.response?.data?.message || 'Erro ao atualizar', 'error');
     } finally {
       setLoading(false);
     }

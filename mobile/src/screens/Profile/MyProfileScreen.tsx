@@ -10,7 +10,6 @@ import {
   Platform,
   RefreshControl,
   Share,
-  Alert,
 } from 'react-native';
 import { Image as ExpoImage } from 'expo-image'; // recorta no círculo (contentFit) em web e nativo
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -30,6 +29,7 @@ import { uploadMedia } from '../../services/media.service';
 import { territoryApi } from '../../services/territory.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, 'MyProfile'>;
@@ -168,7 +168,7 @@ export default function MyProfileScreen({ navigation }: Props) {
     try {
       const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (!perm.granted) {
-        Alert.alert('Permissão necessária', 'Permita o acesso à galeria para escolher o banner.');
+        showToast('Permita o acesso à galeria para escolher o banner.', 'error');
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -188,7 +188,7 @@ export default function MyProfileScreen({ navigation }: Props) {
       const { data } = await api.post('/users/me/banner', { bannerBase64: url });
       setUser(data);
     } catch (error: any) {
-      Alert.alert('Erro', error?.response?.data?.message || 'Não foi possível enviar o banner');
+      showToast(error?.response?.data?.message || 'Não foi possível enviar o banner', 'error');
     } finally {
       setUploadingBanner(false);
     }

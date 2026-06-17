@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
   Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -23,6 +22,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 import api from '../../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<OnboardingStackParamList, 'Photos'>;
@@ -65,7 +65,7 @@ export default function PhotosScreen({ navigation }: Props) {
       if (Platform.OS !== 'web') {
         const perm = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (!perm.granted) {
-          Alert.alert('Permissão necessária', 'Libere o acesso à galeria para adicionar fotos.');
+          showToast('Libere o acesso à galeria para adicionar fotos.', 'error');
           return;
         }
       }
@@ -110,7 +110,7 @@ export default function PhotosScreen({ navigation }: Props) {
         setPhotos((prev) => [...prev, ...processed].slice(0, MAX_PHOTOS));
       }
     } catch (e: any) {
-      Alert.alert('Erro', e?.message || 'Não foi possível carregar as fotos');
+      showToast(e?.message || 'Não foi possível carregar as fotos', 'error');
     } finally {
       setUploading(false);
     }
@@ -122,7 +122,7 @@ export default function PhotosScreen({ navigation }: Props) {
 
   const handleFinish = async () => {
     if (photos.length < MIN_PHOTOS) {
-      Alert.alert('Fotos insuficientes', `Adicione pelo menos ${MIN_PHOTOS} fotos para continuar.`);
+      showToast(`Adicione pelo menos ${MIN_PHOTOS} fotos para continuar.`, 'error');
       return;
     }
     setSaving(true);
@@ -146,7 +146,7 @@ export default function PhotosScreen({ navigation }: Props) {
         onboardingStore.reset();
       } else {
         const msg = err.response?.data?.message;
-        Alert.alert('Erro', Array.isArray(msg) ? msg.join(' • ') : msg || 'Erro ao salvar. Tente novamente.');
+        showToast(Array.isArray(msg) ? msg.join(' • ') : msg || 'Erro ao salvar. Tente novamente.', 'error');
         setSaving(false);
       }
     }
