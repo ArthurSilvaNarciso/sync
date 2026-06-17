@@ -6,12 +6,12 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Platform,
   Dimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Skeleton from '../../components/ui/Skeleton';
 import api from '../../services/api';
 import { computeUserXP } from '../../utils/xp-system';
@@ -48,6 +48,7 @@ function isInPeriod(date: Date, period: Period): boolean {
 }
 
 export default function StatsDashboardScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   const [period, setPeriod] = useState<Period>('week');
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -128,7 +129,7 @@ export default function StatsDashboardScreen({ navigation }: any) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
         <TouchableOpacity
           style={styles.backBtn}
@@ -283,7 +284,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },

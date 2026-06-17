@@ -36,6 +36,7 @@ import { computeSplits, formatPace, type Split } from '../../utils/splits';
 import { useHaptic } from '../../hooks/useHaptic';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import PostWorkoutRatingModal from '../../components/PostWorkoutRatingModal';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 type Props = {
   navigation: NativeStackNavigationProp<TrackingStackParamList, 'ActivitySummary'>;
@@ -92,6 +93,7 @@ export default function ActivitySummaryScreen(props: Props) {
 }
 
 function ActivitySummaryInner({ navigation, route }: Props) {
+  const insets = useSafeAreaInsets();
   const haptic = useHaptic();
   const reduceMotion = useReduceMotion();
   const [activity, setActivity] = useState<Activity | null>(null);
@@ -402,7 +404,7 @@ function ActivitySummaryInner({ navigation, route }: Props) {
         <LinearGradient
           colors={['rgba(255,107,53,0.18)', 'rgba(10,10,15,0)']}
           locations={[0, 1]}
-          style={styles.heroGradient}
+          style={[styles.heroGradient, { paddingTop: Math.max(insets.top + 12, 48) }]}
         >
           <View style={styles.topBar}>
             <TouchableOpacity style={styles.topBtn} onPress={() => navigation.popToTop()}>
@@ -785,7 +787,7 @@ const styles = StyleSheet.create({
 
   // Header / hero
   heroGradient: {
-    paddingTop: Platform.OS === 'ios' ? 56 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingBottom: spacing.lg,
   },
   topBar: {

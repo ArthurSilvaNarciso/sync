@@ -6,13 +6,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
   RefreshControl,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { TrackingStackParamList } from '../../navigation/types';
 import { Activity } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
@@ -62,6 +62,7 @@ function computePRMap(acts: Activity[]): Map<string, { distPR: boolean; pacePR: 
 }
 
 export default function ActivityHistoryScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -195,7 +196,7 @@ export default function ActivityHistoryScreen({ navigation }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
         <TouchableOpacity
           style={styles.backBtn}
@@ -292,7 +293,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
   },

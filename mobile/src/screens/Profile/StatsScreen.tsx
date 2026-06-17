@@ -6,7 +6,6 @@ import {
   ScrollView,
   ActivityIndicator,
   TouchableOpacity,
-  Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -14,6 +13,7 @@ import { ProfileStackParamList } from '../../navigation/types';
 import { UserStats } from '../../types';
 import { statsService } from '../../services/stats.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 type Props = {
@@ -45,6 +45,7 @@ const sportColors: Record<string, string> = {
 };
 
 export default function StatsScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [stats, setStats] = useState<UserStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -88,7 +89,7 @@ export default function StatsScreen({ navigation }: Props) {
           colors={['#15152E', '#0E0E1E', '#0A0A0F']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
         >
           <TouchableOpacity
             style={styles.backBtn}
@@ -133,7 +134,7 @@ export default function StatsScreen({ navigation }: Props) {
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
         <TouchableOpacity
           style={styles.backBtn}
@@ -323,7 +324,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
