@@ -4,17 +4,24 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from '
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing } from '../../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function PrivacyScreen({ navigation }: any) {
+  const insets = useSafeAreaInsets();
   return (
     <View style={styles.container}>
       <LinearGradient
         colors={['#15152E', '#0E0E1E', '#0A0A0F']}
         start={{ x: 0, y: 0 }}
         end={{ x: 0, y: 1 }}
-        style={styles.header}
+        style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
       >
-        <TouchableOpacity onPress={() => navigation?.goBack?.()} style={styles.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation?.goBack?.()}
+          style={styles.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Ionicons name="arrow-back" size={22} color={colors.dark.text} />
         </TouchableOpacity>
         <Text style={styles.title}>Política de Privacidade</Text>
@@ -85,7 +92,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
