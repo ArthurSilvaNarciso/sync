@@ -8,13 +8,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Platform,
-  Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface Plan {
@@ -78,29 +78,22 @@ export default function PremiumScreen({ navigation }: any) {
 
   const handleUpgrade = async (tierId: string) => {
     if (tierId === 'free') {
-      Alert.alert(
+      const ok = await confirmAsync(
         'Cancelar assinatura?',
         'Você voltará para o plano gratuito. Suas funcionalidades premium serão removidas.',
-        [
-          { text: 'Não', style: 'cancel' },
-          {
-            text: 'Cancelar assinatura',
-            style: 'destructive',
-            onPress: async () => {
-              setUpgrading('free');
-              try {
-                await api.post('/subscriptions/cancel');
-                showToast('Assinatura cancelada', 'success');
-                await loadData();
-              } catch {
-                showToast('Erro ao cancelar', 'error');
-              } finally {
-                setUpgrading(null);
-              }
-            },
-          },
-        ],
+        { confirmText: 'Cancelar assinatura', destructive: true },
       );
+      if (!ok) return;
+      setUpgrading('free');
+      try {
+        await api.post('/subscriptions/cancel');
+        showToast('Assinatura cancelada', 'success');
+        await loadData();
+      } catch {
+        showToast('Erro ao cancelar', 'error');
+      } finally {
+        setUpgrading(null);
+      }
       return;
     }
 

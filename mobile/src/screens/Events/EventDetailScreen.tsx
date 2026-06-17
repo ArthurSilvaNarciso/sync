@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   ActivityIndicator,
   Platform,
   Share,
@@ -26,6 +25,7 @@ import { fetchCurrentWeather, WeatherData, getExerciseRecommendation } from '../
 import Button from '../../components/ui/Button';
 import api from '../../services/api';
 import { confirmAsync } from '../../utils/confirm';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<MapStackParamList, 'EventDetail'>;
@@ -115,7 +115,7 @@ export default function EventDetailScreen({ navigation, route }: Props) {
     try {
       await api.post(`/events/${route.params.eventId}/join`);
       setIsJoined(true);
-      Alert.alert('Sucesso!', 'Voce esta participando do evento!');
+      showToast('Você está participando do evento!', 'success');
       loadEvent();
     } catch (error: any) {
       // Demo mode
@@ -123,7 +123,7 @@ export default function EventDetailScreen({ navigation, route }: Props) {
       if (event) {
         setEvent({ ...event, participantCount: (event.participantCount || 0) + 1 });
       }
-      Alert.alert('Sucesso!', 'Voce esta participando do evento!');
+      showToast('Você está participando do evento!', 'success');
     } finally {
       setJoining(false);
     }
@@ -161,7 +161,7 @@ export default function EventDetailScreen({ navigation, route }: Props) {
     try {
       const { status } = await Calendar.requestCalendarPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permissão necessária', 'Autorize o acesso ao calendário para adicionar o evento.');
+        showToast('Autorize o acesso ao calendário para adicionar o evento.', 'error');
         return;
       }
 
@@ -173,7 +173,7 @@ export default function EventDetailScreen({ navigation, route }: Props) {
         calendars[0];
 
       if (!defaultCal) {
-        Alert.alert('Calendário', 'Nenhum calendário disponível.');
+        showToast('Nenhum calendário disponível.', 'error');
         return;
       }
 
@@ -189,9 +189,9 @@ export default function EventDetailScreen({ navigation, route }: Props) {
         alarms: [{ relativeOffset: -60 }, { relativeOffset: -15 }], // 1h and 15min before
       });
 
-      Alert.alert('✅ Adicionado!', `"${event.title}" foi salvo no seu calendário.`);
+      showToast(`"${event.title}" foi salvo no seu calendário.`, 'success');
     } catch (err: any) {
-      Alert.alert('Erro', err?.message || 'Não foi possível adicionar ao calendário.');
+      showToast(err?.message || 'Não foi possível adicionar ao calendário.', 'error');
     }
   };
 

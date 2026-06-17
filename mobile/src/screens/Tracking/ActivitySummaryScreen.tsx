@@ -8,7 +8,6 @@ import {
   TouchableOpacity,
   Share,
   Platform,
-  Alert,
   ActionSheetIOS,
   Animated,
   Pressable,
@@ -37,6 +36,7 @@ import { useHaptic } from '../../hooks/useHaptic';
 import { useReduceMotion } from '../../hooks/useReduceMotion';
 import PostWorkoutRatingModal from '../../components/PostWorkoutRatingModal';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { confirmAsync } from '../../utils/confirm';
 
 type Props = {
   navigation: NativeStackNavigationProp<TrackingStackParamList, 'ActivitySummary'>;
@@ -250,7 +250,7 @@ function ActivitySummaryInner({ navigation, route }: Props) {
     const doExport = async (format: 'gpx' | 'csv') => {
       const content = format === 'gpx' ? generateGpx() : generateCsv();
       if (!content) {
-        Alert.alert('Sem dados', 'Esta atividade não tem pontos GPS para exportar.');
+        showToast('Esta atividade não tem pontos GPS para exportar.', 'error');
         return;
       }
       const filename = `atividade_${activity.sport}_${new Date(activity.startTime).toISOString().slice(0, 10)}.${format}`;
@@ -284,11 +284,22 @@ function ActivitySummaryInner({ navigation, route }: Props) {
         },
       );
     } else {
-      Alert.alert('Exportar atividade', '', [
-        { text: 'Exportar GPX', onPress: () => doExport('gpx') },
-        { text: 'Exportar CSV', onPress: () => doExport('csv') },
-        { text: 'Cancelar', style: 'cancel' },
-      ]);
+      // Web/Android: ActionSheet/Alert com vários botões não funciona no web,
+      // então escolhemos o formato em dois passos com confirmAsync.
+      (async () => {
+        const wantGpx = await confirmAsync(
+          'Exportar atividade',
+          'Exportar em GPX (compatível com Strava/Garmin)? Toque em Cancelar para escolher CSV.',
+          { confirmText: 'Exportar GPX' },
+        );
+        if (wantGpx) { doExport('gpx'); return; }
+        const wantCsv = await confirmAsync(
+          'Exportar CSV?',
+          'Planilha com os pontos GPS da atividade.',
+          { confirmText: 'Exportar CSV' },
+        );
+        if (wantCsv) doExport('csv');
+      })();
     }
   };
 
