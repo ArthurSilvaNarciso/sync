@@ -5,7 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Alert,
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
@@ -13,6 +12,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MapStackParamList } from '../../navigation/types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import Input from '../../components/ui/Input';
 import Button from '../../components/ui/Button';
@@ -21,12 +21,14 @@ import { SPORTS } from '../../types';
 import { getCurrentLocation } from '../../services/location.service';
 import * as ExpoLocation from 'expo-location';
 import api from '../../services/api';
+import { showToast } from '../../components/ui/Toast';
 
 type Props = {
   navigation: NativeStackNavigationProp<MapStackParamList, 'CreateEvent'>;
 };
 
 export default function CreateEventScreen({ navigation }: Props) {
+  const insets = useSafeAreaInsets();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [sport, setSport] = useState('');
@@ -41,11 +43,11 @@ export default function CreateEventScreen({ navigation }: Props) {
 
   const handleCreate = async () => {
     if (!title || !sport) {
-      Alert.alert('Erro', 'Preencha o nome e selecione um esporte');
+      showToast('Preencha o nome e selecione um esporte', 'error');
       return;
     }
     if (!date) {
-      Alert.alert('Erro', 'Informe a data do evento');
+      showToast('Informe a data do evento', 'error');
       return;
     }
 
@@ -60,14 +62,14 @@ export default function CreateEventScreen({ navigation }: Props) {
           lat = coords.latitude;
           lng = coords.longitude;
         } catch (e: any) {
-          Alert.alert('Localização indisponível', e?.message || 'Não foi possível pegar sua localização agora. Tente novamente ou desative a opção.');
+          showToast(e?.message || 'Não foi possível pegar sua localização. Tente novamente ou desative a opção.', 'error');
           setLoading(false);
           return;
         }
       }
 
       if (lat == null || lng == null) {
-        Alert.alert('Localização', 'Defina a localização do evento.');
+        showToast('Defina a localização do evento.', 'error');
         setLoading(false);
         return;
       }
@@ -84,11 +86,10 @@ export default function CreateEventScreen({ navigation }: Props) {
         address,
         maxParticipants: parseInt(maxParticipants, 10),
       });
-      Alert.alert('Sucesso', 'Evento criado!', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      showToast('Evento criado!', 'success');
+      navigation.goBack();
     } catch (error: any) {
-      Alert.alert('Erro', error.response?.data?.message || 'Erro ao criar evento');
+      showToast(error.response?.data?.message || 'Erro ao criar evento', 'error');
     } finally {
       setLoading(false);
     }
@@ -105,11 +106,13 @@ export default function CreateEventScreen({ navigation }: Props) {
           colors={['#15152E', '#0E0E1E', '#0A0A0F']}
           start={{ x: 0, y: 0 }}
           end={{ x: 0, y: 1 }}
-          style={styles.header}
+          style={[styles.header, { paddingTop: Math.max(insets.top + 10, 48) }]}
         >
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
+            accessibilityRole="button"
+            accessibilityLabel="Fechar"
           >
             <Ionicons name="close" size={22} color="#fff" />
           </TouchableOpacity>
@@ -246,7 +249,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingTop: Platform.OS === 'ios' ? 62 : 44,
+    // paddingTop dinâmico via insets no JSX (notch/safe-area)
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.md,
     borderBottomWidth: 1,
