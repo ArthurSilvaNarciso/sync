@@ -36,15 +36,19 @@ export default function UserProfileScreen({ navigation, route }: Props) {
   const { userId } = route.params as { userId: string };
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [blocking, setBlocking] = useState(false);
 
   useEffect(() => { loadUser(); }, []);
 
   const loadUser = async () => {
+    setLoading(true);
+    setError(false);
     try {
       const { data } = await api.get(`/users/${userId}`);
       setUser(data);
     } catch {
+      setError(true);
       showToast('Erro ao carregar perfil', 'error');
     } finally {
       setLoading(false);
@@ -101,9 +105,30 @@ export default function UserProfileScreen({ navigation, route }: Props) {
   if (!user) {
     return (
       <View style={styles.center}>
-        <Ionicons name="person-outline" size={48} color={colors.dark.secondaryText} />
-        <Text style={styles.errorText}>Perfil não encontrado</Text>
-        <TouchableOpacity style={styles.backBtnFallback} onPress={() => navigation.goBack()}>
+        <Ionicons
+          name={error ? 'cloud-offline-outline' : 'person-outline'}
+          size={48}
+          color={colors.dark.secondaryText}
+        />
+        <Text style={styles.errorText}>
+          {error ? 'Não foi possível carregar o perfil.' : 'Perfil não encontrado'}
+        </Text>
+        {error && (
+          <TouchableOpacity
+            style={styles.backBtnFallback}
+            onPress={loadUser}
+            accessibilityRole="button"
+            accessibilityLabel="Tentar novamente"
+          >
+            <Text style={styles.backBtnText}>Tentar novamente</Text>
+          </TouchableOpacity>
+        )}
+        <TouchableOpacity
+          style={[styles.backBtnFallback, error && { backgroundColor: 'transparent' }]}
+          onPress={() => navigation.goBack()}
+          accessibilityRole="button"
+          accessibilityLabel="Voltar"
+        >
           <Text style={styles.backBtnText}>Voltar</Text>
         </TouchableOpacity>
       </View>
