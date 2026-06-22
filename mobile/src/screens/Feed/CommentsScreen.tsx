@@ -41,15 +41,19 @@ export default function CommentsScreen({ navigation, route }: Props) {
   const { user } = useAuthStore();
   const [comments, setComments] = useState<FeedComment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [text, setText] = useState('');
   const listRef = useRef<FlatList>(null);
 
   const load = useCallback(async () => {
+    setLoading(true);
+    setError(false);
     try {
       const data = await feedApi.getComments(postId);
       setComments(data || []);
     } catch {
+      setError(true);
       showToast('Erro ao carregar comentários', 'error');
     } finally {
       setLoading(false);
@@ -173,10 +177,26 @@ export default function CommentsScreen({ navigation, route }: Props) {
           renderItem={renderItem}
           contentContainerStyle={{ padding: spacing.md, paddingBottom: 120 }}
           ListEmptyComponent={
-            <View style={styles.empty}>
-              <Ionicons name="chatbubbles-outline" size={48} color={colors.primary + '40'} />
-              <Text style={styles.emptyText}>Seja o primeiro a comentar!</Text>
-            </View>
+            error ? (
+              <View style={styles.empty}>
+                <Ionicons name="cloud-offline-outline" size={48} color={colors.primary + '40'} />
+                <Text style={styles.emptyText}>Erro ao carregar comentários</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={load}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tentar novamente"
+                >
+                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Text style={styles.retryText}>Tentar novamente</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.empty}>
+                <Ionicons name="chatbubbles-outline" size={48} color={colors.primary + '40'} />
+                <Text style={styles.emptyText}>Seja o primeiro a comentar!</Text>
+              </View>
+            )
           }
         />
       )}
@@ -261,6 +281,16 @@ const styles = StyleSheet.create({
   commentText: { fontSize: fontSize.sm, color: colors.dark.text, lineHeight: 20 },
   empty: { alignItems: 'center', marginTop: 60, gap: spacing.md },
   emptyText: { color: colors.dark.secondaryText, fontSize: fontSize.md },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#FF6B35',
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: fontSize.sm },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
