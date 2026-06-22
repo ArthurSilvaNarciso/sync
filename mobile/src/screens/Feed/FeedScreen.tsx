@@ -302,6 +302,9 @@ export default function FeedScreen() {
     } catch {
       setLoadError(true);
       if (!append) setPosts([]);
+      // Para o infinite-scroll: sem isso, onEndReached refazia a mesma página
+      // em loop infinito quando a rede falha (martelando o servidor).
+      setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
