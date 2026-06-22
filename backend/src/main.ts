@@ -110,9 +110,14 @@ async function bootstrap() {
       if (!origin) return callback(null, true);
       // Match exato com lista
       if (frontendUrls.includes(origin)) return callback(null, true);
-      // Bloqueia o resto
+      // localhost/127.0.0.1 (qualquer porta) → dev, preview Expo Web e PWA local
+      if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      // Bloqueia o resto SEM lançar erro (evita 500 no preflight);
+      // só não envia os headers CORS, o navegador bloqueia naturalmente.
       logger.warn(`CORS blocked origin: ${origin}`);
-      return callback(new Error('CORS blocked'), false);
+      return callback(null, false);
     },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: false,
