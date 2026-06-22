@@ -60,6 +60,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
   const [users, setUsers] = useState<DiscoveryUser[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [newMatchCount, setNewMatchCount] = useState(0);
   const [likesReceivedCount, setLikesReceivedCount] = useState(0);
@@ -96,6 +97,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
 
   const loadUsers = async () => {
     setLoading(true);
+    setLoadError(false);
     try {
       const params: any = {
         radiusKm: filterDistance,
@@ -107,6 +109,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
       setCurrentIndex(0);
     } catch (error) {
       console.log('Error loading users:', error);
+      setLoadError(true);
     } finally {
       setLoading(false);
     }
@@ -368,6 +371,45 @@ export default function DiscoveryScreen({ navigation }: Props) {
             >
               <Ionicons name="locate" size={18} color={colors.white} />
               <Text style={styles.refreshText}>Ativar localização</Text>
+            </LinearGradient>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+    // Falha de carregamento (rede/servidor) — distinto do "ninguém por perto"
+    if (loadError) {
+      return (
+        <View style={styles.center}>
+          <Animated.View style={[styles.emptyIconOuter, { transform: [{ scale: emptyPulse }] }]}>
+            <LinearGradient
+              colors={[colors.primary + '20', colors.highlight + '10']}
+              style={styles.emptyIconGradient}
+            >
+              <View style={styles.emptyIcon}>
+                <Ionicons name="cloud-offline-outline" size={44} color={colors.primary} />
+              </View>
+            </LinearGradient>
+          </Animated.View>
+          <Text style={styles.emptyTitle}>Não foi possível carregar</Text>
+          <Text style={styles.emptyText}>
+            Verifique sua conexão e tente de novo.{'\n'}
+            Seus atletas próximos aparecem aqui.
+          </Text>
+          <TouchableOpacity
+            style={styles.refreshBtn}
+            onPress={loadUsers}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Tentar novamente"
+          >
+            <LinearGradient
+              colors={[...colors.gradient]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.refreshBtnGradient}
+            >
+              <Ionicons name="refresh" size={18} color={colors.white} />
+              <Text style={styles.refreshText}>Tentar novamente</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
