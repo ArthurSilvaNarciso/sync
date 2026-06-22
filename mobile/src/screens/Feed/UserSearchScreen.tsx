@@ -29,21 +29,25 @@ export default function UserSearchScreen({ navigation }: Props) {
   const [results, setResults] = useState<SearchUser[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [error, setError] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const search = useCallback(async (q: string) => {
     if (!q.trim()) {
       setResults([]);
       setSearched(false);
+      setError(false);
       return;
     }
     setLoading(true);
     setSearched(true);
+    setError(false);
     try {
       const { data } = await api.get('/users/search', { params: { q: q.trim() } });
       setResults(Array.isArray(data) ? data : []);
     } catch {
       setResults([]);
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -132,7 +136,22 @@ export default function UserSearchScreen({ navigation }: Props) {
           contentContainerStyle={{ paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
           ListEmptyComponent={
-            searched ? (
+            loading ? null : error ? (
+              <View style={styles.empty}>
+                <Ionicons name="cloud-offline-outline" size={48} color={colors.primary + '40'} />
+                <Text style={styles.emptyText}>Erro na busca</Text>
+                <Text style={styles.emptyHint}>Verifique sua conexão e tente de novo.</Text>
+                <TouchableOpacity
+                  style={styles.retryBtn}
+                  onPress={() => search(query)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tentar novamente"
+                >
+                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Text style={styles.retryText}>Tentar novamente</Text>
+                </TouchableOpacity>
+              </View>
+            ) : searched ? (
               <View style={styles.empty}>
                 <Ionicons name="person-outline" size={48} color={colors.primary + '40'} />
                 <Text style={styles.emptyText}>Nenhum atleta encontrado</Text>
@@ -210,4 +229,15 @@ const styles = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 80, gap: spacing.sm },
   emptyText: { color: colors.dark.text, fontSize: fontSize.md, fontWeight: '600' },
   emptyHint: { color: colors.dark.secondaryText, fontSize: fontSize.sm },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.md,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#FF6B35',
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: fontSize.sm },
 });

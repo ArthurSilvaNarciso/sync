@@ -32,6 +32,7 @@ export default function BlockedUsersScreen({ navigation }: any) {
   const [blocked, setBlocked] = useState<BlockedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState(false);
   const [unblocking, setUnblocking] = useState<string | null>(null);
 
   const load = useCallback(async (silent = false) => {
@@ -39,7 +40,9 @@ export default function BlockedUsersScreen({ navigation }: any) {
     try {
       const { data } = await api.get('/users/blocked');
       setBlocked(data || []);
+      setError(false);
     } catch {
+      setError(true);
       if (!silent) showToast('Erro ao carregar lista', 'error');
     } finally {
       setLoading(false);
@@ -110,12 +113,29 @@ export default function BlockedUsersScreen({ navigation }: any) {
   const renderEmpty = () => (
     <View style={styles.emptyWrap}>
       <View style={styles.emptyIcon}>
-        <Ionicons name="shield-checkmark-outline" size={40} color="rgba(255,255,255,0.15)" />
+        <Ionicons
+          name={error ? 'cloud-offline-outline' : 'shield-checkmark-outline'}
+          size={40}
+          color="rgba(255,255,255,0.15)"
+        />
       </View>
-      <Text style={styles.emptyTitle}>Nenhum usuário bloqueado</Text>
-      <Text style={styles.emptySub}>
-        Quando você bloquear alguém, aparecerá aqui.
+      <Text style={styles.emptyTitle}>
+        {error ? 'Não foi possível carregar' : 'Nenhum usuário bloqueado'}
       </Text>
+      <Text style={styles.emptySub}>
+        {error ? 'Verifique sua conexão e tente de novo.' : 'Quando você bloquear alguém, aparecerá aqui.'}
+      </Text>
+      {error && (
+        <TouchableOpacity
+          style={styles.retryBtn}
+          onPress={() => load()}
+          accessibilityRole="button"
+          accessibilityLabel="Tentar novamente"
+        >
+          <Ionicons name="refresh" size={16} color="#fff" />
+          <Text style={styles.retryText}>Tentar novamente</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 
@@ -299,4 +319,15 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#FF6B35',
+  },
+  retryText: { color: '#fff', fontWeight: '700', fontSize: fontSize.sm },
 });
