@@ -97,9 +97,19 @@ export default function RegisterScreen({ navigation }: Props) {
       // Popup de sucesso antes de cair na seleção de perguntas (onboarding)
       showToast('Conta criada com sucesso! 🎉 Vamos personalizar seu perfil', 'success');
     } catch (error: any) {
+      const status = error.response?.status;
       const msg = error.response?.data?.message;
       const detail = Array.isArray(msg) ? msg.join(' • ') : msg;
-      showToast(detail || 'Não foi possível criar sua conta.', 'error');
+      if (status === 409) {
+        // E-mail já cadastrado (backend é vago de propósito p/ anti-enumeração).
+        // Orientamos o usuário legítimo a entrar em vez de só dizer "dados inválidos".
+        showToast('Esse e-mail pode já ter conta. Tente fazer login ou recuperar a senha.', 'error');
+      } else if (!error.response) {
+        // Sem resposta = falha de rede/servidor fora do ar
+        showToast('Sem conexão com o servidor. Verifique sua internet e tente de novo.', 'error');
+      } else {
+        showToast(detail || 'Não foi possível criar sua conta.', 'error');
+      }
     } finally {
       setLoading(false);
     }
