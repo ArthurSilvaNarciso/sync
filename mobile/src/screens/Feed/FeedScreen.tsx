@@ -459,7 +459,16 @@ export default function FeedScreen() {
               <View style={styles.empty}>
                 <Ionicons name="cloud-offline-outline" size={64} color={colors.dark.secondaryText} />
                 <Text style={styles.emptyTitle}>Erro ao carregar</Text>
-                <Text style={styles.emptyText}>Puxe para baixo para tentar novamente.</Text>
+                <Text style={styles.emptyText}>Verifique sua conexão e tente de novo.</Text>
+                <TouchableOpacity
+                  style={styles.feedRetryBtn}
+                  onPress={() => load(1)}
+                  accessibilityRole="button"
+                  accessibilityLabel="Tentar novamente"
+                >
+                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Text style={styles.feedRetryText}>Tentar novamente</Text>
+                </TouchableOpacity>
               </View>
             ) : (
               <View style={styles.empty}>
@@ -638,6 +647,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     lineHeight: 22,
   },
+  feedRetryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: spacing.lg,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 999,
+    backgroundColor: '#FF6B35',
+  },
+  feedRetryText: { color: '#fff', fontWeight: '700', fontSize: 14 },
   footerLoader: {
     flexDirection: 'row',
     alignItems: 'center',
