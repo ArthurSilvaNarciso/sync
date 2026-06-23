@@ -77,6 +77,65 @@ export class AuthService {
     };
   }
 
+  // Login/cadastro via Google. Recebe o id_token do app, valida no Google e
+  // cria/loga o usuário. Não precisa de lib extra (usa o endpoint tokeninfo).
+  // Requer env GOOGLE_CLIENT_ID (audiência esperada). Enquanto não setado,
+  // retorna erro claro — o botão no app fica desligado até configurar.
+  async googleLogin(idToken: string, req?: Request) {
+    const expectedAud = (process.env.GOOGLE_CLIENT_ID || '').trim();
+    if (!expectedAud) {
+      throw new BadRequestException('Login com Google ainda não está configurado.');
+    }
+    if (!idToken || typeof idToken !== 'string') {
+      throw new BadRequestException('Token do Google ausente.');
+    }
+
+    let payload: any;
+    try {
+      const resp = await fetch(
+        `https://oauth2.googleapis.com/tokeninfo?id_token=${encodeURIComponent(idToken)}`,
+      );
+      if (!resp.ok) throw new Error('tokeninfo failed');
+      payload = await resp.json();
+    } catch {
+      throw new UnauthorizedException('Não foi possível validar o login do Google.');
+    }
+
+    const audOk = payload.aud === expectedAud || (process.env.GOOGLE_CLIENT_IDS || '')
+      .split(',').map((s) => s.trim()).filter(Boolean).includes(payload.aud);
+    if (!audOk) {
+      throw new UnauthorizedException('Token do Google não é deste app.');
+    }
+    const email = (payload.email || '').toLowerCase().trim();
+    if (!email || payload.email_verified === 'false' || payload.email_verified === false) {
+      throw new UnauthorizedException('E-mail do Google não verificado.');
+    }
+
+    const existing = await this.userRepository.findOne({ where: { email } });
+    let user: User;
+    if (!existing) {
+      const randomPwd = await bcrypt.hash(`google-${payload.sub}-${email}`, BCRYPT_ROUNDS);
+      const newUser: Partial<User> = {
+        name: (payload.name || email.split('@')[0]).slice(0, 100),
+        email,
+        password: randomPwd,
+        isVerified: true,
+      };
+      if (payload.picture) newUser.avatarUrl = payload.picture;
+      user = this.userRepository.create(newUser);
+      await this.userRepository.save(user);
+      await this.audit.log({ userId: user.id, event: 'register_success', req, detail: 'google' });
+    } else {
+      user = existing;
+      await this.audit.log({ userId: user.id, event: 'login_success', req, detail: 'google' });
+    }
+
+    return {
+      user: this.publicUser(user),
+      accessToken: this.generateToken(user),
+    };
+  }
+
   async login(dto: LoginDto, req?: Request) {
     const email = dto.email.toLowerCase().trim();
 
