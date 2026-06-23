@@ -35,6 +35,10 @@ export default function SafetyCenterScreen({ navigation }: any) {
   const [saved, setSaved] = useState<{ name: string; phone: string } | null>(null);
   const [verifying, setVerifying] = useState(false);
   const isVerified = !!user?.isVerified;
+  // "Combinar encontro seguro" (estilo Share My Date do Tinder)
+  const [dateWith, setDateWith] = useState('');
+  const [datePlace, setDatePlace] = useState('');
+  const [dateWhen, setDateWhen] = useState('');
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((s) => {
@@ -77,6 +81,22 @@ export default function SafetyCenterScreen({ navigation }: any) {
         message: `📍 Estou compartilhando minha localização pelo Sync: ${link}`,
       });
     } catch {}
+  };
+
+  const shareDatePlan = async () => {
+    if (!dateWith.trim() || !datePlace.trim() || !dateWhen.trim()) {
+      showToast('Preencha com quem, onde e quando.', 'error');
+      return;
+    }
+    const link = await buildLocationLink().catch(() => null);
+    const msg =
+      `🛟 Plano de encontro (Sync)\n` +
+      `Vou encontrar: ${dateWith.trim()}\n` +
+      `Local: ${datePlace.trim()}\n` +
+      `Quando: ${dateWhen.trim()}\n` +
+      (link ? `Minha localização agora: ${link}\n` : '') +
+      `Se eu não confirmar que cheguei bem, me liga.`;
+    try { await Share.share({ message: msg }); } catch {}
   };
 
   const sendSOS = async () => {
@@ -233,6 +253,42 @@ export default function SafetyCenterScreen({ navigation }: any) {
         />
         <TouchableOpacity style={styles.saveBtn} onPress={saveContact} accessibilityRole="button" accessibilityLabel="Salvar contato">
           <Text style={styles.saveBtnText}>Salvar contato</Text>
+        </TouchableOpacity>
+
+        {/* Combinar encontro seguro (Share My Date) */}
+        <Text style={styles.sectionTitle}>Vai encontrar alguém? Avise um contato</Text>
+        <Text style={styles.label}>Com quem</Text>
+        <TextInput
+          style={styles.input}
+          value={dateWith}
+          onChangeText={setDateWith}
+          placeholder="Nome de quem vai encontrar"
+          placeholderTextColor={colors.dark.secondaryText}
+        />
+        <Text style={styles.label}>Onde</Text>
+        <TextInput
+          style={styles.input}
+          value={datePlace}
+          onChangeText={setDatePlace}
+          placeholder="Ex: Parque Ibirapuera, portão 9"
+          placeholderTextColor={colors.dark.secondaryText}
+        />
+        <Text style={styles.label}>Quando</Text>
+        <TextInput
+          style={styles.input}
+          value={dateWhen}
+          onChangeText={setDateWhen}
+          placeholder="Ex: sábado 10h"
+          placeholderTextColor={colors.dark.secondaryText}
+        />
+        <TouchableOpacity
+          style={styles.shareBtn}
+          onPress={shareDatePlan}
+          accessibilityRole="button"
+          accessibilityLabel="Compartilhar plano de encontro"
+        >
+          <Ionicons name="share-social" size={18} color="#FF6B35" />
+          <Text style={styles.shareText}>Compartilhar plano com contato</Text>
         </TouchableOpacity>
 
         {/* Dicas */}
