@@ -260,9 +260,14 @@ export default function SettingsScreen({ navigation }: any) {
           onPress={() => navigation?.navigate?.('Challenges')}
           color="#FF6B35"
         />
+      </View>
+
+      <SectionTitle label="SEGURANÇA E PRIVACIDADE" />
+      <View style={styles.section}>
         <Row
           icon="shield-checkmark-outline"
           label="Central de Segurança"
+          value="SOS · verificação · encontro seguro"
           onPress={() => navigation?.navigate?.('SafetyCenter')}
           color="#E11D48"
         />

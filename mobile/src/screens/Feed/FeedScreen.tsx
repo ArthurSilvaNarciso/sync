@@ -7,6 +7,7 @@ import {
   FlatList,
   ImageBackground,
   TouchableOpacity,
+  Pressable,
   RefreshControl,
   Platform,
   Animated,
@@ -94,6 +95,14 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu 
     onLike(post.id, liked);
   };
 
+  // Duplo-toque na foto curte (estilo Instagram).
+  const lastTap = useRef(0);
+  const onPhotoPress = () => {
+    const now = Date.now();
+    if (now - lastTap.current < 300 && !liked) handleLike();
+    lastTap.current = now;
+  };
+
   const sportKey = post.sport?.toLowerCase() || 'running';
   const icon = (SPORT_ICONS[sportKey] || 'walk') as any;
   const distanceKm = (post.distanceKm || 0).toFixed(2);
@@ -177,14 +186,15 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu 
         </View>
 
         {post.photoUrl && (
-          <Image
-            source={{ uri: post.photoUrl }}
-            style={styles.photo}
-            contentFit="cover"
-            cachePolicy="memory-disk"
-            transition={150}
-            accessibilityLabel={`Foto do treino de ${post.user?.name || 'atleta'}`}
-          />
+          <Pressable onPress={onPhotoPress} accessibilityLabel="Foto do treino (toque duas vezes para curtir)">
+            <Image
+              source={{ uri: post.photoUrl }}
+              style={styles.photo}
+              contentFit="cover"
+              cachePolicy="memory-disk"
+              transition={150}
+            />
+          </Pressable>
         )}
 
         {/* Actions */}
@@ -226,13 +236,6 @@ function FeedCardComponent({ post, liked, likesCount, onLike, onComment, onMenu 
           </TouchableOpacity>
 
           <View style={{ flex: 1 }} />
-
-          <TouchableOpacity
-            style={styles.actionBtn}
-            hitSlop={{ top: 8, right: 8, bottom: 8, left: 8 }}
-          >
-            <Ionicons name="bookmark-outline" size={20} color="rgba(255,255,255,0.6)" />
-          </TouchableOpacity>
         </View>
       </View>
     </View>
