@@ -29,6 +29,15 @@ type Props = {
 
 const ACCENT = '#FF6B35';
 
+// Formata os dígitos do CPF como 000.000.000-00 para exibição.
+function formatCPF(digits: string): string {
+  const d = (digits || '').replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 // Valida CPF pelos dígitos verificadores (rejeita inventado/repetido).
 function isValidCPF(value: string): boolean {
   const cpf = (value || '').replace(/\D/g, '');
@@ -279,11 +288,11 @@ export default function RegisterScreen({ navigation }: Props) {
 
                 <Input
                   label="CPF"
-                  placeholder="Só números — usado para sua segurança"
-                  value={cpf}
+                  placeholder="000.000.000-00 — usado para sua segurança"
+                  value={formatCPF(cpf)}
                   onChangeText={(v) => { setCpf(v.replace(/\D/g, '').slice(0, 11)); setErrors((e) => ({ ...e, cpf: '' })); }}
                   keyboardType="number-pad"
-                  maxLength={11}
+                  maxLength={14}
                   error={errors.cpf}
                 />
 
