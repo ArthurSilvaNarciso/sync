@@ -104,24 +104,21 @@ export default function EditProfileScreen({ navigation }: Props) {
       const asset = result.assets[0];
 
       setUploadingAvatar(true);
-      // 1ª opção: upload do arquivo → URL pública (backend novo, sem base64 no banco)
-      // Fallback: se /media/upload falhar (backend antigo), envia base64 direto
-      // pro /me/avatar (que aceita os dois formatos).
+      // Avatar vai como base64 → guardado no banco (sempre exibe e sobrevive a
+      // redeploy). Evita o /media/upload, cujos arquivos ficam em disco efêmero
+      // no Railway e davam 404 (foto "não trocava").
       let avatarValue: string;
-      try {
+      if (asset.base64) {
+        avatarValue = `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
+      } else if (Platform.OS === 'web') {
+        avatarValue = await resizeAvatarForWeb(asset.uri, 300);
+      } else {
+        // Último recurso (sem base64): tenta o upload por arquivo.
         const { url } = await uploadMedia(asset.uri, {
           name: `avatar-${Date.now()}.jpg`,
           mimeType: asset.mimeType || 'image/jpeg',
         });
         avatarValue = url;
-      } catch {
-        if (asset.base64) {
-          avatarValue = `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
-        } else if (Platform.OS === 'web') {
-          avatarValue = await resizeAvatarForWeb(asset.uri, 300);
-        } else {
-          throw new Error('Falha no upload e sem base64 disponível');
-        }
       }
 
       const { data } = await api.post('/users/me/avatar', { avatarBase64: avatarValue });

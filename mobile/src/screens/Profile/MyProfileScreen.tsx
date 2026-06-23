@@ -175,18 +175,28 @@ export default function MyProfileScreen({ navigation }: Props) {
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
         aspect: [16, 9],
-        quality: 0.7,
+        quality: 0.45,
+        base64: true,
       });
       if (result.canceled || !result.assets?.[0]) return;
       const asset = result.assets[0];
       setUploadingBanner(true);
-      // Upload do arquivo → URL (não mais base64 no banco)
-      const { url } = await uploadMedia(asset.uri, {
-        name: `banner-${Date.now()}.jpg`,
-        mimeType: asset.mimeType || 'image/jpeg',
-      });
-      const { data } = await api.post('/users/me/banner', { bannerBase64: url });
+      // Banner vai como base64 → guardado no banco (sempre exibe e sobrevive a
+      // redeploy). Antes ia via /media/upload, cujos arquivos sumiam no disco
+      // efêmero do Railway → o banner "não trocava".
+      let bannerValue: string;
+      if (asset.base64) {
+        bannerValue = `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`;
+      } else {
+        const up = await uploadMedia(asset.uri, {
+          name: `banner-${Date.now()}.jpg`,
+          mimeType: asset.mimeType || 'image/jpeg',
+        });
+        bannerValue = up.url;
+      }
+      const { data } = await api.post('/users/me/banner', { bannerBase64: bannerValue });
       setUser(data);
+      showToast('Capa atualizada!', 'success');
     } catch (error: any) {
       showToast(error?.response?.data?.message || 'Não foi possível enviar o banner', 'error');
     } finally {

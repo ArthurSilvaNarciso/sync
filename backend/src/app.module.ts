@@ -46,7 +46,10 @@ import { HealthController } from './health.controller';
     ]),
     // Servir arquivos estáticos (avatares, fotos de eventos, etc.)
     ServeStaticModule.forRoot({
-      rootPath: join(__dirname, '..', '..', 'uploads'),
+      // O multer grava em './uploads/...' (relativo ao cwd do processo). Antes
+      // o rootPath usava __dirname/../../uploads, que não batia com o cwd em
+      // produção (dava 404 nas imagens). process.cwd()/uploads garante o match.
+      rootPath: join(process.cwd(), 'uploads'),
       serveRoot: '/uploads',
     }),
     // Conexão com PostgreSQL
