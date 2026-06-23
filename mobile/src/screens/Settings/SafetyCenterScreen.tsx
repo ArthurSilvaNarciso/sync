@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { showToast } from '../../components/ui/Toast';
+import { useHaptic } from '../../hooks/useHaptic';
 import { getCurrentLocation } from '../../services/location.service';
 import { uploadMedia } from '../../services/media.service';
 import api from '../../services/api';
@@ -28,6 +29,7 @@ const SAFETY_TIPS = [
 
 export default function SafetyCenterScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
+  const haptic = useHaptic();
   const user = useAuthStore((s) => s.user);
   const setUser = useAuthStore((s) => s.setUser);
   const [name, setName] = useState('');
@@ -59,6 +61,7 @@ export default function SafetyCenterScreen({ navigation }: any) {
     const c = { name: name.trim(), phone: phone.replace(/[^0-9+]/g, '') };
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(c));
     setSaved(c);
+    haptic.success();
     showToast('Contato de emergência salvo!', 'success');
   };
 
@@ -100,6 +103,7 @@ export default function SafetyCenterScreen({ navigation }: any) {
   };
 
   const sendSOS = async () => {
+    haptic.heavy();
     const link = await buildLocationLink();
     if (!link) return;
     const msg = `🆘 PRECISO DE AJUDA. Esta é minha localização agora: ${link}`;
@@ -136,6 +140,7 @@ export default function SafetyCenterScreen({ navigation }: any) {
       const uploaded = await uploadMedia(result.assets[0].uri);
       const { data } = await api.post('/users/me/verify', { selfie: uploaded.url });
       setUser(data);
+      haptic.success();
       showToast('Perfil verificado! ✓', 'success');
     } catch (e: any) {
       showToast(e?.response?.data?.message || 'Não foi possível verificar agora.', 'error');
