@@ -39,4 +39,11 @@ export class RegisterDto {
   @IsOptional()
   @IsIn(['male', 'female', 'other'])
   gender?: string;
+
+  // CPF opcional — usado só para anti-reincidência (guardamos apenas o hash).
+  @ApiPropertyOptional({ example: '12345678901' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cpf?: string;
 }

@@ -138,6 +138,11 @@ export class User {
   @Column({ default: false })
   isVerified: boolean;
 
+  // Hash (SHA-256) do CPF informado no cadastro. NÃO guardamos o CPF cru
+  // (LGPD). Serve só para barrar reincidência de banidos (ver banned_cpfs).
+  @Column({ type: 'varchar', length: 64, nullable: true, select: false })
+  cpfHash: string | null;
+
   // Cron timestamps
   @Column({ default: 0 })
   totalXP: number;

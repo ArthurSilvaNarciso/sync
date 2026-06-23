@@ -4,6 +4,7 @@ import { Repository, Like as ILike, LessThan } from 'typeorm';
 import { Logger } from '@nestjs/common';
 import { User } from './entities/user.entity';
 import { UserBlock } from './entities/user-block.entity';
+import { BannedCpf } from './entities/banned-cpf.entity';
 import { UserReport } from './entities/user-report.entity';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 import { ReportReason } from './entities/user-report.entity';
@@ -337,6 +338,24 @@ export class UsersService {
     const distinctReporters = new Set(reports.map((r) => r.reporter_id));
     if (distinctReporters.size >= AUTO_BAN_THRESHOLD) {
       await this.userRepository.update(reportedId, { isActive: false });
+      await this.addCpfToBanList(reportedId, 'auto-ban: denúncias');
     }
+  }
+
+  // Adiciona o hash do CPF do usuário (se houver) à lista de banidos, pra
+  // impedir que a pessoa crie outra conta com o mesmo CPF.
+  private async addCpfToBanList(userId: string, reason: string): Promise<void> {
+    const u = await this.userRepository.findOne({
+      where: { id: userId },
+      select: ['id', 'cpfHash'],
+    });
+    if (!u?.cpfHash) return;
+    await this.userRepository.manager
+      .createQueryBuilder()
+      .insert()
+      .into(BannedCpf)
+      .values({ cpfHash: u.cpfHash, reason })
+      .orIgnore() // não falha se já estiver na lista
+      .execute();
   }
 }

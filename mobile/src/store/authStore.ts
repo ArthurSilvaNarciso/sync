@@ -11,7 +11,7 @@ interface AuthState {
 
   login: (email: string, password: string) => Promise<void>;
   loginWithGoogle: (idToken: string) => Promise<void>;
-  register: (name: string, email: string, password: string, confirmPassword: string, extra?: { weightKg?: number; heightCm?: number; gender?: string }) => Promise<void>;
+  register: (name: string, email: string, password: string, confirmPassword: string, extra?: { weightKg?: number; heightCm?: number; gender?: string; cpf?: string }) => Promise<void>;
   logout: () => Promise<void>;
   loadStoredAuth: () => Promise<void>;
   setUser: (user: User) => void;

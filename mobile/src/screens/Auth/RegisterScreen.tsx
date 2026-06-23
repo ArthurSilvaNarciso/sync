@@ -37,6 +37,7 @@ export default function RegisterScreen({ navigation }: Props) {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [weightKg, setWeightKg] = useState('');
   const [heightCm, setHeightCm] = useState('');
+  const [cpf, setCpf] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other' | ''>('');
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
@@ -93,6 +94,7 @@ export default function RegisterScreen({ navigation }: Props) {
         weightKg: weightKg ? parseFloat(weightKg) : undefined,
         heightCm: heightCm ? parseFloat(heightCm) : undefined,
         gender: gender || undefined,
+        cpf: cpf.replace(/\D/g, '') || undefined,
       });
       // Popup de sucesso antes de cair na seleção de perguntas (onboarding)
       showToast('Conta criada com sucesso! 🎉 Vamos personalizar seu perfil', 'success');
@@ -256,6 +258,15 @@ export default function RegisterScreen({ navigation }: Props) {
                     />
                   </View>
                 </View>
+
+                <Input
+                  label="CPF (opcional)"
+                  placeholder="Só números — usado para sua segurança"
+                  value={cpf}
+                  onChangeText={(v) => setCpf(v.replace(/\D/g, '').slice(0, 11))}
+                  keyboardType="number-pad"
+                  maxLength={11}
+                />
 
                 <Text style={styles.genderLabel}>Sexo</Text>
                 <View style={styles.genderRow}>

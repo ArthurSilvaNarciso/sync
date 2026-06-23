@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 import { User } from '../users/entities/user.entity';
+import { BannedCpf } from '../users/entities/banned-cpf.entity';
 import { RegisterDto } from './dto/register.dto';
 import { LoginDto } from './dto/login.dto';
 import { AuditService } from '../common/security/audit.service';
@@ -55,12 +56,35 @@ export class AuthService {
       throw new ConflictException('Não foi possível criar conta com esses dados');
     }
 
+    // CPF (opcional): valida formato, gera hash e barra reincidência de banidos.
+    let cpfHash: string | null = null;
+    if (dto.cpf) {
+      const digits = dto.cpf.replace(/\D/g, '');
+      if (digits.length !== 11) {
+        throw new BadRequestException('CPF inválido. Use os 11 dígitos.');
+      }
+      cpfHash = crypto
+        .createHash('sha256')
+        .update(digits + (process.env.CPF_HASH_SALT || 'sync-cpf-salt'))
+        .digest('hex');
+      const banned = await this.userRepository.manager.findOne(BannedCpf, {
+        where: { cpfHash },
+      });
+      if (banned) {
+        await this.audit.log({ event: 'register_failure', req, detail: 'banned_cpf' });
+        throw new ConflictException(
+          'Não foi possível criar a conta. Este CPF está impedido de usar o app.',
+        );
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);
 
     const user = this.userRepository.create({
       name: dto.name.trim().slice(0, 100),
       email,
       password: hashedPassword,
+      ...(cpfHash && { cpfHash }),
       ...(dto.weightKg != null && { weightKg: dto.weightKg }),
       ...(dto.heightCm != null && { heightCm: dto.heightCm }),
       ...(dto.gender && { gender: dto.gender }),
