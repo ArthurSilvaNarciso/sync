@@ -15,8 +15,8 @@ export class ActivityFeedController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Feed público (posts de atividades)' })
-  feed(@Query('page') page?: string) {
-    return this.service.feed(page ? parseInt(page, 10) : 1);
+  feed(@CurrentUser() user: User, @Query('page') page?: string) {
+    return this.service.feed(user.id, page ? parseInt(page, 10) : 1);
   }
 
   @Get('user/:userId')

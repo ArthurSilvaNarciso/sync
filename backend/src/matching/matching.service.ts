@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from '../users/entities/user.entity';
+import { UserBlock } from '../users/entities/user-block.entity';
 import { Like } from './entities/like.entity';
 import { Match } from './entities/match.entity';
 import { Activity } from '../activities/entities/activity.entity';
@@ -90,6 +91,16 @@ export class MatchingService {
     });
     const swipedIds = new Set(alreadySwiped.map((l) => l.to_user_id));
     swipedIds.add(userId);
+
+    // SEGURANÇA: exclui usuários bloqueados nos DOIS sentidos — quem você
+    // bloqueou e quem te bloqueou não aparece mais no Descobrir.
+    const blocks = await this.userRepository.manager.find(UserBlock, {
+      where: [{ blocker_id: userId }, { blocked_id: userId }],
+      select: ['blocker_id', 'blocked_id'],
+    });
+    for (const b of blocks) {
+      swipedIds.add(b.blocker_id === userId ? b.blocked_id : b.blocker_id);
+    }
 
     const radiusKm = query.radiusKm || 10;
     const { page = 1, limit = 20 } = query;

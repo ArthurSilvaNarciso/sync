@@ -1,7 +1,8 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Not, In } from 'typeorm';
 import { ActivityFeedPost } from './activity-feed.entity';
+import { UserBlock } from '../users/entities/user-block.entity';
 import { FeedComment } from './feed-comment.entity';
 import { FeedLike } from './feed-like.entity';
 import { sanitizeText, sanitizeUrl } from '../common/security/sanitize.util';
@@ -60,16 +61,30 @@ export class ActivityFeedService {
     return this.repo.save(post);
   }
 
-  async feed(page = 1, limit = 20) {
+  async feed(viewerId: string, page = 1, limit = 20) {
     const safeLimit = Math.max(1, Math.min(limit, 50));
     const safePage = Math.max(1, Math.min(page, 1000));
+
+    // SEGURANÇA: não mostra posts de quem você bloqueou nem de quem te bloqueou.
+    const blockedIds = await this.getBlockedUserIds(viewerId);
+
     const posts = await this.repo.find({
       relations: ['user'],
+      where: blockedIds.length ? { user_id: Not(In(blockedIds)) } : {},
       order: { createdAt: 'DESC' },
       take: safeLimit,
       skip: (safePage - 1) * safeLimit,
     });
     return posts.map((p) => ({ ...p, user: safeFeedUser(p.user) }));
+  }
+
+  // IDs de usuários bloqueados nos dois sentidos (você bloqueou OU te bloqueou).
+  private async getBlockedUserIds(viewerId: string): Promise<string[]> {
+    const blocks = await this.repo.manager.find(UserBlock, {
+      where: [{ blocker_id: viewerId }, { blocked_id: viewerId }],
+      select: ['blocker_id', 'blocked_id'],
+    });
+    return blocks.map((b) => (b.blocker_id === viewerId ? b.blocked_id : b.blocker_id));
   }
 
   async byUser(userId: string, page = 1, limit = 20) {

@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { Message } from './entities/message.entity';
 import { Match } from '../matching/entities/match.entity';
 import { User } from '../users/entities/user.entity';
+import { UserBlock } from '../users/entities/user-block.entity';
 import { SendMessageDto } from './dto/send-message.dto';
 import { sanitizeText } from '../common/security/sanitize.util';
 import { PushService } from '../notifications/push.service';
@@ -45,6 +46,18 @@ export class ChatService {
   // Enviar mensagem - chat só liberado após match
   async sendMessage(userId: string, dto: SendMessageDto): Promise<Message> {
     const match = await this.verifyMatchAccess(dto.matchId, userId);
+
+    // SEGURANÇA: se há bloqueio entre os dois (qualquer sentido), não deixa enviar.
+    const otherId = match.user1_id === userId ? match.user2_id : match.user1_id;
+    const block = await this.messageRepository.manager.findOne(UserBlock, {
+      where: [
+        { blocker_id: userId, blocked_id: otherId },
+        { blocker_id: otherId, blocked_id: userId },
+      ],
+    });
+    if (block) {
+      throw new ForbiddenException('Não é possível enviar mensagens: há um bloqueio entre vocês.');
+    }
 
     const msgType = dto.type === 'audio' ? 'audio' : 'text';
     // Áudio agora chega como URL (/uploads/media/...) — validamos que é mesmo
