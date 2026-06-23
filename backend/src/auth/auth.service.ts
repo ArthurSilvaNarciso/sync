@@ -21,6 +21,22 @@ const BCRYPT_ROUNDS = 12;
 const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 30;
 
+// Valida CPF pelos dígitos verificadores (rejeita inventado/repetido).
+function isValidCpf(cpf: string): boolean {
+  if (!/^\d{11}$/.test(cpf)) return false;
+  if (/^(\d)\1{10}$/.test(cpf)) return false; // todos iguais (000..., 111...)
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i], 10) * (10 - i);
+  let d1 = (sum * 10) % 11;
+  if (d1 === 10) d1 = 0;
+  if (d1 !== parseInt(cpf[9], 10)) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i], 10) * (11 - i);
+  let d2 = (sum * 10) % 11;
+  if (d2 === 10) d2 = 0;
+  return d2 === parseInt(cpf[10], 10);
+}
+
 // Token de sucesso/falha de login retorna a MESMA mensagem (anti-enumeração)
 const GENERIC_INVALID = 'Credenciais inválidas';
 
@@ -56,26 +72,29 @@ export class AuthService {
       throw new ConflictException('Não foi possível criar conta com esses dados');
     }
 
-    // CPF (opcional): valida formato, gera hash e barra reincidência de banidos.
-    let cpfHash: string | null = null;
-    if (dto.cpf) {
-      const digits = dto.cpf.replace(/\D/g, '');
-      if (digits.length !== 11) {
-        throw new BadRequestException('CPF inválido. Use os 11 dígitos.');
-      }
-      cpfHash = crypto
-        .createHash('sha256')
-        .update(digits + (process.env.CPF_HASH_SALT || 'sync-cpf-salt'))
-        .digest('hex');
-      const banned = await this.userRepository.manager.findOne(BannedCpf, {
-        where: { cpfHash },
-      });
-      if (banned) {
-        await this.audit.log({ event: 'register_failure', req, detail: 'banned_cpf' });
-        throw new ConflictException(
-          'Não foi possível criar a conta. Este CPF está impedido de usar o app.',
-        );
-      }
+    // CPF obrigatório: valida dígito verificador, gera hash, barra reincidência.
+    const digits = (dto.cpf || '').replace(/\D/g, '');
+    if (!isValidCpf(digits)) {
+      throw new BadRequestException('CPF inválido. Confira os 11 dígitos.');
+    }
+    const cpfHash = crypto
+      .createHash('sha256')
+      .update(digits + (process.env.CPF_HASH_SALT || 'sync-cpf-salt'))
+      .digest('hex');
+    const banned = await this.userRepository.manager.findOne(BannedCpf, {
+      where: { cpfHash },
+    });
+    if (banned) {
+      await this.audit.log({ event: 'register_failure', req, detail: 'banned_cpf' });
+      throw new ConflictException(
+        'Não foi possível criar a conta. Este CPF está impedido de usar o app.',
+      );
+    }
+    // Um CPF = uma conta: bloqueia se já existe usuário ativo com esse hash.
+    const cpfInUse = await this.userRepository.findOne({ where: { cpfHash } as any });
+    if (cpfInUse) {
+      await this.audit.log({ event: 'register_failure', req, detail: 'cpf_in_use' });
+      throw new ConflictException('Não foi possível criar conta com esses dados');
     }
 
     const hashedPassword = await bcrypt.hash(dto.password, BCRYPT_ROUNDS);

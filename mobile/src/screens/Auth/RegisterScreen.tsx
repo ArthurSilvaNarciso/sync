@@ -29,6 +29,22 @@ type Props = {
 
 const ACCENT = '#FF6B35';
 
+// Valida CPF pelos dígitos verificadores (rejeita inventado/repetido).
+function isValidCPF(value: string): boolean {
+  const cpf = (value || '').replace(/\D/g, '');
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(cpf[i], 10) * (10 - i);
+  let d1 = (sum * 10) % 11;
+  if (d1 === 10) d1 = 0;
+  if (d1 !== parseInt(cpf[9], 10)) return false;
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(cpf[i], 10) * (11 - i);
+  let d2 = (sum * 10) % 11;
+  if (d2 === 10) d2 = 0;
+  return d2 === parseInt(cpf[10], 10);
+}
+
 export default function RegisterScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
@@ -64,6 +80,7 @@ export default function RegisterScreen({ navigation }: Props) {
     else if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password))
       newErrors.password = 'Senha precisa de letras e números';
     if (password !== confirmPassword) newErrors.confirmPassword = 'Senhas não conferem';
+    if (!isValidCPF(cpf)) newErrors.cpf = 'CPF inválido';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -75,6 +92,7 @@ export default function RegisterScreen({ navigation }: Props) {
     /[a-zA-Z]/.test(password) &&
     /[0-9]/.test(password) &&
     password === confirmPassword &&
+    isValidCPF(cpf) &&
     acceptedTerms;
 
   const handleRegister = async () => {
@@ -260,12 +278,13 @@ export default function RegisterScreen({ navigation }: Props) {
                 </View>
 
                 <Input
-                  label="CPF (opcional)"
+                  label="CPF"
                   placeholder="Só números — usado para sua segurança"
                   value={cpf}
-                  onChangeText={(v) => setCpf(v.replace(/\D/g, '').slice(0, 11))}
+                  onChangeText={(v) => { setCpf(v.replace(/\D/g, '').slice(0, 11)); setErrors((e) => ({ ...e, cpf: '' })); }}
                   keyboardType="number-pad"
                   maxLength={11}
+                  error={errors.cpf}
                 />
 
                 <Text style={styles.genderLabel}>Sexo</Text>

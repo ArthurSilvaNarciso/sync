@@ -40,10 +40,11 @@ export class RegisterDto {
   @IsIn(['male', 'female', 'other'])
   gender?: string;
 
-  // CPF opcional — usado só para anti-reincidência (guardamos apenas o hash).
-  @ApiPropertyOptional({ example: '12345678901' })
-  @IsOptional()
+  // CPF obrigatório — anti-reincidência (guardamos apenas o hash) e validação
+  // de identidade básica. A checagem de dígito verificador é feita no service.
+  @ApiProperty({ example: '12345678901' })
   @IsString()
+  @IsNotEmpty()
   @MaxLength(20)
-  cpf?: string;
+  cpf: string;
 }
