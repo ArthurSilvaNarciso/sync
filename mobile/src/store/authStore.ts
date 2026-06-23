@@ -10,6 +10,7 @@ interface AuthState {
   isAuthenticated: boolean;
 
   login: (email: string, password: string) => Promise<void>;
+  loginWithGoogle: (idToken: string) => Promise<void>;
   register: (name: string, email: string, password: string, confirmPassword: string, extra?: { weightKg?: number; heightCm?: number; gender?: string }) => Promise<void>;
   logout: () => Promise<void>;
   loadStoredAuth: () => Promise<void>;
@@ -27,6 +28,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     const data = await authService.login(email, password);
     // saveAuth já foi chamado dentro do authService — token está no SecureStore
     set({ user: data.user, token: data.accessToken, isAuthenticated: true, isLoading: false });
+  },
+
+  loginWithGoogle: async (idToken) => {
+    const data = await authService.googleLogin(idToken);
+    const user = { ...data.user, onboardingCompleted: data.user?.onboardingCompleted ?? false };
+    set({ user, token: data.accessToken, isAuthenticated: true, isLoading: false });
   },
 
   register: async (name, email, password, confirmPassword, extra) => {

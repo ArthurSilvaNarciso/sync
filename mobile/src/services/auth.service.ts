@@ -47,6 +47,14 @@ export const authService = {
     return data;
   },
 
+  // Login/cadastro com Google. Recebe o id_token do Google Sign-In e troca
+  // por uma sessão Sync. Requer GOOGLE_CLIENT_ID configurado no backend.
+  async googleLogin(idToken: string): Promise<AuthResponse> {
+    const { data } = await api.post('/auth/google', { idToken });
+    await this.saveAuth(data);
+    return data;
+  },
+
   async loginDemo(): Promise<AuthResponse> {
     const demoData: AuthResponse = {
       user: { ...DEMO_USER },
