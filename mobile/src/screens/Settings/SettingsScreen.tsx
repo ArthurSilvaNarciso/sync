@@ -261,6 +261,12 @@ export default function SettingsScreen({ navigation }: any) {
           color="#FF6B35"
         />
         <Row
+          icon="shield-checkmark-outline"
+          label="Central de Segurança"
+          onPress={() => navigation?.navigate?.('SafetyCenter')}
+          color="#E11D48"
+        />
+        <Row
           icon="shield-outline"
           label="Usuários bloqueados"
           onPress={() => navigation?.navigate?.('BlockedUsers')}
