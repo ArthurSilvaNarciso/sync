@@ -134,6 +134,21 @@ export class UsersController {
     return this.usersService.updateProfilePhotos(user.id, photos.map((p) => p.trim()));
   }
 
+  @Post('me/verify')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @Throttle({ default: { ttl: 60_000, limit: 3 } })
+  @ApiOperation({ summary: 'Verificação de perfil por selfie' })
+  async verifySelfie(@CurrentUser() user: User, @Body('selfie') selfie: string) {
+    if (typeof selfie !== 'string' || (!isMediaUrl(selfie) && !selfie.startsWith('data:image/'))) {
+      throw new BadRequestException('Envie uma selfie válida (URL ou data:image/...).');
+    }
+    if (selfie.length > 700_000) {
+      throw new BadRequestException('Selfie muito grande. Máximo ~500KB após compressão.');
+    }
+    return this.usersService.verifyWithSelfie(user.id);
+  }
+
   @Put('location')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

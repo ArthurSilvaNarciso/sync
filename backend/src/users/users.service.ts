@@ -176,6 +176,16 @@ export class UsersService {
     return this.findById(userId);
   }
 
+  // Verificação de perfil por selfie.
+  // MVP: ao enviar uma selfie válida, marca o perfil como verificado.
+  // Para verificação real (anti-catfish), aqui entraria um serviço de
+  // liveness + face-match comparando a selfie com as fotos do perfil
+  // (ex.: AWS Rekognition CompareFaces). Mantido simples para a demo.
+  async verifyWithSelfie(userId: string): Promise<User> {
+    await this.userRepository.update(userId, { isVerified: true });
+    return this.findById(userId);
+  }
+
   // Salvar fotos do perfil (array de data URLs base64 ou URLs, máx 5)
   async updateProfilePhotos(userId: string, photos: string[]): Promise<User> {
     if (!Array.isArray(photos) || photos.length < 1) {

@@ -8,9 +8,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as ImagePicker from 'expo-image-picker';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { showToast } from '../../components/ui/Toast';
 import { getCurrentLocation } from '../../services/location.service';
+import { uploadMedia } from '../../services/media.service';
+import api from '../../services/api';
+import { useAuthStore } from '../../store/authStore';
 
 const STORAGE_KEY = '@sync:emergency-contact';
 
@@ -24,9 +28,13 @@ const SAFETY_TIPS = [
 
 export default function SafetyCenterScreen({ navigation }: any) {
   const insets = useSafeAreaInsets();
+  const user = useAuthStore((s) => s.user);
+  const setUser = useAuthStore((s) => s.setUser);
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [saved, setSaved] = useState<{ name: string; phone: string } | null>(null);
+  const [verifying, setVerifying] = useState(false);
+  const isVerified = !!user?.isVerified;
 
   useEffect(() => {
     AsyncStorage.getItem(STORAGE_KEY).then((s) => {
@@ -84,6 +92,38 @@ export default function SafetyCenterScreen({ navigation }: any) {
     try { await Share.share({ message: msg }); } catch {}
   };
 
+  const handleVerify = async () => {
+    if (isVerified || verifying) return;
+    try {
+      if (Platform.OS !== 'web') {
+        const perm = await ImagePicker.requestCameraPermissionsAsync();
+        if (!perm.granted) {
+          showToast('Libere a câmera para verificar seu perfil.', 'error');
+          return;
+        }
+      }
+      const launch = Platform.OS === 'web'
+        ? ImagePicker.launchImageLibraryAsync
+        : ImagePicker.launchCameraAsync;
+      const result = await launch({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      setVerifying(true);
+      const uploaded = await uploadMedia(result.assets[0].uri);
+      const { data } = await api.post('/users/me/verify', { selfie: uploaded.url });
+      setUser(data);
+      showToast('Perfil verificado! ✓', 'success');
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || 'Não foi possível verificar agora.', 'error');
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   return (
     <View style={styles.container}>
       <LinearGradient
@@ -109,6 +149,36 @@ export default function SafetyCenterScreen({ navigation }: any) {
           Sua segurança em primeiro lugar. Configure um contato de confiança e use o
           botão de emergência se precisar.
         </Text>
+
+        {/* Verificação por selfie */}
+        <View style={[styles.verifyCard, isVerified && styles.verifyCardDone]}>
+          <Ionicons
+            name={isVerified ? 'shield-checkmark' : 'shield-outline'}
+            size={26}
+            color={isVerified ? colors.success : '#3B82F6'}
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.verifyTitle}>
+              {isVerified ? 'Perfil verificado ✓' : 'Verifique seu perfil'}
+            </Text>
+            <Text style={styles.verifySub}>
+              {isVerified
+                ? 'Você tem o selo de verificado. Isso passa mais confiança pra quem te encontra.'
+                : 'Tire uma selfie pra ganhar o selo "Verificado" e ter mais credibilidade.'}
+            </Text>
+          </View>
+          {!isVerified && (
+            <TouchableOpacity
+              style={styles.verifyBtn}
+              onPress={handleVerify}
+              disabled={verifying}
+              accessibilityRole="button"
+              accessibilityLabel="Verificar meu perfil com selfie"
+            >
+              <Text style={styles.verifyBtnText}>{verifying ? '...' : 'Verificar'}</Text>
+            </TouchableOpacity>
+          )}
+        </View>
 
         {/* SOS */}
         <TouchableOpacity
@@ -196,6 +266,20 @@ const styles = StyleSheet.create({
   title: { fontSize: fontSize.lg, fontWeight: '800', color: colors.dark.text, letterSpacing: 0.3 },
   content: { padding: spacing.lg },
   intro: { color: colors.dark.secondaryText, fontSize: 14, marginBottom: spacing.lg, lineHeight: 20 },
+  verifyCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: 'rgba(59,130,246,0.10)', borderRadius: borderRadius.lg, padding: spacing.md,
+    borderWidth: 1, borderColor: 'rgba(59,130,246,0.3)', marginBottom: spacing.md,
+  },
+  verifyCardDone: {
+    backgroundColor: 'rgba(16,185,129,0.10)', borderColor: 'rgba(16,185,129,0.35)',
+  },
+  verifyTitle: { color: colors.dark.text, fontWeight: '800', fontSize: 15 },
+  verifySub: { color: colors.dark.secondaryText, fontSize: 12, marginTop: 2, lineHeight: 16 },
+  verifyBtn: {
+    backgroundColor: '#3B82F6', borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8,
+  },
+  verifyBtnText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   sosBtn: {
     flexDirection: 'row', alignItems: 'center', gap: spacing.md,
     backgroundColor: '#E11D48', borderRadius: borderRadius.lg, padding: spacing.lg,
