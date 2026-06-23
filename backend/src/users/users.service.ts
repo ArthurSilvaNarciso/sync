@@ -325,5 +325,18 @@ export class UsersService {
       reason,
       description: safeDescription,
     });
+
+    // Auto-moderação: se o usuário acumulou denúncias de >= 3 pessoas
+    // DIFERENTES, desativa a conta automaticamente (fica fora do Descobrir,
+    // não loga). Admin pode reverter depois.
+    const AUTO_BAN_THRESHOLD = 3;
+    const reports = await this.userReportRepository.find({
+      where: { reported_id: reportedId },
+      select: ['reporter_id'],
+    });
+    const distinctReporters = new Set(reports.map((r) => r.reporter_id));
+    if (distinctReporters.size >= AUTO_BAN_THRESHOLD) {
+      await this.userRepository.update(reportedId, { isActive: false });
+    }
   }
 }

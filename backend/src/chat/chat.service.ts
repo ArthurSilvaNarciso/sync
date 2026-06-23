@@ -11,7 +11,7 @@ import { Match } from '../matching/entities/match.entity';
 import { User } from '../users/entities/user.entity';
 import { UserBlock } from '../users/entities/user-block.entity';
 import { SendMessageDto } from './dto/send-message.dto';
-import { sanitizeText } from '../common/security/sanitize.util';
+import { sanitizeText, moderateText } from '../common/security/sanitize.util';
 import { PushService } from '../notifications/push.service';
 
 @Injectable()
@@ -71,6 +71,13 @@ export class ChatService {
       content = dto.content.trim();
     } else {
       content = sanitizeText(dto.content, 1000);
+      // Moderação: bloqueia ameaças e discurso de ódio óbvios.
+      const mod = moderateText(content);
+      if (mod.block) {
+        throw new ForbiddenException(
+          'Mensagem bloqueada por conteúdo ofensivo (' + mod.reason + '). Seja respeitoso.',
+        );
+      }
     }
 
     const message = this.messageRepository.create({
