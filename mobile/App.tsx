@@ -71,17 +71,37 @@ export default function App() {
     );
   }
 
+  // No web, centraliza o app numa coluna estilo celular (maxWidth) pra não
+  // esticar de ponta a ponta no desktop. No nativo, ocupa a tela toda.
+  const isWeb = Platform.OS === 'web';
+
   return (
-    <GestureHandlerRootView style={{ flex: 1 }}>
-      <NavigationContainer>
-        <StatusBar style="auto" />
-        <AccessibilityEffects />
-        <ConnectionBanner />
-        <ErrorBoundary fallback={<GlobalCrashFallback />}>
-          <RootNavigator />
-        </ErrorBoundary>
-        <ToastHost />
-      </NavigationContainer>
+    <GestureHandlerRootView style={{ flex: 1, backgroundColor: '#000' }}>
+      <View
+        style={
+          isWeb
+            ? { flex: 1, alignItems: 'center', backgroundColor: '#000' }
+            : { flex: 1 }
+        }
+      >
+        <View
+          style={
+            isWeb
+              ? { flex: 1, width: '100%', maxWidth: 480, backgroundColor: '#0A0A0F', overflow: 'hidden' }
+              : { flex: 1 }
+          }
+        >
+          <NavigationContainer>
+            <StatusBar style="auto" />
+            <AccessibilityEffects />
+            <ConnectionBanner />
+            <ErrorBoundary fallback={<GlobalCrashFallback />}>
+              <RootNavigator />
+            </ErrorBoundary>
+            <ToastHost />
+          </NavigationContainer>
+        </View>
+      </View>
     </GestureHandlerRootView>
   );
 }
