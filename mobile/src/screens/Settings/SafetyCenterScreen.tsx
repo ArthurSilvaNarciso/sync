@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { showToast } from '../../components/ui/Toast';
+import { confirmAsync } from '../../utils/confirm';
 import { useHaptic } from '../../hooks/useHaptic';
 import { getCurrentLocation } from '../../services/location.service';
 import { uploadMedia } from '../../services/media.service';
@@ -119,6 +120,14 @@ export default function SafetyCenterScreen({ navigation }: any) {
   const handleVerify = async () => {
     if (isVerified || verifying) return;
     try {
+      // Verificação com documento: instrui a segurar o RG/CNH na selfie.
+      const ok = await confirmAsync(
+        'Verificação com documento',
+        'Tire uma selfie SEGURANDO seu documento com foto (RG ou CNH) perto do rosto. ' +
+        'Isso confirma que você é uma pessoa real e que o perfil é seu.',
+        { confirmText: 'Tirar selfie' },
+      );
+      if (!ok) return;
       if (Platform.OS !== 'web') {
         const perm = await ImagePicker.requestCameraPermissionsAsync();
         if (!perm.granted) {
@@ -132,16 +141,20 @@ export default function SafetyCenterScreen({ navigation }: any) {
       const result = await launch({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: true,
-        aspect: [1, 1],
-        quality: 0.7,
+        quality: 0.5,
+        base64: true,
       });
       if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
       setVerifying(true);
-      const uploaded = await uploadMedia(result.assets[0].uri);
-      const { data } = await api.post('/users/me/verify', { selfie: uploaded.url });
+      // Envia em base64 (vai pro banco; não depende do disco efêmero do servidor).
+      const selfie = asset.base64
+        ? `data:${asset.mimeType || 'image/jpeg'};base64,${asset.base64}`
+        : (await uploadMedia(asset.uri)).url;
+      const { data } = await api.post('/users/me/verify', { selfie });
       setUser(data);
       haptic.success();
-      showToast('Perfil verificado! ✓', 'success');
+      showToast('Documento enviado! Perfil verificado ✓', 'success');
     } catch (e: any) {
       showToast(e?.response?.data?.message || 'Não foi possível verificar agora.', 'error');
     } finally {
@@ -189,7 +202,7 @@ export default function SafetyCenterScreen({ navigation }: any) {
             <Text style={styles.verifySub}>
               {isVerified
                 ? 'Você tem o selo de verificado. Isso passa mais confiança pra quem te encontra.'
-                : 'Tire uma selfie pra ganhar o selo "Verificado" e ter mais credibilidade.'}
+                : 'Tire uma selfie segurando seu documento (RG/CNH) pra ganhar o selo "Verificado".'}
             </Text>
           </View>
           {!isVerified && (

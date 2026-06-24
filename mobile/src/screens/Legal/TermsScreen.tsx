@@ -55,27 +55,52 @@ export default function TermsScreen({ navigation }: any) {
           Você é responsável pela sua segurança ao se exercitar. Consulte um médico antes de começar. O Sync NÃO substitui orientação profissional.
         </Text>
 
-        <Text style={styles.h2}>5. Conteúdo do usuário</Text>
+        <Text style={styles.h2}>5. Identidade e verificação</Text>
+        <Text style={styles.p}>
+          Ao se cadastrar você informa um CPF válido (guardamos apenas um código
+          irreversível dele, nunca o número em si). Um CPF dá direito a uma única
+          conta.
+          {'\n\n'}• Você pode verificar seu perfil enviando uma selfie segurando
+          seu documento com foto (RG/CNH). O selo "Verificado" indica que a
+          identidade foi confirmada.
+          {'\n'}• É proibido usar identidade ou documento de terceiros, ou criar
+          perfil falso. Isso resulta em banimento permanente.
+          {'\n'}• Contas banidas não podem ser recriadas com o mesmo CPF.
+        </Text>
+
+        <Text style={styles.h2}>6. Encontros e segurança pessoal</Text>
+        <Text style={styles.p}>
+          O Sync conecta pessoas para treinar. Ao marcar um encontro, você o faz
+          por sua conta e risco.
+          {'\n\n'}• Marque sempre em local público, avise um contato de confiança
+          (use a Central de Segurança) e confie no seu instinto.
+          {'\n'}• Mensagens com ameaças ou discurso de ódio são bloqueadas e podem
+          gerar banimento. Denuncie qualquer abuso pelo app.
+          {'\n'}• O Sync não realiza checagem de antecedentes criminais e não se
+          responsabiliza por condutas dos usuários fora do app.
+        </Text>
+
+        <Text style={styles.h2}>7. Conteúdo do usuário</Text>
         <Text style={styles.p}>
           Você mantém o direito sobre tudo que posta, mas concede ao Sync licença para exibir aos outros usuários conforme suas configurações.
         </Text>
 
-        <Text style={styles.h2}>6. Assinaturas Premium</Text>
+        <Text style={styles.h2}>8. Assinaturas Premium</Text>
         <Text style={styles.p}>
           Planos pagos renovam automaticamente. Cancele a qualquer momento em Configurações.
         </Text>
 
-        <Text style={styles.h2}>7. Limitação de responsabilidade</Text>
+        <Text style={styles.h2}>9. Limitação de responsabilidade</Text>
         <Text style={styles.p}>
           O Sync é fornecido "como está". Não nos responsabilizamos por lesões durante exercício, perda de dados ou indisponibilidade temporária.
         </Text>
 
-        <Text style={styles.h2}>8. Modificações</Text>
+        <Text style={styles.h2}>10. Modificações</Text>
         <Text style={styles.p}>
           Estes termos podem mudar. Avisaremos por email/push quando houver alterações relevantes.
         </Text>
 
-        <Text style={styles.h2}>9. Foro</Text>
+        <Text style={styles.h2}>11. Foro</Text>
         <Text style={styles.p}>
           Brasil. Lei brasileira aplicável. LGPD respeitada.
         </Text>
