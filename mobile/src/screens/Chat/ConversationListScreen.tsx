@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image'; // cache em disco para avatares do chat
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useFocusEffect } from '@react-navigation/native';
 import { ChatStackParamList } from '../../navigation/types';
 import { Conversation } from '../../types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
@@ -40,6 +41,16 @@ export default function ConversationListScreen({ navigation }: Props) {
   useEffect(() => {
     loadConversations();
   }, []);
+
+  // Recarrega ao focar a aba — assim um match novo (ou nova mensagem) aparece
+  // sempre que você abre o Chat, sem precisar puxar pra atualizar.
+  const firstFocus = React.useRef(true);
+  useFocusEffect(
+    useCallback(() => {
+      if (firstFocus.current) { firstFocus.current = false; return; }
+      loadConversations();
+    }, []),
+  );
 
   useEffect(() => {
     Animated.timing(searchAnim, {
