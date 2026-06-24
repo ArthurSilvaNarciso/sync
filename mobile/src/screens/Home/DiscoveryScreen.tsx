@@ -189,6 +189,7 @@ export default function DiscoveryScreen({ navigation }: Props) {
             matchId: data.matchId,
             userName: currentUser.name,
             userId: currentUser.id,
+            userAvatar: (currentUser as any).avatarUrl || (currentUser as any).profilePhotos?.[0],
           });
         }
       } catch (error) {

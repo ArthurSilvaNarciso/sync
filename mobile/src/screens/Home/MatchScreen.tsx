@@ -8,6 +8,8 @@ import { HomeStackParamList } from '../../navigation/types';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import Button from '../../components/ui/Button';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
+import { useAuthStore } from '../../store/authStore';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
@@ -17,7 +19,10 @@ type Props = {
 };
 
 export default function MatchScreen({ navigation, route }: Props) {
-  const { matchId, userName, userId } = route.params;
+  const { matchId, userName, userId, userAvatar } = route.params;
+  const me = useAuthStore((s) => s.user);
+  const myAvatar = me?.avatarUrl || (me as any)?.profilePhotos?.[0];
+  const defaultAvatar = require('../../assets/images/default-avatar.png');
   const reduceMotion = useReduceMotion();
   const heartScale = useRef(new Animated.Value(0)).current;
   const heartRotate = useRef(new Animated.Value(0)).current;
@@ -201,11 +206,21 @@ export default function MatchScreen({ navigation, route }: Props) {
           <Ionicons name="star" size={24} color="rgba(255,255,255,0.4)" />
         </Animated.View>
 
-        {/* Heart icon */}
-        <Animated.View style={{ transform: [{ scale: heartScale }, { rotate }] }}>
-          <View style={styles.heartGlow}>
-            <Ionicons name="heart" size={90} color={colors.white} />
-          </View>
+        {/* Duas fotos (você + match) com coração no meio */}
+        <Animated.View style={[styles.avatarsRow, { transform: [{ scale: heartScale }] }]}>
+          <Image
+            source={myAvatar ? { uri: myAvatar } : defaultAvatar}
+            style={[styles.matchAvatar, { marginRight: -18 }]}
+            contentFit="cover"
+          />
+          <Image
+            source={userAvatar ? { uri: userAvatar } : defaultAvatar}
+            style={[styles.matchAvatar, { marginLeft: -18 }]}
+            contentFit="cover"
+          />
+          <Animated.View style={[styles.heartBadge, { transform: [{ rotate }] }]}>
+            <Ionicons name="heart" size={26} color="#fff" />
+          </Animated.View>
         </Animated.View>
 
         {/* Title */}
@@ -265,6 +280,35 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  avatarsRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  matchAvatar: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    borderWidth: 4,
+    borderColor: '#fff',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+  },
+  heartBadge: {
+    position: 'absolute',
+    alignSelf: 'center',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FF4D6D',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 3,
+    borderColor: '#fff',
+    shadowColor: '#000',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   sparkle: {
     position: 'absolute',
