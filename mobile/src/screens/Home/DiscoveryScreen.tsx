@@ -470,13 +470,16 @@ export default function DiscoveryScreen({ navigation }: Props) {
       >
         <View style={styles.headerLeft}>
           <Text style={styles.headerTitle}>Descobrir</Text>
-          {/* Profile completion indicator */}
-          <TouchableOpacity style={styles.completionBadge} onPress={() => navigation.getParent()?.navigate('ProfileTab')}>
-            <View style={styles.completionBarBg}>
-              <View style={[styles.completionBarFill, { width: `${profileCompletion}%` }]} />
-            </View>
-            <Text style={styles.completionText}>{profileCompletion}%</Text>
-          </TouchableOpacity>
+          {/* Perfil completo — só aparece se ainda dá pra completar */}
+          {profileCompletion < 100 && (
+            <TouchableOpacity style={styles.completionBadge} onPress={() => navigation.getParent()?.navigate('ProfileTab')} activeOpacity={0.7}>
+              <Ionicons name="person-circle-outline" size={13} color={colors.dark.secondaryText} />
+              <View style={styles.completionBarBg}>
+                <View style={[styles.completionBarFill, { width: `${profileCompletion}%` }]} />
+              </View>
+              <Text style={styles.completionText}>Perfil {profileCompletion}%</Text>
+            </TouchableOpacity>
+          )}
         </View>
         <View style={styles.headerRight}>
           {/* Weather mini badge */}
@@ -803,9 +806,10 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
+    flexDirection: 'column',
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+    gap: 4,
     flex: 1,
     minWidth: 0,
     flexShrink: 1,
@@ -817,28 +821,19 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   headerTitle: {
-    fontSize: fontSize.xxl,
-    fontWeight: '700',
+    fontSize: fontSize.xl,
+    fontWeight: '800',
     color: colors.dark.text,
+    letterSpacing: 0.2,
   },
   completionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: borderRadius.full,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
+    paddingVertical: 2,
   },
   completionBarBg: {
-    width: 40,
+    width: 54,
     height: 4,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.10)',
@@ -850,9 +845,9 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
   },
   completionText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.dark.accent,
+    fontSize: 11,
+    fontWeight: '600',
+    color: colors.dark.secondaryText,
   },
   weatherMini: {
     flexDirection: 'row',

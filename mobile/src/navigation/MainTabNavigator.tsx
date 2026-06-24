@@ -220,7 +220,16 @@ export default function MainTabNavigator() {
         }}
       />
       <Tab.Screen name="GroupsTab"   component={GroupsStack} />
-      <Tab.Screen name="ChatTab"     component={ChatStack} />
+      <Tab.Screen
+        name="ChatTab"
+        component={ChatStack}
+        options={({ route }) => {
+          // Esconde a tab bar dentro de uma conversa (ChatRoom), pra o campo
+          // de escrever não ficar cortado atrás da barra.
+          const focused = getFocusedRouteNameFromRoute(route) ?? 'ChatList';
+          return { tabBarStyle: focused === 'ChatRoom' ? { display: 'none' } : undefined };
+        }}
+      />
       <Tab.Screen name="ProfileTab"  component={ProfileStack} />
     </Tab.Navigator>
   );

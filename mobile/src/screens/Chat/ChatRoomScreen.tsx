@@ -610,7 +610,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       )}
 
       {/* Input bar */}
-      <View style={styles.inputContainer}>
+      <View style={[styles.inputContainer, { paddingBottom: Math.max(insets.bottom + 8, spacing.md) }]}>
         {!isRecording ? (
           <>
             <View style={styles.inputWrap}>
