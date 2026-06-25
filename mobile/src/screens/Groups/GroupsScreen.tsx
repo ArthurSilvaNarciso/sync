@@ -20,6 +20,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { groupsApi, GroupSummary } from '../../services/groups.service';
 import Button from '../../components/ui/Button';
+import ErrorState from '../../components/ui/ErrorState';
 import { showToast } from '../../components/ui/Toast';
 
 // Alert informativo que também funciona no web (Alert.alert é no-op no RN Web)
@@ -41,6 +42,7 @@ export default function GroupsScreen({ navigation }: any) {
   const [discover, setDiscover] = useState<GroupSummary[]>([]);
   const [ranking, setRanking] = useState<(GroupSummary & { position: number })[]>([]);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [form, setForm] = useState({ name: '', description: '', sport: 'Corrida', city: '', isPrivate: false });
@@ -48,18 +50,20 @@ export default function GroupsScreen({ navigation }: any) {
 
   const load = useCallback(async () => {
     setLoading(true);
-    try {
-      const [a, b, c] = await Promise.all([
-        groupsApi.myGroups().catch(() => []),
-        groupsApi.listPublic().catch(() => []),
-        groupsApi.ranking().catch(() => []),
-      ]);
-      setMine(a);
-      setDiscover(b);
-      setRanking(c);
-    } finally {
-      setLoading(false);
+    setError(false);
+    const [a, b, c] = await Promise.allSettled([
+      groupsApi.myGroups(),
+      groupsApi.listPublic(),
+      groupsApi.ranking(),
+    ]);
+    // Só é "erro" se TUDO falhou — uma falha parcial ainda mostra o que veio
+    if (a.status === 'rejected' && b.status === 'rejected' && c.status === 'rejected') {
+      setError(true);
     }
+    setMine(a.status === 'fulfilled' ? a.value : []);
+    setDiscover(b.status === 'fulfilled' ? b.value : []);
+    setRanking(c.status === 'fulfilled' ? c.value : []);
+    setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
@@ -207,10 +211,14 @@ export default function GroupsScreen({ navigation }: any) {
         ListHeaderComponent={tab === 'ranking' ? renderPodium() : null}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />}
         ListEmptyComponent={
-          <View style={styles.emptyWrap}>
-            <Ionicons name="people-circle-outline" size={64} color={colors.dark.secondaryText} />
-            <Text style={styles.emptyText}>{emptyMsg}</Text>
-          </View>
+          error ? (
+            <ErrorState onRetry={() => load()} />
+          ) : loading ? null : (
+            <View style={styles.emptyWrap}>
+              <Ionicons name="people-circle-outline" size={64} color={colors.dark.secondaryText} />
+              <Text style={styles.emptyText}>{emptyMsg}</Text>
+            </View>
+          )
         }
         contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
       />
