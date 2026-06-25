@@ -62,6 +62,7 @@ const sportColors: Record<string, string> = {
 export default function MapMainScreen({ navigation }: Props) {
   const [events, setEvents] = useState<EventType[]>([]);
   const [selectedEvent, setSelectedEvent] = useState<EventType | null>(null);
+  const [joining, setJoining] = useState(false);
   const [region, setRegion] = useState<{ latitude: number; longitude: number; latitudeDelta: number; longitudeDelta: number } | null>(null);
   const [loading, setLoading] = useState(true);
   const [locationError, setLocationError] = useState<string | null>(null);
@@ -420,8 +421,13 @@ export default function MapMainScreen({ navigation }: Props) {
         </View>
       )}
 
-      {/* Top bar with location + weather */}
-      <View style={styles.topBar}>
+      {/* Top bar — faixa rolável pra não sobrepor os chips no celular */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.topBar}
+        contentContainerStyle={styles.topBarContent}
+      >
         {/* Location name */}
         {locationName ? (
           <View style={styles.locationChip}>
@@ -429,6 +435,25 @@ export default function MapMainScreen({ navigation }: Props) {
             <Text style={styles.locationText} numberOfLines={1}>{locationName}</Text>
           </View>
         ) : null}
+
+        {/* Weather chip */}
+        {weather && (
+          <TouchableOpacity
+            style={styles.weatherChip}
+            onPress={() => setShowWeatherPanel(!showWeatherPanel)}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name={weather.weatherIcon as any}
+              size={18}
+              color={recommendation?.color || colors.primary}
+            />
+            <Text style={styles.weatherTemp}>{weather.temperature}°</Text>
+            {recommendation && (
+              <View style={[styles.weatherDot, { backgroundColor: recommendation.color }]} />
+            )}
+          </TouchableOpacity>
+        )}
 
         {/* Heatmap toggle */}
         <TouchableOpacity
@@ -451,26 +476,7 @@ export default function MapMainScreen({ navigation }: Props) {
           <Ionicons name="flag" size={14} color="#FCD34D" />
           <Text style={[styles.locationText, { color: '#FCD34D' }]}>Territórios</Text>
         </TouchableOpacity>
-
-        {/* Weather chip */}
-        {weather && (
-          <TouchableOpacity
-            style={styles.weatherChip}
-            onPress={() => setShowWeatherPanel(!showWeatherPanel)}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name={weather.weatherIcon as any}
-              size={18}
-              color={recommendation?.color || colors.primary}
-            />
-            <Text style={styles.weatherTemp}>{weather.temperature}°</Text>
-            {recommendation && (
-              <View style={[styles.weatherDot, { backgroundColor: recommendation.color }]} />
-            )}
-          </TouchableOpacity>
-        )}
-      </View>
+      </ScrollView>
 
       {/* Filter row */}
       <View style={styles.filterContainer}>
@@ -576,6 +582,9 @@ export default function MapMainScreen({ navigation }: Props) {
         </Animated.View>
       )}
 
+      {/* Controles de fundo — escondidos quando um evento está aberto, pra
+          não ficar tudo empilhado em cima do card. */}
+      {!selectedEvent && (<>
       {/* Map controls */}
       <View style={styles.mapControls}>
         <TouchableOpacity style={styles.mapBtn} onPress={centerOnUser}>
@@ -671,6 +680,7 @@ export default function MapMainScreen({ navigation }: Props) {
           <Ionicons name="add" size={28} color={colors.white} />
         </LinearGradient>
       </TouchableOpacity>
+      </>)}
 
       {/* Event card */}
       {selectedEvent && (
@@ -753,7 +763,61 @@ export default function MapMainScreen({ navigation }: Props) {
             </View>
           </View>
 
+          {/* Linha 1: Participar (primário, faz o join direto) */}
+          <TouchableOpacity
+            style={styles.joinBtn}
+            disabled={joining || (selectedEvent.participantCount || 0) >= selectedEvent.maxParticipants}
+            onPress={async () => {
+              const evt = selectedEvent;
+              if (!evt) return;
+              setJoining(true);
+              try {
+                await api.post(`/events/${evt.id}/join`);
+                showToast(`Você entrou em "${evt.title}"! 🎉`, 'success');
+                // Atualiza a contagem localmente e recarrega os eventos
+                setSelectedEvent({ ...evt, participantCount: (evt.participantCount || 0) + 1 });
+                if (userCoords) loadEvents(userCoords.latitude, userCoords.longitude);
+              } catch (e: any) {
+                showToast(e?.response?.data?.message || 'Não foi possível participar agora.', 'error');
+              } finally {
+                setJoining(false);
+              }
+            }}
+            activeOpacity={0.85}
+          >
+            <LinearGradient
+              colors={[sportColors[selectedEvent.sport] || colors.primary, colors.primary]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.joinBtnGradient}
+            >
+              {joining ? (
+                <ActivityIndicator size="small" color={colors.white} />
+              ) : (selectedEvent.participantCount || 0) >= selectedEvent.maxParticipants ? (
+                <Text style={styles.joinBtnText}>Evento lotado</Text>
+              ) : (
+                <>
+                  <Ionicons name="checkmark-circle" size={18} color={colors.white} />
+                  <Text style={styles.joinBtnText}>Participar</Text>
+                </>
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* Linha 2: Ver detalhes (secundário) + compartilhar */}
           <View style={styles.eventCardActions}>
+            <TouchableOpacity
+              style={styles.detailLinkBtn}
+              onPress={() => {
+                const evt = selectedEvent;
+                setSelectedEvent(null);
+                navigation.navigate('EventDetail', { eventId: evt.id });
+              }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="information-circle-outline" size={18} color={colors.primary} />
+              <Text style={styles.detailLinkText}>Ver detalhes</Text>
+            </TouchableOpacity>
             <TouchableOpacity
               style={styles.shareEventBtn}
               onPress={async () => {
@@ -764,25 +828,6 @@ export default function MapMainScreen({ navigation }: Props) {
               }}
             >
               <Ionicons name="share-outline" size={18} color={colors.primary} />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.detailBtn}
-              onPress={() => {
-                const evt = selectedEvent;
-                setSelectedEvent(null);
-                navigation.navigate('EventDetail', { eventId: evt.id });
-              }}
-              activeOpacity={0.8}
-            >
-              <LinearGradient
-                colors={[sportColors[selectedEvent.sport] || colors.primary, colors.primary]}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.detailBtnGradient}
-              >
-                <Text style={styles.detailBtnText}>Ver detalhes</Text>
-                <Ionicons name="arrow-forward" size={16} color={colors.white} />
-              </LinearGradient>
             </TouchableOpacity>
           </View>
         </Animated.View>
@@ -809,11 +854,16 @@ const styles = StyleSheet.create({
   topBar: {
     position: 'absolute',
     top: Platform.OS === 'ios' ? 54 : 40,
-    left: spacing.md,
-    right: spacing.md,
+    left: 0,
+    right: 0,
+    // Altura fixa: ScrollView absoluto sem altura captura toque sobre o mapa todo
+    maxHeight: 44,
+  },
+  topBarContent: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: spacing.sm,
+    paddingHorizontal: spacing.md,
   },
   locationChip: {
     flexDirection: 'row',
@@ -1033,7 +1083,8 @@ const styles = StyleSheet.create({
   mapControls: {
     position: 'absolute',
     right: spacing.md,
-    bottom: 200,
+    // Topo da coluna direita: createBtn(140,56) → flashBtn(208,48) → mapControls
+    bottom: 268,
     gap: spacing.sm,
   },
   mapBtn: {
@@ -1160,7 +1211,7 @@ const styles = StyleSheet.create({
   },
   flashBtn: {
     position: 'absolute',
-    bottom: 204,
+    bottom: 208,
     right: spacing.md,
     width: 48,
     height: 48,
@@ -1251,10 +1302,44 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 2,
   },
+  joinBtn: {
+    borderRadius: borderRadius.md,
+    overflow: 'hidden',
+    marginBottom: spacing.sm,
+  },
+  joinBtnGradient: {
+    flexDirection: 'row',
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    borderRadius: borderRadius.md,
+  },
+  joinBtnText: {
+    color: colors.white,
+    fontWeight: '700',
+    fontSize: fontSize.md,
+  },
   eventCardActions: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.sm,
+  },
+  detailLinkBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 11,
+    borderRadius: borderRadius.md,
+    borderWidth: 1,
+    borderColor: colors.primary + '40',
+  },
+  detailLinkText: {
+    color: colors.primary,
+    fontWeight: '600',
+    fontSize: fontSize.sm,
   },
   shareEventBtn: {
     width: 44,
