@@ -36,3 +36,4 @@ android/
 .cache/
 *.tsbuildinfo
 .vercel
+.git-commit-msg.txt
