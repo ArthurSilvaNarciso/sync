@@ -5,14 +5,28 @@ import { API_HOST } from './api';
 // Deriva o namespace do host da API (mesmo servidor, porta 3000)
 const SOCKET_URL = `${API_HOST}/chat`;
 
-const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 1000;
+const RECONNECT_MAX_DELAY_MS = 20000; // teto do backoff — nunca desiste de vez
+
+export type SocketStatus = 'connected' | 'connecting' | 'disconnected';
+
+type Handler = (...args: any[]) => void;
 
 class SocketService {
   private socket: Socket | null = null;
   private jwtToken: string | null = null;
   private reconnectAttempts = 0;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private status: SocketStatus = 'disconnected';
+
+  // Handlers registrados pela UI — re-vinculados a CADA novo socket pra que a
+  // conversa não "morra" depois de uma reconexão (bug clássico: o listener
+  // ficava no socket antigo).
+  private handlers: Record<string, Handler | undefined> = {};
+  // Salas em que o usuário está — re-entramos automaticamente ao reconectar.
+  private joinedRooms = new Set<string>();
+  // Observadores de status (banner "reconectando…", etc.)
+  private statusListeners = new Set<(s: SocketStatus) => void>();
 
   /**
    * Conecta ao gateway de chat autenticando via JWT.
@@ -30,12 +44,33 @@ class SocketService {
     return this.createConnection(token);
   }
 
+  private setStatus(s: SocketStatus) {
+    if (this.status === s) return;
+    this.status = s;
+    this.statusListeners.forEach((fn) => {
+      try { fn(s); } catch { /* noop */ }
+    });
+  }
+
+  getStatus(): SocketStatus {
+    return this.status;
+  }
+
+  /** Inscreve um observador no status de conexão. Retorna função de unsubscribe. */
+  onStatusChange(fn: (s: SocketStatus) => void): () => void {
+    this.statusListeners.add(fn);
+    fn(this.status); // emite o estado atual de imediato
+    return () => this.statusListeners.delete(fn);
+  }
+
   private createConnection(token: string): Promise<Socket> {
     return new Promise((resolve, reject) => {
       if (this.socket) {
         this.socket.removeAllListeners();
         this.socket.disconnect();
       }
+
+      this.setStatus('connecting');
 
       this.socket = io(SOCKET_URL, {
         // SECURITY: JWT no handshake.auth, nunca em query params (evita logging em proxies)
@@ -49,10 +84,17 @@ class SocketService {
 
       this.socket.on('connect', () => {
         this.reconnectAttempts = 0;
+        this.setStatus('connected');
+        // Re-vincula handlers e re-entra nas salas — chave pra reconexão funcionar
+        this.rebindHandlers();
+        this.joinedRooms.forEach((matchId) => {
+          this.socket?.emit('joinChat', { matchId });
+        });
         resolve(this.socket!);
       });
 
       this.socket.on('connect_error', (err) => {
+        this.setStatus('disconnected');
         if (this.reconnectAttempts === 0) {
           reject(err);
         }
@@ -60,6 +102,7 @@ class SocketService {
       });
 
       this.socket.on('disconnect', () => {
+        this.setStatus('disconnected');
         this.scheduleReconnect();
       });
 
@@ -71,11 +114,25 @@ class SocketService {
     });
   }
 
+  /** Re-aplica todos os handlers guardados ao socket atual. */
+  private rebindHandlers() {
+    if (!this.socket) return;
+    for (const [event, handler] of Object.entries(this.handlers)) {
+      if (!handler) continue;
+      this.socket.off(event);
+      this.socket.on(event, handler);
+    }
+  }
+
   private scheduleReconnect() {
-    if (this.reconnectAttempts >= MAX_RECONNECT_ATTEMPTS || !this.jwtToken) return;
+    if (!this.jwtToken) return; // só desiste se não há sessão
     if (this.reconnectTimer) return;
 
-    const delay = RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts);
+    // Backoff exponencial com teto — tenta pra sempre (até desconectar de vez)
+    const delay = Math.min(
+      RECONNECT_BASE_DELAY_MS * Math.pow(2, this.reconnectAttempts),
+      RECONNECT_MAX_DELAY_MS,
+    );
     this.reconnectAttempts++;
 
     this.reconnectTimer = setTimeout(async () => {
@@ -89,7 +146,19 @@ class SocketService {
     }, delay);
   }
 
+  /** Força uma reconexão imediata (ex.: quando a rede volta). */
+  reconnectNow() {
+    if (!this.jwtToken || this.socket?.connected) return;
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectAttempts = 0;
+    this.createConnection(this.jwtToken).catch(() => {});
+  }
+
   joinChat(matchId: string) {
+    this.joinedRooms.add(matchId);
     this.socket?.emit('joinChat', { matchId });
   }
 
@@ -99,11 +168,13 @@ class SocketService {
   }
 
   onNewMessage(callback: (message: any) => void) {
+    this.handlers['newMessage'] = callback;
     this.socket?.off('newMessage');
     this.socket?.on('newMessage', callback);
   }
 
   onTyping(callback: (data: { userId: string }) => void) {
+    this.handlers['userTyping'] = callback;
     this.socket?.off('userTyping');
     this.socket?.on('userTyping', callback);
   }
@@ -114,16 +185,19 @@ class SocketService {
   }
 
   onUserOnline(callback: (data: { userId: string }) => void) {
+    this.handlers['userOnline'] = callback;
     this.socket?.off('userOnline');
     this.socket?.on('userOnline', callback);
   }
 
   onUserOffline(callback: (data: { userId: string }) => void) {
+    this.handlers['userOffline'] = callback;
     this.socket?.off('userOffline');
     this.socket?.on('userOffline', callback);
   }
 
   leaveChat(matchId: string) {
+    this.joinedRooms.delete(matchId);
     this.socket?.emit('leaveChat', { matchId });
   }
 
@@ -134,6 +208,7 @@ class SocketService {
 
   /** Listen for read receipts from the other participant */
   onMessagesRead(callback: (data: { matchId: string; readBy: string; readAt: string }) => void) {
+    this.handlers['messagesRead'] = callback;
     this.socket?.off('messagesRead');
     this.socket?.on('messagesRead', callback);
   }
@@ -148,6 +223,16 @@ class SocketService {
     this.emitTyping(matchId);
   }
 
+  /** Remove um handler específico (ex.: ao desmontar a tela de conversa). */
+  clearMessageHandlers() {
+    this.handlers = {};
+    if (this.socket) {
+      ['newMessage', 'userTyping', 'userOnline', 'userOffline', 'messagesRead'].forEach((e) =>
+        this.socket?.off(e),
+      );
+    }
+  }
+
   disconnect() {
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -158,6 +243,9 @@ class SocketService {
     this.socket = null;
     this.jwtToken = null;
     this.reconnectAttempts = 0;
+    this.handlers = {};
+    this.joinedRooms.clear();
+    this.setStatus('disconnected');
   }
 }
 

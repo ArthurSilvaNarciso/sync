@@ -20,7 +20,7 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { ChatStackParamList } from '../../navigation/types';
 import { Message } from '../../types';
 import { useAuthStore } from '../../store/authStore';
-import { socketService } from '../../services/socket.service';
+import { socketService, SocketStatus } from '../../services/socket.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -57,6 +57,7 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
 
   // Voice playback
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [connStatus, setConnStatus] = useState<SocketStatus>('connecting');
   const soundRef = useRef<Audio.Sound | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
@@ -104,8 +105,12 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   useEffect(() => {
     loadMessages(1, true);
     setupSocket();
+    // Acompanha o status da conexão pra mostrar "Reconectando…" no header
+    const unsubStatus = socketService.onStatusChange(setConnStatus);
     return () => {
+      unsubStatus();
       socketService.leaveChat?.(matchId);
+      socketService.clearMessageHandlers?.();
       if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
       if (recordingTimer.current) clearInterval(recordingTimer.current);
       try { recognitionRef.current?.stop?.(); } catch {}
@@ -533,11 +538,27 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               source={require('../../assets/images/default-avatar.png')}
               style={styles.headerAvatarImg}
             />
-            <View style={styles.headerOnlineDot} />
+            <View
+              style={[
+                styles.headerOnlineDot,
+                connStatus !== 'connected' && { backgroundColor: connStatus === 'connecting' ? colors.warning : colors.secondaryText },
+              ]}
+            />
           </View>
           <View>
             <Text style={styles.headerTitle}>{userName}</Text>
-            <Text style={styles.headerSubtitle}>Online agora</Text>
+            <Text
+              style={[
+                styles.headerSubtitle,
+                connStatus !== 'connected' && { color: connStatus === 'connecting' ? colors.warning : colors.secondaryText },
+              ]}
+            >
+              {connStatus === 'connected'
+                ? (otherIsTyping ? 'Digitando…' : 'Online agora')
+                : connStatus === 'connecting'
+                ? 'Reconectando…'
+                : 'Offline'}
+            </Text>
           </View>
         </TouchableOpacity>
         <TouchableOpacity

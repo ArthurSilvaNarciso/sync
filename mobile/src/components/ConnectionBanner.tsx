@@ -4,6 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform, AccessibilityInfo } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { socketService } from '../services/socket.service';
 
 // NOTA: este componente é montado na RAIZ do app (fora do SafeAreaProvider que
 // o react-navigation injeta por tela), então NÃO usa useSafeAreaInsets — usaria
@@ -16,7 +17,12 @@ export default function ConnectionBanner() {
     const update = () => {
       const isOff = typeof navigator !== 'undefined' && navigator.onLine === false;
       setOffline(isOff);
-      if (isOff) AccessibilityInfo.announceForAccessibility?.('Sem conexão com a internet');
+      if (isOff) {
+        AccessibilityInfo.announceForAccessibility?.('Sem conexão com a internet');
+      } else {
+        // Rede voltou: força o socket do chat a reconectar imediatamente
+        socketService.reconnectNow?.();
+      }
     };
     update();
     window.addEventListener('online', update);
