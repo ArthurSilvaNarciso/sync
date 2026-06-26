@@ -160,44 +160,10 @@ export default function MapMainScreen({ navigation }: Props) {
       setEvents(data);
     } catch (error) {
       console.log('Error loading events:', error);
-      // Mock events for demo
-      setEvents([
-        {
-          id: '1', title: 'Corrida matinal no Ibirapuera', sport: 'running',
-          date: new Date(Date.now() + 86400000).toISOString(),
-          latitude: lat + 0.005, longitude: lng + 0.003,
-          address: 'Parque Ibirapuera', maxParticipants: 15, participantCount: 8,
-          creator_id: '1',
-        },
-        {
-          id: '2', title: 'Pedal urbano SP', sport: 'cycling',
-          date: new Date(Date.now() + 172800000).toISOString(),
-          latitude: lat - 0.008, longitude: lng + 0.006,
-          address: 'Av. Paulista', maxParticipants: 20, participantCount: 12,
-          creator_id: '2',
-        },
-        {
-          id: '3', title: 'Futebol society', sport: 'football',
-          date: new Date(Date.now() + 43200000).toISOString(),
-          latitude: lat + 0.01, longitude: lng - 0.005,
-          address: 'Arena Society', maxParticipants: 14, participantCount: 10,
-          creator_id: '3',
-        },
-        {
-          id: '4', title: 'Yoga ao ar livre', sport: 'yoga',
-          date: new Date(Date.now() + 259200000).toISOString(),
-          latitude: lat - 0.003, longitude: lng - 0.008,
-          address: 'Praca da Republica', maxParticipants: 12, participantCount: 5,
-          creator_id: '4',
-        },
-        {
-          id: '5', title: 'Basquete 3x3', sport: 'basketball',
-          date: new Date(Date.now() + 345600000).toISOString(),
-          latitude: lat + 0.007, longitude: lng + 0.009,
-          address: 'Quadra SESC', maxParticipants: 6, participantCount: 4,
-          creator_id: '5',
-        },
-      ]);
+      // NÃO injeta eventos falsos: o usuário tentava "Participar" em eventos
+      // demo (id '1'..'5') que não existem no servidor e o join falhava.
+      // Mostra vazio de verdade — o badge "0 eventos próximos" cobre o caso.
+      setEvents([]);
     }
   };
 
