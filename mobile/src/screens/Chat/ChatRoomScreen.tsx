@@ -21,6 +21,7 @@ import { ChatStackParamList } from '../../navigation/types';
 import { Message } from '../../types';
 import { useAuthStore } from '../../store/authStore';
 import { socketService, SocketStatus } from '../../services/socket.service';
+import { chatOutbox } from '../../services/chat-outbox.service';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -106,7 +107,11 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
     loadMessages(1, true);
     setupSocket();
     // Acompanha o status da conexão pra mostrar "Reconectando…" no header
-    const unsubStatus = socketService.onStatusChange(setConnStatus);
+    // e reenviar a fila offline assim que voltar a conectar.
+    const unsubStatus = socketService.onStatusChange((s) => {
+      setConnStatus(s);
+      if (s === 'connected') flushOutbox();
+    });
     return () => {
       unsubStatus();
       socketService.leaveChat?.(matchId);
@@ -192,7 +197,24 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
       socketService.joinChat(matchId);
 
       socketService.onNewMessage((message: Message) => {
-        setMessages((prev) => [...prev, message]);
+        setMessages((prev) => {
+          // Evita duplicar: o servidor faz broadcast pra sala INCLUINDO o
+          // remetente, então a própria mensagem volta. Se já existe uma
+          // otimista (pending) com o mesmo conteúdo, substitui no lugar.
+          if (message.sender_id === user.id) {
+            const idx = prev.findIndex(
+              (m) => m.pending && m.sender_id === user.id && m.content === message.content,
+            );
+            if (idx >= 0) {
+              const copy = [...prev];
+              copy[idx] = { ...message, pending: false, failed: false };
+              return copy;
+            }
+          }
+          // Se o id já está na lista, não adiciona de novo
+          if (prev.some((m) => m.id === message.id)) return prev;
+          return [...prev, message];
+        });
         // Mark as read immediately when message from other person arrives
         if (message.sender_id !== user.id) {
           socketService.markRead(matchId);
@@ -226,18 +248,74 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   // ── Send text message ──────────────────────────────────────────────────────
   const sendMessage = () => {
     if (!text.trim() || !user) return;
+    const content = text.trim();
+    const clientId = `c_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
     const optimistic: Message = {
-      id: Date.now().toString(),
+      id: clientId,
+      clientId,
       match_id: matchId,
       sender_id: user.id,
-      content: text.trim(),
+      content,
       isRead: false,
       createdAt: new Date().toISOString(),
+      pending: true,
     };
     setMessages((prev) => [...prev, optimistic]);
-    socketService.sendMessage(matchId, text.trim());
     setText('');
     setIsTyping(false);
+    deliver(content, clientId);
+  };
+
+  // Entrega de fato: socket se conectado, senão HTTP; se tudo falhar, fila offline.
+  const deliver = async (content: string, clientId: string) => {
+    if (socketService.getStatus() === 'connected') {
+      socketService.sendMessage(matchId, content);
+      // o eco via onNewMessage limpa o estado pending
+      return;
+    }
+    // Socket caído → tenta REST
+    try {
+      const { data } = await api.post('/chat/messages', { matchId, content });
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.clientId === clientId ? { ...(data || m), clientId, pending: false, failed: false } : m,
+        ),
+      );
+      chatOutbox.remove(clientId).catch(() => {});
+    } catch {
+      // Sem conexão → marca como falha e guarda na fila pra reenviar depois
+      setMessages((prev) =>
+        prev.map((m) => (m.clientId === clientId ? { ...m, pending: false, failed: true } : m)),
+      );
+      chatOutbox
+        .add({ clientId, matchId, content, createdAt: new Date().toISOString() })
+        .catch(() => {});
+      showToast('Sem conexão — vou enviar quando a internet voltar', 'info');
+    }
+  };
+
+  // Reenvia tudo que ficou pendente na fila (chamado quando a conexão volta)
+  const flushOutbox = async () => {
+    if (!user) return;
+    const items = await chatOutbox.forMatch(matchId).catch(() => []);
+    for (const item of items) {
+      try {
+        const { data } = await api.post('/chat/messages', {
+          matchId: item.matchId,
+          content: item.content,
+        });
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.clientId === item.clientId
+              ? { ...(data || m), clientId: item.clientId, pending: false, failed: false }
+              : m,
+          ),
+        );
+        await chatOutbox.remove(item.clientId);
+      } catch {
+        break; // ainda offline — para e tenta de novo na próxima reconexão
+      }
+    }
   };
 
   // ── Voice recording ────────────────────────────────────────────────────────
@@ -491,11 +569,23 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               {new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
             </Text>
             {isMe && (
-              <Ionicons
-                name={item.isRead ? 'checkmark-done' : 'checkmark'}
-                size={14}
-                color={item.isRead ? '#4ADE80' : 'rgba(255,255,255,0.5)'}
-              />
+              item.failed ? (
+                <TouchableOpacity
+                  onPress={() => { deliver(item.content, item.clientId || item.id); setMessages((prev) => prev.map((m) => (m.clientId === item.clientId ? { ...m, failed: false, pending: true } : m))); }}
+                  accessibilityLabel="Reenviar mensagem"
+                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                >
+                  <Ionicons name="alert-circle" size={14} color="#F87171" />
+                </TouchableOpacity>
+              ) : item.pending ? (
+                <Ionicons name="time-outline" size={14} color="rgba(255,255,255,0.5)" />
+              ) : (
+                <Ionicons
+                  name={item.isRead ? 'checkmark-done' : 'checkmark'}
+                  size={14}
+                  color={item.isRead ? '#4ADE80' : 'rgba(255,255,255,0.5)'}
+                />
+              )
             )}
           </View>
         </View>

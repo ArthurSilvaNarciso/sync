@@ -57,6 +57,10 @@ export interface Message {
   isRead: boolean;
   createdAt: string;
   sender?: User;
+  // Estado local de entrega (não vem do servidor):
+  clientId?: string;   // id gerado no cliente pra casar o eco do servidor
+  pending?: boolean;   // ainda não confirmada pelo servidor
+  failed?: boolean;    // falhou ao enviar (offline) — fica na fila pra reenviar
 }
 
 export interface Conversation {
