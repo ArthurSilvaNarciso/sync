@@ -123,12 +123,15 @@ export default function EventDetailScreen({ navigation, route }: Props) {
     setLeaving(true);
     try {
       await api.delete(`/events/${route.params.eventId}/leave`);
-    } catch {}
-    setIsJoined(false);
-    if (event) {
-      setEvent({ ...event, participantCount: Math.max(0, (event.participantCount || 1) - 1) });
+      setIsJoined(false);
+      if (event) {
+        setEvent({ ...event, participantCount: Math.max(0, (event.participantCount || 1) - 1) });
+      }
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || 'Não foi possível sair agora. Tente de novo.', 'error');
+    } finally {
+      setLeaving(false);
     }
-    setLeaving(false);
   };
 
   const handleShare = async () => {
