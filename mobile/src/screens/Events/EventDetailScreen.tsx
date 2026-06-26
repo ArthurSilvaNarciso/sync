@@ -23,6 +23,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { fetchCurrentWeather, WeatherData, getExerciseRecommendation } from '../../services/external-apis';
 import Button from '../../components/ui/Button';
+import ErrorState from '../../components/ui/ErrorState';
 import api from '../../services/api';
 import { confirmAsync } from '../../utils/confirm';
 import { showToast } from '../../components/ui/Toast';
@@ -59,6 +60,7 @@ const sportColors: Record<string, string> = {
 export default function EventDetailScreen({ navigation, route }: Props) {
   const [event, setEvent] = useState<EventType | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
   const [joining, setJoining] = useState(false);
   const [leaving, setLeaving] = useState(false);
   const [isJoined, setIsJoined] = useState(false);
@@ -80,22 +82,11 @@ export default function EventDetailScreen({ navigation, route }: Props) {
       ]);
       setEvent(eventRes.data);
       setComments(commentsRes.data.comments || []);
+      setError(false);
       loadWeather(eventRes.data.latitude, eventRes.data.longitude);
     } catch {
-      setEvent({
-        id: route.params.eventId,
-        title: 'Corrida matinal no Ibirapuera',
-        description: 'Vamos fazer uma corrida leve no parque Ibirapuera. Todos os niveis sao bem-vindos! Ponto de encontro: portao 3. Tragam agua e disposicao!',
-        sport: 'running',
-        date: new Date(Date.now() + 86400000).toISOString(),
-        latitude: -23.5874,
-        longitude: -46.6576,
-        address: 'Parque Ibirapuera - Portao 3',
-        maxParticipants: 15,
-        participantCount: 8,
-        creator_id: '1',
-      });
-      loadWeather(-23.5874, -46.6576);
+      // Não inventa um evento falso — mostra estado de erro com "Tentar de novo"
+      setError(true);
     } finally {
       setLoading(false);
     }
@@ -117,13 +108,8 @@ export default function EventDetailScreen({ navigation, route }: Props) {
       setIsJoined(true);
       showToast('Você está participando do evento!', 'success');
       loadEvent();
-    } catch (error: any) {
-      // Demo mode
-      setIsJoined(true);
-      if (event) {
-        setEvent({ ...event, participantCount: (event.participantCount || 0) + 1 });
-      }
-      showToast('Você está participando do evento!', 'success');
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || 'Não foi possível participar agora. Tente de novo.', 'error');
     } finally {
       setJoining(false);
     }
@@ -220,6 +206,18 @@ export default function EventDetailScreen({ navigation, route }: Props) {
       setSendingComment(false);
     }
   };
+
+  if (!loading && (error || !event)) {
+    return (
+      <View style={styles.center}>
+        <ErrorState
+          title="Não foi possível abrir o evento"
+          subtitle="Verifique sua conexão e tente de novo."
+          onRetry={() => { setLoading(true); setError(false); loadEvent(); }}
+        />
+      </View>
+    );
+  }
 
   if (loading || !event) {
     return (
