@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -245,6 +245,39 @@ export default function MapMainScreen({ navigation }: Props) {
     ? events.filter((e) => e.sport === filter)
     : events;
 
+  // Clustering por grade: agrupa eventos próximos (e os exatamente no mesmo
+  // local) num único marcador com contagem, pra não ficar "tudo em cima de
+  // tudo". A granularidade acompanha o zoom (region.latitudeDelta).
+  const clusters = useMemo(() => {
+    const delta = region?.latitudeDelta || 0.03;
+    const cell = Math.max(delta / 9, 0.0003);
+    const buckets = new Map<string, { events: typeof filteredEvents; lat: number; lng: number }>();
+    for (const ev of filteredEvents) {
+      if (typeof ev.latitude !== 'number' || typeof ev.longitude !== 'number') continue;
+      const key = `${Math.round(ev.latitude / cell)}:${Math.round(ev.longitude / cell)}`;
+      const b = buckets.get(key);
+      if (b) {
+        b.events.push(ev);
+        b.lat += ev.latitude;
+        b.lng += ev.longitude;
+      } else {
+        buckets.set(key, { events: [ev], lat: ev.latitude, lng: ev.longitude });
+      }
+    }
+    return Array.from(buckets.values()).map((b) => ({
+      events: b.events,
+      latitude: b.lat / b.events.length,
+      longitude: b.lng / b.events.length,
+    }));
+  }, [filteredEvents, region?.latitudeDelta]);
+
+  // Anima o mapa E sincroniza o estado region (pra re-agrupar os clusters)
+  const zoomTo = (latitude: number, longitude: number, latitudeDelta: number) => {
+    const r = { latitude, longitude, latitudeDelta, longitudeDelta: latitudeDelta };
+    mapRef.current?.animateToRegion(r, 350);
+    setRegion(r);
+  };
+
   const filters = [
     { id: null, label: 'Todos', icon: 'apps-outline' as const },
     { id: 'running', label: 'Corrida', icon: 'walk-outline' as const },
@@ -342,28 +375,42 @@ export default function MapMainScreen({ navigation }: Props) {
           />
         )}
 
-        {filteredEvents.map((event) => (
-          <Marker
-            key={event.id}
-            coordinate={{
-              latitude: event.latitude,
-              longitude: event.longitude,
-            }}
-            onPress={() => {
-              setSelectedEvent(event);
-              setShowWeatherPanel(false);
-            }}
-          >
-            <View style={[styles.marker, { backgroundColor: sportColors[event.sport] || colors.primary }]}>
-              <Ionicons
-                name={sportIcons[event.sport] || 'calendar'}
-                size={16}
-                color={colors.white}
-              />
-            </View>
-            <View style={[styles.markerArrow, { borderTopColor: sportColors[event.sport] || colors.primary }]} />
-          </Marker>
-        ))}
+        {clusters.map((cluster, ci) => {
+          // Cluster com 1 evento → marcador normal do esporte
+          if (cluster.events.length === 1) {
+            const event = cluster.events[0];
+            return (
+              <Marker
+                key={event.id}
+                coordinate={{ latitude: event.latitude, longitude: event.longitude }}
+                onPress={() => {
+                  setSelectedEvent(event);
+                  setShowWeatherPanel(false);
+                }}
+              >
+                <View style={[styles.marker, { backgroundColor: sportColors[event.sport] || colors.primary }]}>
+                  <Ionicons name={sportIcons[event.sport] || 'calendar'} size={16} color={colors.white} />
+                </View>
+                <View style={[styles.markerArrow, { borderTopColor: sportColors[event.sport] || colors.primary }]} />
+              </Marker>
+            );
+          }
+          // Cluster com vários → bolha com a contagem; toque dá zoom pra abrir
+          return (
+            <Marker
+              key={`cluster-${ci}`}
+              coordinate={{ latitude: cluster.latitude, longitude: cluster.longitude }}
+              onPress={() => {
+                const nd = Math.max((region?.latitudeDelta || 0.03) / 2.5, 0.004);
+                zoomTo(cluster.latitude, cluster.longitude, nd);
+              }}
+            >
+              <View style={styles.clusterMarker}>
+                <Text style={styles.clusterCount}>{cluster.events.length}</Text>
+              </View>
+            </Marker>
+          );
+        })}
 
         {/* Route planner: linha da rota planejada */}
         {route?.coordinates && route.coordinates.length > 1 && (
@@ -1137,6 +1184,28 @@ const styles = StyleSheet.create({
     fontSize: fontSize.xs,
     fontWeight: '600',
     color: colors.text,
+  },
+  // Cluster (vários eventos agrupados)
+  clusterMarker: {
+    minWidth: 40,
+    height: 40,
+    paddingHorizontal: 6,
+    borderRadius: 20,
+    backgroundColor: colors.primary,
+    borderWidth: 3,
+    borderColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.35,
+    shadowRadius: 4,
+  },
+  clusterCount: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 16,
   },
   // Markers
   marker: {
