@@ -24,6 +24,7 @@ import { getCurrentLocation } from '../../services/location.service';
 import { useAuthStore } from '../../store/authStore';
 import api from '../../services/api';
 import { matchingApi } from '../../services/matching.service';
+import { showToast } from '../../components/ui/Toast';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useHaptic } from '../../hooks/useHaptic';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
@@ -175,25 +176,44 @@ export default function DiscoveryScreen({ navigation }: Props) {
       position.setValue({ x: 0, y: 0 });
       setCurrentIndex((prev) => prev + 1);
 
-      try {
-        const { data } = await api.post('/matching/swipe', {
-          targetUserId: currentUser.id,
-          isLike,
-          isSuperLike,
-        });
-
-        if (data.matched) {
-          haptic.success(); // celebração tátil no match
-          setNewMatchCount((prev) => prev + 1);
-          navigation.navigate('MatchScreen', {
-            matchId: data.matchId,
-            userName: currentUser.name,
-            userId: currentUser.id,
-            userAvatar: (currentUser as any).avatarUrl || (currentUser as any).profilePhotos?.[0],
+      // Like/nope é importante (pode virar match) — tenta de novo antes de
+      // desistir, pra não perder a interação numa instabilidade de rede.
+      let data: any = null;
+      let lastErr: any = null;
+      for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+          const res = await api.post('/matching/swipe', {
+            targetUserId: currentUser.id,
+            isLike,
+            isSuperLike,
           });
+          data = res.data;
+          lastErr = null;
+          break;
+        } catch (error) {
+          lastErr = error;
+          await new Promise((r) => setTimeout(r, 400 * (attempt + 1)));
         }
-      } catch (error) {
-        console.log('Swipe error:', error);
+      }
+
+      if (lastErr) {
+        console.log('Swipe error:', lastErr);
+        showToast(
+          isLike ? 'Não consegui registrar seu like. Verifique a conexão.' : 'Não consegui registrar. Verifique a conexão.',
+          'error',
+        );
+        return;
+      }
+
+      if (data?.matched) {
+        haptic.success(); // celebração tátil no match
+        setNewMatchCount((prev) => prev + 1);
+        navigation.navigate('MatchScreen', {
+          matchId: data.matchId,
+          userName: currentUser.name,
+          userId: currentUser.id,
+          userAvatar: (currentUser as any).avatarUrl || (currentUser as any).profilePhotos?.[0],
+        });
       }
     });
   };
