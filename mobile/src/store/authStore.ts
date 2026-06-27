@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { User } from '../types';
 import { authService } from '../services/auth.service';
+import { setSessionExpiredHandler } from '../services/api';
 
 interface AuthState {
   user: User | null;
@@ -77,3 +78,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ user, token, isAuthenticated: true });
   },
 }));
+
+// Quando a api detecta sessão expirada (401 em /users/me ou /auth/*), zera o
+// estado em memória pra que o RootNavigator devolva o usuário ao login.
+setSessionExpiredHandler(() => {
+  const state = useAuthStore.getState();
+  if (state.isAuthenticated) {
+    useAuthStore.setState({ user: null, token: null, isAuthenticated: false });
+  }
+});

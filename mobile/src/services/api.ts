@@ -61,6 +61,14 @@ api.interceptors.request.use(async (config) => {
   return config;
 });
 
+// Callback registrado pelo authStore — disparado quando a sessão expira, pra
+// mandar o usuário de volta ao login (em vez de deixá-lo preso numa tela
+// fazendo chamadas que sempre falham). Evita import circular (api ↔ store).
+let sessionExpiredHandler: (() => void) | null = null;
+export function setSessionExpiredHandler(fn: (() => void) | null) {
+  sessionExpiredHandler = fn;
+}
+
 // Interceptor: trata erros globalmente.
 // IMPORTANTE: só limpamos a sessão quando o 401 vem da validação de sessão
 // (/users/me ou /auth/*). Um 401 de um recurso isolado (upload, feed, etc.)
@@ -75,6 +83,8 @@ api.interceptors.response.use(
       await secureStorage.removeItem('@sync:token');
       await AsyncStorage.removeItem('@sync:token').catch(() => {});
       await AsyncStorage.removeItem('@sync:user').catch(() => {});
+      // Atualiza o estado em memória → RootNavigator volta pro login
+      sessionExpiredHandler?.();
     }
     return Promise.reject(error);
   },
