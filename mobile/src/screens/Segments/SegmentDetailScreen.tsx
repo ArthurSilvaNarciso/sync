@@ -27,6 +27,8 @@ import Avatar from '../../components/ui/Avatar';
 import ErrorState from '../../components/ui/ErrorState';
 import { showToast } from '../../components/ui/Toast';
 import { useHaptic } from '../../hooks/useHaptic';
+import { feedApi } from '../../services/feed.service';
+import { useAuthStore } from '../../store/authStore';
 
 type Props = {
   navigation: NativeStackNavigationProp<ProfileStackParamList, 'SegmentDetail'>;
@@ -49,6 +51,7 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
   const [min, setMin] = useState('');
   const [sec, setSec] = useState('');
   const [saving, setSaving] = useState(false);
+  const [sharing, setSharing] = useState(false);
 
   const load = useCallback(async () => {
     setError(false);
@@ -102,6 +105,31 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
       showToast(e?.response?.data?.message || 'Não foi possível registrar agora.', 'error');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const shareToFeed = async () => {
+    if (!segment || sharing) return;
+    setSharing(true);
+    try {
+      // Legenda context-aware: KOM > tempo próprio > só o segmento
+      const me = useAuthStore.getState().user;
+      const mine = board.find((r) => r.userId === me?.id);
+      let caption: string;
+      if (mine && mine.isKOM) {
+        caption = `🏆 Sou o KOM do segmento "${segment.name}" com ${formatElapsed(mine.elapsedSec)}! Quem vem tentar? #Sync #Segmento`;
+      } else if (mine) {
+        caption = `💪 Fiz ${formatElapsed(mine.elapsedSec)} no segmento "${segment.name}" (${mine.rank}º lugar). Bora competir! #Sync #Segmento`;
+      } else {
+        caption = `🚩 Conhece o segmento "${segment.name}"? ${(segment.distanceMeters / 1000).toFixed(2)} km de pura disputa no Sync! #Segmento`;
+      }
+      await feedApi.publish({ caption, sport: segment.sport, distanceKm: segment.distanceMeters / 1000 });
+      haptic.success();
+      showToast('Compartilhado no feed! 🎉', 'success');
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || 'Não foi possível compartilhar.', 'error');
+    } finally {
+      setSharing(false);
     }
   };
 
@@ -187,16 +215,25 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
               <Text style={styles.desc}>{segment.description}</Text>
             )}
 
-            <TouchableOpacity style={styles.recordBtn} onPress={() => setShowRecord(true)} activeOpacity={0.85}>
-              <LinearGradient
-                colors={[...colors.gradient]}
-                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={styles.recordBtnInner}
-              >
-                <Ionicons name="stopwatch" size={18} color="#fff" />
-                <Text style={styles.recordBtnText}>Registrar meu tempo</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            <View style={styles.ctaRow}>
+              <TouchableOpacity style={styles.recordBtn} onPress={() => setShowRecord(true)} activeOpacity={0.85}>
+                <LinearGradient
+                  colors={[...colors.gradient]}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.recordBtnInner}
+                >
+                  <Ionicons name="stopwatch" size={18} color="#fff" />
+                  <Text style={styles.recordBtnText}>Registrar meu tempo</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.shareBtn} onPress={shareToFeed} disabled={sharing} activeOpacity={0.85}>
+                {sharing ? (
+                  <ActivityIndicator size="small" color={colors.primary} />
+                ) : (
+                  <Ionicons name="share-social" size={20} color={colors.primary} />
+                )}
+              </TouchableOpacity>
+            </View>
 
             <Text style={styles.boardTitle}>Classificação</Text>
           </View>
@@ -276,7 +313,12 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: fontSize.xs, color: colors.secondaryText, marginTop: 2 },
   statDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.08)' },
   desc: { fontSize: fontSize.sm, color: colors.secondaryText, lineHeight: 20, marginBottom: spacing.md },
-  recordBtn: { borderRadius: borderRadius.md, overflow: 'hidden', marginBottom: spacing.lg },
+  ctaRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  recordBtn: { flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' },
+  shareBtn: {
+    width: 52, borderRadius: borderRadius.md, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: colors.primary + '40', backgroundColor: colors.primary + '12',
+  },
   recordBtnInner: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 14,

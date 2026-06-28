@@ -154,6 +154,9 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
   cronometrados **automaticamente** a partir dos pontos GPS (raio de 35m no
   início e fim) — o atleta não precisa fazer nada
 - Registro manual de tempo também disponível (modal min:seg)
+- **Criar segmento** direto da tela de resumo do treino (usa a rota percorrida)
+- **Notificação "Seu KOM foi roubado!"** quando alguém supera seu tempo
+- **Compartilhar no feed** ("Sou o KOM de X!" / "Fiz Y no segmento Z!")
 - Lista de segmentos próximos via GPS + tela de detalhe com medalhas
 - Idempotente: um effort por treino/segmento
 
