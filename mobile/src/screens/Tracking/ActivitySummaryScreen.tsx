@@ -12,6 +12,8 @@ import {
   Animated,
   Pressable,
   Easing,
+  Modal,
+  TextInput,
 } from 'react-native';
 import MapView, { Polyline, Marker } from '../../components/map/SyncMap';
 import { Image as ExpoImage } from 'expo-image';
@@ -28,6 +30,7 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import api from '../../services/api';
 import { feedApi } from '../../services/feed.service';
+import { segmentsApi } from '../../services/segments.service';
 import { generateWorkoutSummary } from '../../utils/workout-summary';
 import { showToast } from '../../components/ui/Toast';
 import ErrorBoundary from '../../components/ErrorBoundary';
@@ -100,6 +103,10 @@ function ActivitySummaryInner({ navigation, route }: Props) {
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
   const [posted, setPosted] = useState(false);
+  // Criar segmento a partir desta rota
+  const [showSegModal, setShowSegModal] = useState(false);
+  const [segName, setSegName] = useState('');
+  const [creatingSeg, setCreatingSeg] = useState(false);
   // Foto opcional pra anexar na publicação do feed
   const [photoUri, setPhotoUri] = useState<string | null>(null);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
@@ -375,6 +382,38 @@ function ActivitySummaryInner({ navigation, route }: Props) {
       showToast(e?.response?.data?.message || 'Erro ao publicar', 'error');
     } finally {
       setPosting(false);
+    }
+  };
+
+  // Cria um segmento usando o início e o fim da rota deste treino
+  const createSegment = async () => {
+    if (!activity?.points || activity.points.length < 2) return;
+    const name = segName.trim();
+    if (name.length < 3) {
+      showToast('Dê um nome com pelo menos 3 letras ao segmento.', 'error');
+      return;
+    }
+    const pts = activity.points;
+    const start = pts[0];
+    const end = pts[pts.length - 1];
+    setCreatingSeg(true);
+    try {
+      await segmentsApi.create({
+        name,
+        distanceMeters: activity.distance || 0,
+        startLat: start.latitude,
+        startLng: start.longitude,
+        endLat: end.latitude,
+        endLng: end.longitude,
+        sport: activity.sport,
+      });
+      setShowSegModal(false);
+      setSegName('');
+      showToast('Segmento criado! 🚩 Veja em Perfil → Segmentos.', 'success');
+    } catch (e: any) {
+      showToast(e?.response?.data?.message || 'Não foi possível criar o segmento.', 'error');
+    } finally {
+      setCreatingSeg(false);
     }
   };
 
@@ -662,6 +701,14 @@ function ActivitySummaryInner({ navigation, route }: Props) {
             </TouchableOpacity>
           )}
 
+          {/* Secondary: Criar segmento a partir desta rota */}
+          {activity.points && activity.points.length > 1 && (
+            <TouchableOpacity style={styles.secondaryBtn} onPress={() => setShowSegModal(true)}>
+              <Ionicons name="flag-outline" size={18} color={ACCENT} />
+              <Text style={styles.secondaryBtnText}>Criar segmento desta rota</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Tertiary: Go home */}
           <TouchableOpacity style={styles.homeBtn} onPress={() => navigation.popToTop()}>
             <Text style={styles.homeBtnText}>Pronto</Text>
@@ -669,6 +716,39 @@ function ActivitySummaryInner({ navigation, route }: Props) {
         </Animated.View>
 
         <View style={{ height: 60 }} />
+
+        {/* Modal: nomear e criar segmento desta rota */}
+        <Modal visible={showSegModal} transparent animationType="fade" onRequestClose={() => setShowSegModal(false)}>
+          <View style={styles.segModalOverlay}>
+            <View style={styles.segModalCard}>
+              <Ionicons name="flag" size={28} color={ACCENT} style={{ alignSelf: 'center' }} />
+              <Text style={styles.segModalTitle}>Criar segmento</Text>
+              <Text style={styles.segModalSub}>
+                Transforme este trecho num desafio. Outros atletas vão competir pelo melhor tempo (KOM/QOM).
+              </Text>
+              <TextInput
+                style={styles.segInput}
+                value={segName}
+                onChangeText={setSegName}
+                placeholder="Ex: Subida do Parque"
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                maxLength={100}
+              />
+              <View style={styles.segModalActions}>
+                <TouchableOpacity style={styles.segCancel} onPress={() => setShowSegModal(false)}>
+                  <Text style={styles.segCancelText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.segSave} onPress={createSegment} disabled={creatingSeg}>
+                  {creatingSeg ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.segSaveText}>Criar</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
       </ScrollView>
 
       {/* Post-workout rating modal */}
@@ -1066,6 +1146,19 @@ const styles = StyleSheet.create({
     fontSize: fontSize.sm,
     fontWeight: '600',
   },
+  segModalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', alignItems: 'center', justifyContent: 'center', padding: 24 },
+  segModalCard: { width: '100%', maxWidth: 360, backgroundColor: '#15151F', borderRadius: 18, padding: 22 },
+  segModalTitle: { fontSize: 18, fontWeight: '800', color: '#fff', textAlign: 'center', marginTop: 8 },
+  segModalSub: { fontSize: 13, color: 'rgba(255,255,255,0.6)', textAlign: 'center', marginTop: 6, lineHeight: 19 },
+  segInput: {
+    marginTop: 16, backgroundColor: '#0A0A0F', borderRadius: 12, paddingHorizontal: 14, paddingVertical: 12,
+    color: '#fff', fontSize: 15, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+  },
+  segModalActions: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  segCancel: { flex: 1, paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignItems: 'center' },
+  segCancelText: { color: 'rgba(255,255,255,0.7)', fontWeight: '700' },
+  segSave: { flex: 1, paddingVertical: 12, borderRadius: 12, backgroundColor: ACCENT, alignItems: 'center' },
+  segSaveText: { color: '#fff', fontWeight: '800' },
   homeBtn: {
     alignItems: 'center',
     paddingVertical: 14,
