@@ -77,7 +77,20 @@ export function setSessionExpiredHandler(fn: (() => void) | null) {
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
-    const url: string = error.config?.url || '';
+    const config: any = error.config || {};
+    const url: string = config.url || '';
+
+    // Cold start do Railway (free tier dorme): a 1ª request demora a responder
+    // e estoura timeout/erro de rede. Tenta UMA vez de novo em GET idempotente
+    // — assim o app não mostra "erro" só porque o backend estava acordando.
+    const isNetworkOrTimeout = !error.response; // timeout ECONNABORTED ou rede
+    const isGet = (config.method || 'get').toLowerCase() === 'get';
+    if (isNetworkOrTimeout && isGet && !config._retried) {
+      config._retried = true;
+      await new Promise((r) => setTimeout(r, 1500));
+      return api(config);
+    }
+
     const isSessionCheck = url.includes('/users/me') || url.includes('/auth/');
     if (error.response?.status === 401 && isSessionCheck) {
       await secureStorage.removeItem('@sync:token');

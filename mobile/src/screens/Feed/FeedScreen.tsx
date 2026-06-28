@@ -343,13 +343,18 @@ export default function FeedScreen() {
       ...prev,
       [postId]: Math.max(0, (prev[postId] ?? 0) + (currentlyLiked ? -1 : 1)),
     }));
-    try {
-      if (currentlyLiked) {
-        await feedApi.unlike(postId);
-      } else {
-        await feedApi.like(postId);
+    // Tenta de novo num blip de rede antes de reverter — não perde a curtida.
+    let ok = false;
+    for (let attempt = 0; attempt < 2 && !ok; attempt++) {
+      try {
+        if (currentlyLiked) await feedApi.unlike(postId);
+        else await feedApi.like(postId);
+        ok = true;
+      } catch {
+        if (attempt === 0) await new Promise((r) => setTimeout(r, 500));
       }
-    } catch {
+    }
+    if (!ok) {
       setLikedMap((prev) => ({ ...prev, [postId]: currentlyLiked }));
       setCountMap((prev) => ({
         ...prev,
