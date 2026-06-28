@@ -7,6 +7,7 @@ import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { Segment } from './segment.entity';
 import { SegmentEffort } from './segment-effort.entity';
+import { Follow } from '../follows/follow.entity';
 import { sanitizeText } from '../common/security/sanitize.util';
 import { NotificationsService } from '../notifications/notifications.service';
 import { NotificationType } from '../notifications/entities/notification.entity';
@@ -17,8 +18,18 @@ export class SegmentsController {
   constructor(
     @InjectRepository(Segment) private readonly repo: Repository<Segment>,
     @InjectRepository(SegmentEffort) private readonly efforts: Repository<SegmentEffort>,
+    @InjectRepository(Follow) private readonly follows: Repository<Follow>,
     private readonly notifications: NotificationsService,
   ) {}
+
+  @Get('me/koms')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Quantos KOM/QOM o atleta detém' })
+  async myKoms(@CurrentUser() user: User) {
+    const count = await this.repo.count({ where: { bestUserId: user.id } });
+    return { count };
+  }
 
   /** Notifica o antigo dono do KOM que perdeu o trono (best-effort, nunca lança). */
   private async notifyKomStolen(
@@ -135,15 +146,37 @@ export class SegmentsController {
   }
 
   @Get(':id/leaderboard')
-  @ApiOperation({ summary: 'Leaderboard do segment (melhor tempo por atleta)' })
+  @ApiOperation({ summary: 'Leaderboard global do segment (melhor tempo por atleta)' })
   async leaderboard(@Param('id') id: string) {
-    // Melhor tempo de cada atleta neste trecho, do mais rápido pro mais lento.
-    const rows = await this.efforts
+    return this.buildLeaderboard(id);
+  }
+
+  @Get(':id/leaderboard/friends')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Leaderboard restrito a quem você segue (+ você)' })
+  async friendsLeaderboard(@CurrentUser() user: User, @Param('id') id: string) {
+    const follows = await this.follows.find({
+      where: { follower_id: user.id },
+      select: ['following_id'],
+    });
+    const allowed = [user.id, ...follows.map((f) => f.following_id)];
+    return this.buildLeaderboard(id, allowed);
+  }
+
+  /** Monta o ranking; se restrictUserIds vier, filtra só esses atletas. */
+  private async buildLeaderboard(id: string, restrictUserIds?: string[]) {
+    if (restrictUserIds && restrictUserIds.length === 0) return [];
+    const qb = this.efforts
       .createQueryBuilder('e')
       .select('e.user_id', 'userId')
       .addSelect('MIN(e.elapsed_sec)', 'bestSec')
       .addSelect('COUNT(e.id)', 'tries')
-      .where('e.segment_id = :id', { id })
+      .where('e.segment_id = :id', { id });
+    if (restrictUserIds) {
+      qb.andWhere('e.user_id IN (:...allowed)', { allowed: restrictUserIds });
+    }
+    const rows = await qb
       .groupBy('e.user_id')
       .orderBy('"bestSec"', 'ASC')
       .limit(50)
@@ -172,7 +205,7 @@ export class SegmentsController {
         level: (u as any)?.level || null,
         elapsedSec: parseInt(r.bestSec, 10),
         tries: parseInt(r.tries, 10),
-        isKOM: i === 0, // líder = KOM/QOM
+        isKOM: i === 0, // líder do recorte = KOM/QOM
       };
     });
   }

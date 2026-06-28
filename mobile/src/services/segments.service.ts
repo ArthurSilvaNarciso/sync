@@ -42,6 +42,12 @@ export const segmentsApi = {
   leaderboard: (id: string): Promise<LeaderboardRow[]> =>
     api.get(`/segments/${id}/leaderboard`).then((r) => r.data || []),
 
+  leaderboardFriends: (id: string): Promise<LeaderboardRow[]> =>
+    api.get(`/segments/${id}/leaderboard/friends`).then((r) => r.data || []),
+
+  myKoms: (): Promise<{ count: number }> =>
+    api.get('/segments/me/koms').then((r) => r.data || { count: 0 }),
+
   recordEffort: (
     id: string,
     elapsedSec: number,

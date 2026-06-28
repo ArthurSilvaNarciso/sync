@@ -27,6 +27,7 @@ import { getCurrentLocation } from '../../services/location.service';
 import api from '../../services/api';
 import { uploadMedia } from '../../services/media.service';
 import { territoryApi } from '../../services/territory.service';
+import { segmentsApi } from '../../services/segments.service';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TAB_BAR_HEIGHT } from '../../navigation/MainTabNavigator';
 import { showToast } from '../../components/ui/Toast';
@@ -75,6 +76,7 @@ export default function MyProfileScreen({ navigation }: Props) {
   const [refreshing, setRefreshing] = useState(false);
   const [statsLoading, setStatsLoading] = useState(true);
   const [territory, setTerritory] = useState<{ cells: number; position: number | null; color: string } | null>(null);
+  const [komCount, setKomCount] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -82,6 +84,7 @@ export default function MyProfileScreen({ navigation }: Props) {
     loadWeather(() => mounted);
     setQuote(getRandomQuote());
     territoryApi.me().then((t) => { if (mounted) setTerritory(t); }).catch(() => {});
+    segmentsApi.myKoms().then((r) => { if (mounted) setKomCount(r.count || 0); }).catch(() => {});
     return () => { mounted = false; };
   }, []);
 
@@ -403,6 +406,21 @@ export default function MyProfileScreen({ navigation }: Props) {
           <Text style={styles.territoryText}>
             <Text style={styles.territoryStrong}>{territory.cells}</Text> áreas conquistadas
             {territory.position ? `  ·  ${territory.position}º no ranking` : ''}
+          </Text>
+          <Ionicons name="chevron-forward" size={16} color={colors.secondaryText} />
+        </TouchableOpacity>
+      )}
+
+      {/* KOMs / segmentos */}
+      {komCount > 0 && (
+        <TouchableOpacity
+          style={styles.territoryChip}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('SegmentsList' as any)}
+        >
+          <Ionicons name="trophy" size={16} color="#FFD700" />
+          <Text style={styles.territoryText}>
+            <Text style={styles.territoryStrong}>{komCount}</Text> {komCount === 1 ? 'KOM/QOM' : 'KOMs/QOMs'} — você é o mais rápido!
           </Text>
           <Ionicons name="chevron-forward" size={16} color={colors.secondaryText} />
         </TouchableOpacity>

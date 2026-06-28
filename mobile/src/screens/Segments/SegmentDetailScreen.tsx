@@ -23,6 +23,7 @@ import {
   LeaderboardRow,
   formatElapsed,
 } from '../../services/segments.service';
+import MapView, { Marker, Polyline } from '../../components/map/SyncMap';
 import Avatar from '../../components/ui/Avatar';
 import ErrorState from '../../components/ui/ErrorState';
 import { showToast } from '../../components/ui/Toast';
@@ -52,13 +53,16 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
   const [sec, setSec] = useState('');
   const [saving, setSaving] = useState(false);
   const [sharing, setSharing] = useState(false);
+  const [scope, setScope] = useState<'global' | 'friends'>('global');
 
   const load = useCallback(async () => {
     setError(false);
     try {
       const [s, b] = await Promise.all([
         segmentsApi.detail(segmentId),
-        segmentsApi.leaderboard(segmentId),
+        scope === 'friends'
+          ? segmentsApi.leaderboardFriends(segmentId)
+          : segmentsApi.leaderboard(segmentId),
       ]);
       if (!s) { setError(true); return; }
       setSegment(s);
@@ -68,7 +72,7 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
     } finally {
       setLoading(false);
     }
-  }, [segmentId]);
+  }, [segmentId, scope]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -191,6 +195,39 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         ListHeaderComponent={
           <View>
+            {/* Mapa do trecho: início (verde) → fim (vermelho) com linha */}
+            <View style={styles.mapWrap} pointerEvents="none">
+              <MapView
+                style={styles.map}
+                region={{
+                  latitude: (segment.startLat + segment.endLat) / 2,
+                  longitude: (segment.startLng + segment.endLng) / 2,
+                  latitudeDelta: Math.max(Math.abs(segment.startLat - segment.endLat) * 2.2, 0.01),
+                  longitudeDelta: Math.max(Math.abs(segment.startLng - segment.endLng) * 2.2, 0.01),
+                }}
+                pointerEvents="none"
+              >
+                <Polyline
+                  coordinates={[
+                    { latitude: segment.startLat, longitude: segment.startLng },
+                    { latitude: segment.endLat, longitude: segment.endLng },
+                  ]}
+                  strokeColor={colors.primary}
+                  strokeWidth={4}
+                />
+                <Marker coordinate={{ latitude: segment.startLat, longitude: segment.startLng }}>
+                  <View style={[styles.pin, { backgroundColor: '#10B981' }]}>
+                    <Ionicons name="play" size={12} color="#fff" />
+                  </View>
+                </Marker>
+                <Marker coordinate={{ latitude: segment.endLat, longitude: segment.endLng }}>
+                  <View style={[styles.pin, { backgroundColor: '#EF4444' }]}>
+                    <Ionicons name="flag" size={12} color="#fff" />
+                  </View>
+                </Marker>
+              </MapView>
+            </View>
+
             {/* Stats do segmento */}
             <View style={styles.statsCard}>
               <View style={styles.statBox}>
@@ -235,13 +272,32 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.boardTitle}>Classificação</Text>
+            <View style={styles.boardHeader}>
+              <Text style={styles.boardTitle}>Classificação</Text>
+              <View style={styles.scopeToggle}>
+                {(['global', 'friends'] as const).map((s) => (
+                  <TouchableOpacity
+                    key={s}
+                    style={[styles.scopeBtn, scope === s && styles.scopeBtnActive]}
+                    onPress={() => { if (scope !== s) { setLoading(true); setScope(s); } }}
+                  >
+                    <Text style={[styles.scopeText, scope === s && styles.scopeTextActive]}>
+                      {s === 'global' ? 'Global' : 'Amigos'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
           </View>
         }
         ListEmptyComponent={
           <View style={styles.emptyWrap}>
             <Ionicons name="podium-outline" size={48} color={colors.secondaryText} />
-            <Text style={styles.emptyText}>Ninguém marcou tempo ainda. Seja o primeiro KOM! 🏆</Text>
+            <Text style={styles.emptyText}>
+              {scope === 'friends'
+                ? 'Nenhum atleta que você segue correu aqui ainda. Chame a galera!'
+                : 'Ninguém marcou tempo ainda. Seja o primeiro KOM! 🏆'}
+            </Text>
           </View>
         }
         contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
@@ -302,6 +358,21 @@ const styles = StyleSheet.create({
   },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerName: { flex: 1, fontSize: fontSize.xl, fontWeight: '800', color: '#fff' },
+  mapWrap: {
+    height: 160, borderRadius: borderRadius.lg, overflow: 'hidden',
+    marginBottom: spacing.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+  },
+  map: { flex: 1 },
+  pin: {
+    width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  boardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  scopeToggle: { flexDirection: 'row', backgroundColor: '#15151F', borderRadius: borderRadius.full, padding: 3 },
+  scopeBtn: { paddingHorizontal: 14, paddingVertical: 6, borderRadius: borderRadius.full },
+  scopeBtnActive: { backgroundColor: colors.primary },
+  scopeText: { fontSize: fontSize.xs, fontWeight: '700', color: colors.secondaryText },
+  scopeTextActive: { color: '#fff' },
   statsCard: {
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: '#15151F', borderRadius: borderRadius.lg,

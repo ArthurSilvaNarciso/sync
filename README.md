@@ -148,6 +148,9 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 
 - Trechos cronometrados criados pela comunidade
 - **Leaderboard** por segmento — melhor tempo de cada atleta, ranqueado
+- Filtro **Global / Amigos** no ranking (só quem você segue)
+- **Mapa do trecho** (início → fim) na tela de detalhe
+- Badge de **KOMs/QOMs** no perfil (quantos tronos você detém)
 - **KOM/QOM** — o mais rápido vira "rei/rainha do trecho"
 - **Recorde pessoal (PR)** detectado a cada novo tempo
 - **Auto-match**: ao finalizar um treino, os segmentos cobertos pela rota são
