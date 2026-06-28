@@ -6,6 +6,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
 import { Segment } from './segment.entity';
+import { SegmentEffort } from './segment-effort.entity';
 import { sanitizeText } from '../common/security/sanitize.util';
 
 @ApiTags('Segments')
@@ -13,6 +14,7 @@ import { sanitizeText } from '../common/security/sanitize.util';
 export class SegmentsController {
   constructor(
     @InjectRepository(Segment) private readonly repo: Repository<Segment>,
+    @InjectRepository(SegmentEffort) private readonly efforts: Repository<SegmentEffort>,
   ) {}
 
   @Get('nearby')
@@ -102,5 +104,94 @@ export class SegmentsController {
         createdBy: user.id,
       }),
     );
+  }
+
+  @Get(':id/leaderboard')
+  @ApiOperation({ summary: 'Leaderboard do segment (melhor tempo por atleta)' })
+  async leaderboard(@Param('id') id: string) {
+    // Melhor tempo de cada atleta neste trecho, do mais rápido pro mais lento.
+    const rows = await this.efforts
+      .createQueryBuilder('e')
+      .select('e.user_id', 'userId')
+      .addSelect('MIN(e.elapsed_sec)', 'bestSec')
+      .addSelect('COUNT(e.id)', 'tries')
+      .where('e.segment_id = :id', { id })
+      .groupBy('e.user_id')
+      .orderBy('"bestSec"', 'ASC')
+      .limit(50)
+      .getRawMany<{ userId: string; bestSec: string; tries: string }>();
+
+    if (rows.length === 0) return [];
+
+    // Carrega só os campos públicos dos atletas do ranking
+    const ids = rows.map((r) => r.userId);
+    const users = await this.repo.manager
+      .getRepository(User)
+      .createQueryBuilder('u')
+      .select(['u.id', 'u.name', 'u.avatarUrl', 'u.city', 'u.level'])
+      .where('u.id IN (:...ids)', { ids })
+      .getMany();
+    const byId = new Map(users.map((u) => [u.id, u]));
+
+    return rows.map((r, i) => {
+      const u = byId.get(r.userId);
+      return {
+        rank: i + 1,
+        userId: r.userId,
+        name: u?.name || 'Atleta',
+        avatarUrl: (u as any)?.avatarUrl || null,
+        city: (u as any)?.city || null,
+        level: (u as any)?.level || null,
+        elapsedSec: parseInt(r.bestSec, 10),
+        tries: parseInt(r.tries, 10),
+        isKOM: i === 0, // líder = KOM/QOM
+      };
+    });
+  }
+
+  @Post(':id/effort')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Registrar um tempo (effort) no segment' })
+  async recordEffort(
+    @CurrentUser() user: User,
+    @Param('id') id: string,
+    @Body() body: { elapsedSec: number; activityId?: string },
+  ) {
+    const segment = await this.repo.findOne({ where: { id } });
+    if (!segment) throw new BadRequestException('Segment não encontrado');
+
+    // Clamp tempo: 1s a 24h (evita lixo)
+    const sec = Math.round(Math.max(1, Math.min(86_400, Number(body.elapsedSec) || 0)));
+    if (!isFinite(sec) || sec < 1) throw new BadRequestException('Tempo inválido');
+
+    // Melhor tempo anterior DESTE atleta (pra detectar PR pessoal)
+    const myPrev = await this.efforts
+      .createQueryBuilder('e')
+      .select('MIN(e.elapsed_sec)', 'best')
+      .where('e.segment_id = :id AND e.user_id = :uid', { id, uid: user.id })
+      .getRawOne<{ best: string | null }>();
+    const myPrevBest = myPrev?.best != null ? parseInt(myPrev.best, 10) : null;
+
+    await this.efforts.save(
+      this.efforts.create({
+        segmentId: id,
+        userId: user.id,
+        activityId: body.activityId || null,
+        elapsedSec: sec,
+      }),
+    );
+
+    // Atualiza contadores e KOM/QOM do segment
+    segment.attemptsCount = (segment.attemptsCount || 0) + 1;
+    const isKOM = segment.bestTimeSec == null || sec < segment.bestTimeSec;
+    if (isKOM) {
+      segment.bestTimeSec = sec;
+      segment.bestUserId = user.id;
+    }
+    await this.repo.save(segment);
+
+    const isPR = myPrevBest == null || sec < myPrevBest;
+    return { ok: true, isPR, isKOM, elapsedSec: sec, myPrevBest };
   }
 }

@@ -23,6 +23,8 @@ import BlockedUsersScreen from '../../screens/Profile/BlockedUsersScreen';
 import ChallengesScreen from '../../screens/Challenges/ChallengesScreen';
 import AccessibilityScreen from '../../screens/Settings/AccessibilityScreen';
 import SafetyCenterScreen from '../../screens/Settings/SafetyCenterScreen';
+import SegmentsListScreen from '../../screens/Segments/SegmentsListScreen';
+import SegmentDetailScreen from '../../screens/Segments/SegmentDetailScreen';
 
 const Stack = createNativeStackNavigator<ProfileStackParamList>();
 
@@ -51,6 +53,8 @@ export default function ProfileStack() {
       <Stack.Screen name="Challenges" component={ChallengesScreen as any} />
       <Stack.Screen name="Accessibility" component={AccessibilityScreen as any} />
       <Stack.Screen name="SafetyCenter" component={SafetyCenterScreen as any} />
+      <Stack.Screen name="SegmentsList" component={SegmentsListScreen as any} />
+      <Stack.Screen name="SegmentDetail" component={SegmentDetailScreen as any} />
     </Stack.Navigator>
   );
 }

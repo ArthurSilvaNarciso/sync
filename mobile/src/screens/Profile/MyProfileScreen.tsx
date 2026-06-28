@@ -239,6 +239,13 @@ export default function MyProfileScreen({ navigation }: Props) {
       color: '#10B981',
     },
     {
+      icon: 'flag-outline' as const,
+      label: 'Segmentos',
+      subtitle: 'Trechos cronometrados e KOM/QOM',
+      onPress: () => navigation.navigate('SegmentsList' as any),
+      color: '#FF6B35',
+    },
+    {
       icon: 'trophy-outline' as const,
       label: 'Ranking mensal',
       subtitle: 'Veja sua posicao no ranking',

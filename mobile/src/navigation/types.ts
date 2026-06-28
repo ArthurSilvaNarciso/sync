@@ -88,6 +88,8 @@ export type ProfileStackParamList = {
   Challenges: undefined;
   Accessibility: undefined;
   SafetyCenter: undefined;
+  SegmentsList: undefined;
+  SegmentDetail: { segmentId: string };
 };
 
 // Root navigator
