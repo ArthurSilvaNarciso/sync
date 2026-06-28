@@ -21,6 +21,7 @@ export enum NotificationType {
   STREAK_WARNING = 'streak_warning',
   EVENT_STARTING_SOON = 'event_starting_soon',
   NEW_EVENT_NEARBY = 'new_event_nearby',
+  KOM_STOLEN = 'kom_stolen',
 }
 
 @Entity('notifications')

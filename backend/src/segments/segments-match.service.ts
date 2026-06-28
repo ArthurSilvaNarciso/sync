@@ -4,6 +4,9 @@ import { Repository } from 'typeorm';
 import { Segment } from './segment.entity';
 import { SegmentEffort } from './segment-effort.entity';
 import { haversineMeters } from '../common/utils/haversine';
+import { User } from '../users/entities/user.entity';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 
 type GpsPoint = { latitude: number; longitude: number; timestamp: Date | string };
 
@@ -17,6 +20,7 @@ export class SegmentsMatchService {
   constructor(
     @InjectRepository(Segment) private readonly segments: Repository<Segment>,
     @InjectRepository(SegmentEffort) private readonly efforts: Repository<SegmentEffort>,
+    private readonly notifications: NotificationsService,
   ) {}
 
   /**
@@ -88,11 +92,31 @@ export class SegmentsMatchService {
           this.efforts.create({ segmentId: seg.id, userId, activityId, elapsedSec }),
         );
         seg.attemptsCount = (seg.attemptsCount || 0) + 1;
-        if (seg.bestTimeSec == null || elapsedSec < seg.bestTimeSec) {
+        const prevBestUserId = seg.bestUserId;
+        const isKOM = seg.bestTimeSec == null || elapsedSec < seg.bestTimeSec;
+        if (isKOM) {
           seg.bestTimeSec = elapsedSec;
           seg.bestUserId = userId;
         }
         await this.segments.save(seg);
+
+        // Notifica o antigo dono do KOM que foi superado (auto-match)
+        if (isKOM && prevBestUserId && prevBestUserId !== userId) {
+          try {
+            const stealer = await this.segments.manager
+              .getRepository(User)
+              .findOne({ where: { id: userId }, select: ['id', 'name'] });
+            await this.notifications.create(
+              prevBestUserId,
+              NotificationType.KOM_STOLEN,
+              '👑 Seu KOM foi roubado!',
+              `${stealer?.name || 'Outro atleta'} fez um tempo melhor no segmento "${seg.name}". Bora recuperar?`,
+              JSON.stringify({ segmentId: seg.id, newTimeSec: elapsedSec }),
+            );
+          } catch {
+            /* noop */
+          }
+        }
         matched++;
       }
       return matched;

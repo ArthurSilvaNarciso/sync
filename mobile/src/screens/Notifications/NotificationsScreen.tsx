@@ -38,6 +38,7 @@ const TYPE_CONFIG: Record<string, { icon: any; color: string }> = {
   flash_event: { icon: 'flash', color: '#FF6B35' },
   hydration: { icon: 'water', color: '#3B82F6' },
   training_daily: { icon: 'sunny', color: '#FCD34D' },
+  kom_stolen: { icon: 'flag', color: '#FFD700' },
   default: { icon: 'notifications', color: '#8E8EA0' },
 };
 

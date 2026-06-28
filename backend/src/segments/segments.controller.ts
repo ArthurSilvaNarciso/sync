@@ -8,6 +8,8 @@ import { User } from '../users/entities/user.entity';
 import { Segment } from './segment.entity';
 import { SegmentEffort } from './segment-effort.entity';
 import { sanitizeText } from '../common/security/sanitize.util';
+import { NotificationsService } from '../notifications/notifications.service';
+import { NotificationType } from '../notifications/entities/notification.entity';
 
 @ApiTags('Segments')
 @Controller('api/segments')
@@ -15,7 +17,33 @@ export class SegmentsController {
   constructor(
     @InjectRepository(Segment) private readonly repo: Repository<Segment>,
     @InjectRepository(SegmentEffort) private readonly efforts: Repository<SegmentEffort>,
+    private readonly notifications: NotificationsService,
   ) {}
+
+  /** Notifica o antigo dono do KOM que perdeu o trono (best-effort, nunca lança). */
+  private async notifyKomStolen(
+    segment: Segment,
+    previousBestUserId: string | null,
+    newUserId: string,
+    newTimeSec: number,
+  ) {
+    try {
+      if (!previousBestUserId || previousBestUserId === newUserId) return;
+      const stealer = await this.repo.manager
+        .getRepository(User)
+        .findOne({ where: { id: newUserId }, select: ['id', 'name'] });
+      const who = stealer?.name || 'Outro atleta';
+      await this.notifications.create(
+        previousBestUserId,
+        NotificationType.KOM_STOLEN,
+        '👑 Seu KOM foi roubado!',
+        `${who} fez um tempo melhor no segmento "${segment.name}". Bora recuperar?`,
+        JSON.stringify({ segmentId: segment.id, newTimeSec }),
+      );
+    } catch {
+      /* noop */
+    }
+  }
 
   @Get('nearby')
   @ApiOperation({ summary: 'Segments próximos (raio em km)' })
@@ -184,12 +212,18 @@ export class SegmentsController {
 
     // Atualiza contadores e KOM/QOM do segment
     segment.attemptsCount = (segment.attemptsCount || 0) + 1;
+    const previousBestUserId = segment.bestUserId;
     const isKOM = segment.bestTimeSec == null || sec < segment.bestTimeSec;
     if (isKOM) {
       segment.bestTimeSec = sec;
       segment.bestUserId = user.id;
     }
     await this.repo.save(segment);
+
+    // Roubou o KOM de alguém? Avisa o antigo dono (fire-and-forget)
+    if (isKOM) {
+      this.notifyKomStolen(segment, previousBestUserId, user.id, sec).catch(() => {});
+    }
 
     const isPR = myPrevBest == null || sec < myPrevBest;
     return { ok: true, isPR, isKOM, elapsedSec: sec, myPrevBest };
