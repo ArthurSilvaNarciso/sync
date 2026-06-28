@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   ActivityIndicator,
   Platform,
@@ -17,6 +16,7 @@ import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SkeletonList } from '../../components/ui/Skeleton';
+import Avatar from '../../components/ui/Avatar';
 import { LinearGradient } from 'expo-linear-gradient';
 import api from '../../services/api';
 
@@ -99,12 +99,9 @@ export default function RankingScreen({ navigation }: Props) {
                 <View style={[styles.medal, { backgroundColor: medalColors[position - 1] }]}>
                   <Text style={styles.medalText}>{position}</Text>
                 </View>
-                <Image
-                  source={
-                    item.avatarUrl
-                      ? { uri: item.avatarUrl }
-                      : require('../../assets/images/default-avatar.png')
-                  }
+                <Avatar
+                  uri={item.avatarUrl}
+                  size={56}
                   style={[
                     styles.podiumAvatar,
                     isFirst && styles.podiumAvatarFirst,
@@ -130,14 +127,7 @@ export default function RankingScreen({ navigation }: Props) {
   const renderItem = ({ item }: { item: RankingItem }) => (
     <View style={styles.listItem}>
       <Text style={styles.listPosition}>{item.position}</Text>
-      <Image
-        source={
-          item.avatarUrl
-            ? { uri: item.avatarUrl }
-            : require('../../assets/images/default-avatar.png')
-        }
-        style={styles.listAvatar}
-      />
+      <Avatar uri={item.avatarUrl} size={44} style={styles.listAvatar} />
       <View style={styles.listInfo}>
         <Text style={styles.listName}>{item.name}</Text>
         <Text style={styles.listMeta}>{item.totalActivities} atividades</Text>

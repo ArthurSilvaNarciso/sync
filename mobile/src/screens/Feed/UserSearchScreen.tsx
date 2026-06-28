@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
-  Image, ActivityIndicator, Platform,
+  ActivityIndicator, Platform,
 } from 'react-native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import Avatar from '../../components/ui/Avatar';
 import api from '../../services/api';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -65,14 +66,7 @@ export default function UserSearchScreen({ navigation }: Props) {
       onPress={() => navigation.navigate('UserProfile', { userId: item.id })}
       activeOpacity={0.7}
     >
-      <Image
-        source={
-          item.avatarUrl
-            ? { uri: item.avatarUrl }
-            : require('../../assets/images/default-avatar.png')
-        }
-        style={styles.avatar}
-      />
+      <Avatar uri={item.avatarUrl} size={48} style={styles.avatar} />
       <View style={styles.userInfo}>
         <Text style={styles.userName}>{item.name}</Text>
         {item.city ? (

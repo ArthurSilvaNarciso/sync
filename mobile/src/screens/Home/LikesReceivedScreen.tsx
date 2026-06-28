@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   FlatList,
-  Image,
   TouchableOpacity,
   RefreshControl,
   ActivityIndicator,
@@ -17,6 +16,7 @@ import { colors, spacing, fontSize, borderRadius } from '../../theme';
 import { matchingApi, LikeReceivedItem } from '../../services/matching.service';
 import EmptyState from '../../components/ui/EmptyState';
 import Skeleton from '../../components/ui/Skeleton';
+import Avatar from '../../components/ui/Avatar';
 import { useHaptic } from '../../hooks/useHaptic';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -155,7 +155,7 @@ export default function LikesReceivedScreen() {
           renderItem={({ item }) => (
             <View style={styles.card}>
               {item.user.avatarUrl ? (
-                <Image source={{ uri: item.user.avatarUrl }} style={styles.avatar} />
+                <Avatar uri={item.user.avatarUrl} size={56} style={styles.avatar} />
               ) : (
                 <View style={[styles.avatar, styles.avatarFallback]}>
                   <Text style={styles.initial}>{item.user.name?.[0]?.toUpperCase()}</Text>
