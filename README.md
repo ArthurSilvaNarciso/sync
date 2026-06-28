@@ -27,6 +27,7 @@ Sync é uma plataforma esportiva mobile-first que combina o melhor do **Strava**
 - 👥 **Match com atletas próximos** — swipe Tinder-like com compatibilidade por pace
 - 🗺️ **Planejador de rotas** — clique no mapa, escolha esporte, veja calorias/tempo
 - 🔥 **Heatmap** das rotas mais corridas da sua cidade
+- 🚩 **Segmentos com KOM/QOM** — trechos cronometrados e ranking automático ao finalizar o treino
 - 🏆 **Gamificação completa** — XP, levels, 50+ conquistas, daily quests
 - 📰 **Feed social** estilo Strava com fotos, kudos e comentários
 - 👯 **Grupos / Clubes** com ranking interno
@@ -143,6 +144,22 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 </details>
 
 <details>
+<summary><b>🚩 Segmentos (estilo Strava)</b></summary>
+
+- Trechos cronometrados criados pela comunidade
+- **Leaderboard** por segmento — melhor tempo de cada atleta, ranqueado
+- **KOM/QOM** — o mais rápido vira "rei/rainha do trecho"
+- **Recorde pessoal (PR)** detectado a cada novo tempo
+- **Auto-match**: ao finalizar um treino, os segmentos cobertos pela rota são
+  cronometrados **automaticamente** a partir dos pontos GPS (raio de 35m no
+  início e fim) — o atleta não precisa fazer nada
+- Registro manual de tempo também disponível (modal min:seg)
+- Lista de segmentos próximos via GPS + tela de detalhe com medalhas
+- Idempotente: um effort por treino/segmento
+
+</details>
+
+<details>
 <summary><b>👯 Grupos / Clubes</b></summary>
 
 - Criar grupo público ou privado
@@ -233,6 +250,16 @@ Web Speech API · Service Worker · PWA manifest
 ```
 TypeScript estrito (tsc 0 erros)  ·  Jest (backend + lógica mobile)
 GitHub Actions CI (typecheck + testes em todo PR)
+```
+
+### Resiliência (sem perder dados na mão do usuário)
+```
+Chat: reconexão automática de socket (re-vincula handlers + re-entra nas salas)
+Fila offline de mensagens — reenvia quando a internet volta
+Swipe (like/nope) e like do feed com retry antes de reverter
+Retry automático em GET no cold-start do backend (Railway free tier)
+Sessão expirada → volta pro login sozinho (sem tela travada)
+Estados de erro consistentes com "Tentar de novo" (sem dado falso/mock)
 ```
 
 ### APIs externas (todas free)
@@ -427,6 +454,10 @@ GET    /api/coach/insights            # IA Coach insights
 GET    /api/subscriptions/plans       # Planos disponíveis
 POST   /api/feedback                  # Enviar feedback
 GET    /api/segments/nearby           # Segments próximos
+POST   /api/segments                   # Criar segment
+GET    /api/segments/:id               # Detalhe do segment
+GET    /api/segments/:id/leaderboard   # Ranking de tempos (KOM/QOM)
+POST   /api/segments/:id/effort        # Registrar tempo no trecho
 ```
 
 ---
