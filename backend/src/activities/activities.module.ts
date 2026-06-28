@@ -13,6 +13,7 @@ import { User } from '../users/entities/user.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AuthModule } from '../auth/auth.module';
 import { GroupsModule } from '../groups/groups.module';
+import { SegmentsModule } from '../segments/segments.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { GroupsModule } from '../groups/groups.module';
     NotificationsModule,
     AuthModule, // pra JwtService no gateway
     GroupsModule, // creditar km nos grupos ao finalizar treino
+    SegmentsModule, // auto-match de segments ao finalizar treino
   ],
   controllers: [ActivitiesController],
   providers: [ActivitiesService, ActivitiesGateway],
