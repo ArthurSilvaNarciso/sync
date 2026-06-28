@@ -1,11 +1,12 @@
 // Lista de comentários + input + kudos em atividade.
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TextInput, TouchableOpacity, Image,
+  View, Text, StyleSheet, TextInput, TouchableOpacity,
   ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
   Animated,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import Avatar from './ui/Avatar';
 import api from '../services/api';
 import { colors, fontSize, spacing, borderRadius } from '../theme';
 import { showToast } from './ui/Toast';
@@ -139,7 +140,7 @@ export default function ActivityComments({ activityId, currentUserId }: Props) {
         comments.map((c) => (
           <View key={c.id} style={styles.commentRow}>
             {c.user.avatarUrl ? (
-              <Image source={{ uri: c.user.avatarUrl }} style={styles.commentAvatar} />
+              <Avatar uri={c.user.avatarUrl} size={32} style={styles.commentAvatar} />
             ) : (
               <View style={[styles.commentAvatar, styles.commentAvatarFallback]}>
                 <Text style={styles.commentAvatarInitial}>

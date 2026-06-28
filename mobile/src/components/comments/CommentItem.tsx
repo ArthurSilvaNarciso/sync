@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  Image,
   Pressable,
 } from 'react-native';
 import { colors, spacing, fontSize, borderRadius } from '../../theme';
+import Avatar from '../ui/Avatar';
 import {
   activityCommentsApi,
   ActivityCommentItem,
@@ -99,7 +99,7 @@ export const CommentItem: React.FC<Props> = ({ comment, currentUserId, onMention
   return (
     <View style={styles.row}>
       {comment.user.avatarUrl ? (
-        <Image source={{ uri: comment.user.avatarUrl }} style={styles.avatar} />
+        <Avatar uri={comment.user.avatarUrl} size={36} style={styles.avatar} />
       ) : (
         <View style={[styles.avatar, styles.avatarFallback]}>
           <Text style={styles.avatarInitial}>{(comment.user.name || '?')[0]?.toUpperCase()}</Text>

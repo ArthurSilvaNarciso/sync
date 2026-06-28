@@ -7,13 +7,13 @@ import {
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
-  Image,
   Alert,
   Platform,
   RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
+import Avatar from '../../components/ui/Avatar';
 import { colors, fontSize, spacing, borderRadius } from '../../theme';
 import api from '../../services/api';
 import { showToast } from '../../components/ui/Toast';
@@ -75,7 +75,7 @@ export default function BlockedUsersScreen({ navigation }: any) {
   const renderItem = ({ item }: { item: BlockedUser }) => (
     <View style={styles.userRow}>
       {item.avatarUrl ? (
-        <Image source={{ uri: item.avatarUrl }} style={styles.avatar} />
+        <Avatar uri={item.avatarUrl} size={46} style={styles.avatar} />
       ) : (
         <View style={[styles.avatar, styles.avatarFallback]}>
           <Text style={styles.avatarInitial}>
