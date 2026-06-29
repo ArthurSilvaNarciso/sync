@@ -31,6 +31,7 @@ const sportIcons: Record<string, keyof typeof Ionicons.glyphMap> = {
 export default function SegmentsListScreen({ navigation }: Props) {
   const insets = useSafeAreaInsets();
   const [segments, setSegments] = useState<Segment[]>([]);
+  const [trending, setTrending] = useState<(Segment & { recentCount: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [noGps, setNoGps] = useState(false);
@@ -39,6 +40,8 @@ export default function SegmentsListScreen({ navigation }: Props) {
   const load = useCallback(async () => {
     setError(false);
     setNoGps(false);
+    // "Em alta" é global (não precisa de GPS) — carrega em paralelo, sem bloquear
+    segmentsApi.trending().then(setTrending).catch(() => {});
     try {
       const coords = await getCurrentLocation();
       const data = await segmentsApi.nearby(coords.latitude, coords.longitude, 25);
@@ -114,18 +117,6 @@ export default function SegmentsListScreen({ navigation }: Props) {
         </View>
       ) : error ? (
         <ErrorState onRetry={() => { setLoading(true); load(); }} />
-      ) : noGps ? (
-        <View style={styles.emptyWrap}>
-          <Ionicons name="location-outline" size={56} color={colors.secondaryText} />
-          <Text style={styles.emptyTitle}>Ative sua localização</Text>
-          <Text style={styles.emptyText}>
-            Precisamos do seu GPS para mostrar segmentos perto de você.
-          </Text>
-          <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); load(); }}>
-            <Ionicons name="refresh" size={16} color="#fff" />
-            <Text style={styles.retryText}>Tentar de novo</Text>
-          </TouchableOpacity>
-        </View>
       ) : (
         <FlatList
           data={segments}
@@ -133,14 +124,56 @@ export default function SegmentsListScreen({ navigation }: Props) {
           renderItem={renderItem}
           contentContainerStyle={{ padding: spacing.md, paddingBottom: 100 }}
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
+          ListHeaderComponent={
+            trending.length > 0 ? (
+              <View style={styles.trendWrap}>
+                <View style={styles.trendTitleRow}>
+                  <Ionicons name="flame" size={16} color="#FF6B35" />
+                  <Text style={styles.trendTitle}>Em alta</Text>
+                </View>
+                {trending.slice(0, 5).map((t) => (
+                  <TouchableOpacity
+                    key={t.id}
+                    style={styles.trendCard}
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('SegmentDetail', { segmentId: t.id })}
+                  >
+                    <View style={styles.trendFire}>
+                      <Ionicons name="flame" size={16} color="#FF6B35" />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.cardName} numberOfLines={1}>{t.name}</Text>
+                      <Text style={styles.cardMeta}>{t.recentCount} tentativas nos últimos 14 dias</Text>
+                    </View>
+                    <Ionicons name="chevron-forward" size={18} color={colors.secondaryText} />
+                  </TouchableOpacity>
+                ))}
+                <Text style={styles.nearbyHeading}>Perto de você</Text>
+              </View>
+            ) : null
+          }
           ListEmptyComponent={
-            <View style={styles.emptyWrap}>
-              <Ionicons name="flag-outline" size={56} color={colors.secondaryText} />
-              <Text style={styles.emptyTitle}>Nenhum segmento por aqui</Text>
-              <Text style={styles.emptyText}>
-                Crie um segmento a partir de um treino para competir com outros atletas.
-              </Text>
-            </View>
+            noGps ? (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="location-outline" size={56} color={colors.secondaryText} />
+                <Text style={styles.emptyTitle}>Ative sua localização</Text>
+                <Text style={styles.emptyText}>
+                  Libere o GPS para ver segmentos perto de você. (Os "Em alta" acima funcionam sem GPS.)
+                </Text>
+                <TouchableOpacity style={styles.retryBtn} onPress={() => { setLoading(true); load(); }}>
+                  <Ionicons name="refresh" size={16} color="#fff" />
+                  <Text style={styles.retryText}>Tentar de novo</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.emptyWrap}>
+                <Ionicons name="flag-outline" size={56} color={colors.secondaryText} />
+                <Text style={styles.emptyTitle}>Nenhum segmento por aqui</Text>
+                <Text style={styles.emptyText}>
+                  Crie um segmento a partir de um treino para competir com outros atletas.
+                </Text>
+              </View>
+            )
           }
         />
       )}
@@ -171,6 +204,19 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.06)',
   },
+  trendWrap: { marginBottom: spacing.xs },
+  trendTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: spacing.sm },
+  trendTitle: { fontSize: fontSize.md, fontWeight: '800', color: colors.text },
+  trendCard: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.sm,
+    backgroundColor: '#15151F', borderRadius: borderRadius.lg, padding: spacing.md, marginBottom: spacing.sm,
+    borderWidth: 1, borderColor: 'rgba(255,107,53,0.25)',
+  },
+  trendFire: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,107,53,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  nearbyHeading: { fontSize: fontSize.md, fontWeight: '800', color: colors.text, marginTop: spacing.md, marginBottom: spacing.sm },
   cardIcon: {
     width: 40, height: 40, borderRadius: 20,
     backgroundColor: colors.primary + '18',

@@ -152,6 +152,7 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 - **Mapa do trecho** (início → fim) na tela de detalhe
 - Badge de **KOMs/QOMs** no perfil (quantos tronos você detém)
 - **Seus tempos** — evolução das suas tentativas no trecho (sparkline + recorde)
+- **Em alta** — segmentos com mais tentativas recentes (descoberta, funciona sem GPS)
 - **KOM/QOM** — o mais rápido vira "rei/rainha do trecho"
 - **Recorde pessoal (PR)** detectado a cada novo tempo
 - **Auto-match**: ao finalizar um treino, os segmentos cobertos pela rota são

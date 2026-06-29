@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Body, Query, UseGuards, Param, BadRequestException } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, In } from 'typeorm';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { User } from '../users/entities/user.entity';
@@ -99,6 +99,34 @@ export class SegmentsController {
       .getMany();
     // Não expõe o criador neste endpoint (lista pública)
     return segments.map(({ creator: _creator, ...s }) => s);
+  }
+
+  @Get('trending')
+  @ApiOperation({ summary: 'Segmentos em alta (mais tentativas nos últimos 14 dias)' })
+  async trending() {
+    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
+    const rows = await this.efforts
+      .createQueryBuilder('e')
+      .select('e.segment_id', 'segmentId')
+      .addSelect('COUNT(e.id)', 'recentCount')
+      .where('e.createdAt >= :since', { since })
+      .groupBy('e.segment_id')
+      .orderBy('"recentCount"', 'DESC')
+      .limit(10)
+      .getRawMany<{ segmentId: string; recentCount: string }>();
+
+    if (rows.length === 0) return [];
+    const ids = rows.map((r) => r.segmentId);
+    const segments = await this.repo.find({ where: { id: In(ids) } });
+    const byId = new Map(segments.map((s) => [s.id, s]));
+    return rows
+      .map((r) => {
+        const s = byId.get(r.segmentId);
+        if (!s) return null;
+        const { creator: _c, ...rest } = s as any;
+        return { ...rest, recentCount: parseInt(r.recentCount, 10) };
+      })
+      .filter(Boolean);
   }
 
   @Get(':id')

@@ -44,6 +44,9 @@ export const segmentsApi = {
       .get('/segments/nearby', { params: { lat, lng, radiusKm } })
       .then((r) => r.data || []),
 
+  trending: (): Promise<(Segment & { recentCount: number })[]> =>
+    api.get('/segments/trending').then((r) => r.data || []),
+
   detail: (id: string): Promise<Segment | null> =>
     api.get(`/segments/${id}`).then((r) => r.data),
 
