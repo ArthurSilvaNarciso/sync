@@ -30,6 +30,14 @@ export type LeaderboardRow = {
   isKOM: boolean;
 };
 
+export type EffortPoint = { elapsedSec: number; createdAt: string };
+export type MyEffortsResult = {
+  count: number;
+  bestSec: number | null;
+  lastSec: number | null;
+  efforts: EffortPoint[];
+};
+
 export const segmentsApi = {
   nearby: (lat: number, lng: number, radiusKm = 10): Promise<Segment[]> =>
     api
@@ -47,6 +55,9 @@ export const segmentsApi = {
 
   myKoms: (): Promise<{ count: number }> =>
     api.get('/segments/me/koms').then((r) => r.data || { count: 0 }),
+
+  myEfforts: (id: string): Promise<MyEffortsResult> =>
+    api.get(`/segments/${id}/my-efforts`).then((r) => r.data || { efforts: [], bestSec: null, lastSec: null, count: 0 }),
 
   recordEffort: (
     id: string,

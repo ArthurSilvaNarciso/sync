@@ -31,6 +31,28 @@ export class SegmentsController {
     return { count };
   }
 
+  @Get(':id/my-efforts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Seus tempos neste segmento (evolução cronológica)' })
+  async myEfforts(@CurrentUser() user: User, @Param('id') id: string) {
+    const rows = await this.efforts.find({
+      where: { segmentId: id, userId: user.id },
+      order: { createdAt: 'ASC' },
+      take: 100,
+    });
+    if (rows.length === 0) {
+      return { efforts: [], bestSec: null, lastSec: null, count: 0 };
+    }
+    const times = rows.map((e) => e.elapsedSec);
+    return {
+      count: rows.length,
+      bestSec: Math.min(...times),
+      lastSec: times[times.length - 1],
+      efforts: rows.map((e) => ({ elapsedSec: e.elapsedSec, createdAt: e.createdAt })),
+    };
+  }
+
   /** Notifica o antigo dono do KOM que perdeu o trono (best-effort, nunca lança). */
   private async notifyKomStolen(
     segment: Segment,

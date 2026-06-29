@@ -21,6 +21,7 @@ import {
   segmentsApi,
   Segment,
   LeaderboardRow,
+  MyEffortsResult,
   formatElapsed,
 } from '../../services/segments.service';
 import MapView, { Marker, Polyline } from '../../components/map/SyncMap';
@@ -44,6 +45,7 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
   const haptic = useHaptic();
   const [segment, setSegment] = useState<Segment | null>(null);
   const [board, setBoard] = useState<LeaderboardRow[]>([]);
+  const [mine, setMine] = useState<MyEffortsResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
@@ -67,6 +69,8 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
       if (!s) { setError(true); return; }
       setSegment(s);
       setBoard(b);
+      // Histórico dos meus tempos (não bloqueia a tela se falhar)
+      segmentsApi.myEfforts(segmentId).then(setMine).catch(() => {});
     } catch {
       setError(true);
     } finally {
@@ -252,6 +256,47 @@ export default function SegmentDetailScreen({ navigation, route }: Props) {
               <Text style={styles.desc}>{segment.description}</Text>
             )}
 
+            {/* Seus tempos — evolução (mais alto = mais rápido) */}
+            {mine && mine.count > 0 && (
+              <View style={styles.myCard}>
+                <View style={styles.myHeader}>
+                  <Text style={styles.myTitle}>Seus tempos</Text>
+                  <Text style={styles.myBest}>
+                    Melhor: <Text style={{ color: '#FFD700', fontWeight: '800' }}>{formatElapsed(mine.bestSec || 0)}</Text>
+                  </Text>
+                </View>
+                {mine.count > 1 ? (
+                  <>
+                    <View style={styles.sparkRow}>
+                      {(() => {
+                        const times = mine.efforts.map((e) => e.elapsedSec);
+                        const max = Math.max(...times);
+                        const min = Math.min(...times);
+                        const span = Math.max(1, max - min);
+                        return mine.efforts.slice(-20).map((e, i) => {
+                          // mais rápido (menor tempo) = barra mais alta
+                          const h = 12 + ((max - e.elapsedSec) / span) * 40;
+                          const isBest = e.elapsedSec === min;
+                          return (
+                            <View
+                              key={i}
+                              style={[styles.sparkBar, { height: h, backgroundColor: isBest ? '#FFD700' : colors.primary }]}
+                            />
+                          );
+                        });
+                      })()}
+                    </View>
+                    <Text style={styles.myFootnote}>
+                      {mine.count} tentativas · último: {formatElapsed(mine.lastSec || 0)}
+                      {(mine.lastSec || 0) <= (mine.bestSec || 0) ? '  🔥 seu recorde!' : ''}
+                    </Text>
+                  </>
+                ) : (
+                  <Text style={styles.myFootnote}>Sua 1ª passagem por aqui. Volte pra melhorar o tempo! 💪</Text>
+                )}
+              </View>
+            )}
+
             <View style={styles.ctaRow}>
               <TouchableOpacity style={styles.recordBtn} onPress={() => setShowRecord(true)} activeOpacity={0.85}>
                 <LinearGradient
@@ -384,6 +429,16 @@ const styles = StyleSheet.create({
   statLabel: { fontSize: fontSize.xs, color: colors.secondaryText, marginTop: 2 },
   statDivider: { width: 1, height: 32, backgroundColor: 'rgba(255,255,255,0.08)' },
   desc: { fontSize: fontSize.sm, color: colors.secondaryText, lineHeight: 20, marginBottom: spacing.md },
+  myCard: {
+    backgroundColor: '#15151F', borderRadius: borderRadius.lg, padding: spacing.md,
+    marginBottom: spacing.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.06)',
+  },
+  myHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.sm },
+  myTitle: { fontSize: fontSize.sm, fontWeight: '800', color: colors.text },
+  myBest: { fontSize: fontSize.xs, color: colors.secondaryText },
+  sparkRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 3, height: 56 },
+  sparkBar: { flex: 1, minWidth: 4, borderRadius: 2, maxWidth: 16 },
+  myFootnote: { fontSize: fontSize.xs, color: colors.secondaryText, marginTop: spacing.sm },
   ctaRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
   recordBtn: { flex: 1, borderRadius: borderRadius.md, overflow: 'hidden' },
   shareBtn: {
