@@ -184,6 +184,18 @@ class SocketService {
     this.socket?.emit('typing', { matchId });
   }
 
+  /** Alterna uma reação (emoji) numa mensagem. */
+  reactMessage(matchId: string, messageId: string, emoji: string) {
+    this.socket?.emit('reactMessage', { matchId, messageId, emoji });
+  }
+
+  /** Ouve atualizações de reações (mapa emoji -> userIds). */
+  onMessageReaction(callback: (data: { messageId: string; reactions: Record<string, string[]> }) => void) {
+    this.handlers['messageReaction'] = callback;
+    this.socket?.off('messageReaction');
+    this.socket?.on('messageReaction', callback);
+  }
+
   onUserOnline(callback: (data: { userId: string }) => void) {
     this.handlers['userOnline'] = callback;
     this.socket?.off('userOnline');
@@ -227,7 +239,7 @@ class SocketService {
   clearMessageHandlers() {
     this.handlers = {};
     if (this.socket) {
-      ['newMessage', 'userTyping', 'userOnline', 'userOffline', 'messagesRead'].forEach((e) =>
+      ['newMessage', 'userTyping', 'userOnline', 'userOffline', 'messagesRead', 'messageReaction'].forEach((e) =>
         this.socket?.off(e),
       );
     }

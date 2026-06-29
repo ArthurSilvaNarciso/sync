@@ -41,6 +41,10 @@ export class Message {
   @Column({ default: false })
   isRead: boolean;
 
+  // Reações: mapa emoji -> lista de userIds que reagiram. Ex.: { "🔥": ["u1"] }
+  @Column({ type: 'jsonb', nullable: true })
+  reactions: Record<string, string[]> | null;
+
   @CreateDateColumn()
   createdAt: Date;
 }

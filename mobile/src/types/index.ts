@@ -57,6 +57,8 @@ export interface Message {
   isRead: boolean;
   createdAt: string;
   sender?: User;
+  // Reações: mapa emoji -> lista de userIds
+  reactions?: Record<string, string[]> | null;
   // Estado local de entrega (não vem do servidor):
   clientId?: string;   // id gerado no cliente pra casar o eco do servidor
   pending?: boolean;   // ainda não confirmada pelo servidor

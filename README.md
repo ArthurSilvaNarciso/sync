@@ -96,6 +96,7 @@ Ou crie sua própria conta em https://tutu-sync.vercel.app/
 - Like / Match mútuo
 - Chat 1:1 em tempo real (WebSocket)
 - **Mensagens de voz** no chat (grava, envia e reproduz)
+- **Reações em mensagens** (long-press → emoji, em tempo real)
 - **Recibos de leitura** (✓✓) em tempo real
 - **Follow/unfollow** (separado de match)
 - Stories de treino (foto/**vídeo**, expira 24h)

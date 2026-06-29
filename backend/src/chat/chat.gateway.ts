@@ -184,6 +184,30 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     client.to(`match:${data.matchId}`).emit('userTyping', { userId });
   }
 
+  // Reagir a uma mensagem (toggle de emoji). Broadcast pra sala atualizar todos.
+  @SubscribeMessage('reactMessage')
+  async handleReact(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() data: { matchId: string; messageId: string; emoji: string },
+  ) {
+    const userId = this.socketToUser.get(client.id);
+    if (!userId || !data?.matchId || !data?.messageId || !data?.emoji) return;
+    try {
+      const reactions = await this.chatService.toggleReaction(
+        userId,
+        data.matchId,
+        data.messageId,
+        data.emoji,
+      );
+      this.server.to(`match:${data.matchId}`).emit('messageReaction', {
+        messageId: data.messageId,
+        reactions,
+      });
+    } catch {
+      // silencia — non-critical
+    }
+  }
+
   isUserOnline(userId: string): boolean {
     return [...this.socketToUser.values()].includes(userId);
   }

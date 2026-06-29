@@ -14,6 +14,8 @@ import {
   ActionSheetIOS,
   Animated,
   ActivityIndicator,
+  Pressable,
+  Modal,
 } from 'react-native';
 import { RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -31,6 +33,7 @@ import { confirmAsync } from '../../utils/confirm';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Audio, InterruptionModeAndroid, InterruptionModeIOS } from 'expo-av';
 import { uploadMedia } from '../../services/media.service';
+import { useHaptic } from '../../hooks/useHaptic';
 
 type Props = {
   navigation: NativeStackNavigationProp<ChatStackParamList, 'ChatRoom'>;
@@ -59,6 +62,9 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
   // Voice playback
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [connStatus, setConnStatus] = useState<SocketStatus>('connecting');
+  const [reactionTarget, setReactionTarget] = useState<string | null>(null);
+  const REACTION_EMOJIS = ['🔥', '👏', '😂', '❤️', '💪', '😮'];
+  const haptic = useHaptic();
   const soundRef = useRef<Audio.Sound | null>(null);
 
   const flatListRef = useRef<FlatList>(null);
@@ -240,9 +246,39 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
           );
         }
       });
+
+      // Reações em tempo real
+      socketService.onMessageReaction?.((data) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === data.messageId ? { ...m, reactions: data.reactions } : m)),
+        );
+      });
     } catch {
       // HTTP fallback still works
     }
+  };
+
+  // ── Reações ──────────────────────────────────────────────────────────────
+  const toggleReaction = (messageId: string, emoji: string) => {
+    if (!user) return;
+    setReactionTarget(null);
+    // Atualização otimista local (o servidor confirma via onMessageReaction)
+    setMessages((prev) =>
+      prev.map((m) => {
+        if (m.id !== messageId) return m;
+        const reactions: Record<string, string[]> = { ...(m.reactions || {}) };
+        const cur = reactions[emoji] || [];
+        if (cur.includes(user.id)) {
+          const next = cur.filter((u) => u !== user.id);
+          if (next.length === 0) delete reactions[emoji];
+          else reactions[emoji] = next;
+        } else {
+          reactions[emoji] = [...cur, user.id];
+        }
+        return { ...m, reactions: Object.keys(reactions).length ? reactions : null };
+      }),
+    );
+    socketService.reactMessage?.(matchId, messageId, emoji);
   };
 
   // ── Send text message ──────────────────────────────────────────────────────
@@ -529,7 +565,11 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
             {new Date(item.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
           </Text>
         )}
-        <View style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}>
+        <Pressable
+          onLongPress={() => { haptic.light?.(); setReactionTarget(item.id); }}
+          delayLongPress={250}
+          style={[styles.messageBubble, isMe ? styles.myMessage : styles.theirMessage]}
+        >
           {isAudio ? (
             <TouchableOpacity
               style={styles.audioBubble}
@@ -588,7 +628,26 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
               )
             )}
           </View>
-        </View>
+
+          {/* Reações */}
+          {item.reactions && Object.keys(item.reactions).length > 0 && (
+            <View style={styles.reactionsRow}>
+              {Object.entries(item.reactions).map(([emoji, users]) => {
+                const mine = !!user && users.includes(user.id);
+                return (
+                  <TouchableOpacity
+                    key={emoji}
+                    style={[styles.reactionChip, mine && styles.reactionChipMine]}
+                    onPress={() => toggleReaction(item.id, emoji)}
+                  >
+                    <Text style={styles.reactionEmoji}>{emoji}</Text>
+                    <Text style={styles.reactionCount}>{users.length}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
+        </Pressable>
       </View>
     );
   };
@@ -774,12 +833,54 @@ export default function ChatRoomScreen({ navigation, route }: Props) {
           </TouchableOpacity>
         )}
       </View>
+
+      {/* Picker de reações (long-press numa mensagem) */}
+      <Modal
+        visible={!!reactionTarget}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setReactionTarget(null)}
+      >
+        <Pressable style={styles.reactionOverlay} onPress={() => setReactionTarget(null)}>
+          <View style={styles.reactionPicker}>
+            {REACTION_EMOJIS.map((emoji) => (
+              <TouchableOpacity
+                key={emoji}
+                style={styles.reactionPickBtn}
+                onPress={() => reactionTarget && toggleReaction(reactionTarget, emoji)}
+              >
+                <Text style={styles.reactionPickEmoji}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.dark.background },
+
+  // ── Reações ──────────────────────────────────────────────────────────────
+  reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginTop: 4 },
+  reactionChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 3,
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12,
+    paddingHorizontal: 7, paddingVertical: 2,
+    borderWidth: 1, borderColor: 'transparent',
+  },
+  reactionChipMine: { backgroundColor: 'rgba(255,107,53,0.25)', borderColor: 'rgba(255,107,53,0.5)' },
+  reactionEmoji: { fontSize: 12 },
+  reactionCount: { fontSize: 11, fontWeight: '700', color: colors.text },
+  reactionOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  reactionPicker: {
+    flexDirection: 'row', gap: 6, backgroundColor: '#1C1C28',
+    borderRadius: 30, paddingHorizontal: 10, paddingVertical: 8,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
+  },
+  reactionPickBtn: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  reactionPickEmoji: { fontSize: 26 },
 
   // ── Header ─────────────────────────────────────────────────────────────────
   header: {

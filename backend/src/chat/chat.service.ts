@@ -43,6 +43,36 @@ export class ChatService {
     return match;
   }
 
+  // Alterna a reação (emoji) de um usuário numa mensagem. Retorna o mapa novo.
+  async toggleReaction(
+    userId: string,
+    matchId: string,
+    messageId: string,
+    emoji: string,
+  ): Promise<Record<string, string[]>> {
+    await this.verifyMatchAccess(matchId, userId);
+    // Só emojis curtos (1-8 chars) — evita texto arbitrário
+    const e = String(emoji).slice(0, 8);
+    const message = await this.messageRepository.findOne({
+      where: { id: messageId, match_id: matchId },
+    });
+    if (!message) throw new NotFoundException('Mensagem não encontrada');
+
+    const reactions: Record<string, string[]> = { ...(message.reactions || {}) };
+    const current = reactions[e] || [];
+    if (current.includes(userId)) {
+      // já reagiu → remove (toggle)
+      const next = current.filter((u) => u !== userId);
+      if (next.length === 0) delete reactions[e];
+      else reactions[e] = next;
+    } else {
+      reactions[e] = [...current, userId];
+    }
+    message.reactions = Object.keys(reactions).length ? reactions : null;
+    await this.messageRepository.save(message);
+    return message.reactions || {};
+  }
+
   // Enviar mensagem - chat só liberado após match
   async sendMessage(userId: string, dto: SendMessageDto): Promise<Message> {
     const match = await this.verifyMatchAccess(dto.matchId, userId);
